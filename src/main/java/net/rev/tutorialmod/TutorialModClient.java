@@ -44,17 +44,14 @@ public class TutorialModClient implements ClientModInitializer {
 
     private enum PlacementAction {
         NONE,
-        PLACE_TNT_MINECART,
-        SWITCH_BACK_FROM_MINECART
+        PLACE_TNT_MINECART
     }
 
     private int placementCooldown = -1;
-    private int originalRailSlot = -1;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
 
-    public static BlockPos expectedRailPos = null;
-    public static boolean awaitingRailConfirmation = false;
+    public static int awaitingRailConfirmationCooldown = -1;
 
     @Override
     public void onInitializeClient() {
@@ -206,13 +203,8 @@ public class TutorialModClient implements ClientModInitializer {
                             client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
                         }
 
-                        placementCooldown = 5; // Wait a bit before switching back
-                        nextPlacementAction = PlacementAction.SWITCH_BACK_FROM_MINECART;
-                        break;
-                    case SWITCH_BACK_FROM_MINECART:
-                        client.player.getInventory().selectedSlot = originalRailSlot;
+                        placementCooldown = -1; // No need to switch back, so we're done.
                         railPos = null;
-                        originalRailSlot = -1;
                         break;
                     default:
                         break;
@@ -220,6 +212,11 @@ public class TutorialModClient implements ClientModInitializer {
             }
         });
 
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (awaitingRailConfirmationCooldown > 0) {
+                awaitingRailConfirmationCooldown--;
+            }
+        });
     }
 
     private boolean isArmored(PlayerEntity player) {
@@ -261,18 +258,16 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    public static void setAwaitingRailConfirmation(BlockPos pos) {
-        awaitingRailConfirmation = true;
-        expectedRailPos = pos;
+    public static void setAwaitingRailConfirmation() {
+        awaitingRailConfirmationCooldown = 2;
     }
 
     public static void confirmRailPlacement(BlockPos pos, BlockState state) {
-        if (awaitingRailConfirmation && pos.equals(expectedRailPos) && state.getBlock() instanceof net.minecraft.block.RailBlock) {
+        if (awaitingRailConfirmationCooldown > 0 && state.getBlock() instanceof net.minecraft.block.RailBlock) {
             if (instance != null) {
                 instance.startRailPlacement(pos);
             }
-            awaitingRailConfirmation = false;
-            expectedRailPos = null;
+            awaitingRailConfirmationCooldown = -1;
         }
     }
 
@@ -284,7 +279,6 @@ public class TutorialModClient implements ClientModInitializer {
 
         int tntMinecartSlot = findTntMinecartInHotbar(client.player);
         if (tntMinecartSlot != -1) {
-            this.originalRailSlot = client.player.getInventory().selectedSlot;
             this.railPos = pos;
             this.placementCooldown = 1;
             this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;

@@ -23,8 +23,7 @@ public class ClientPlayerInteractionManagerInteractBlockMixin {
         if (TutorialMod.CONFIG.tntMinecartPlacementEnabled && cir.getReturnValue().isAccepted()) {
             ItemStack stack = player.getStackInHand(hand);
             if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof RailBlock) {
-                BlockPos potentialRailPos = hitResult.getBlockPos().offset(hitResult.getSide());
-                TutorialModClient.setAwaitingRailConfirmation(potentialRailPos);
+                TutorialModClient.setAwaitingRailConfirmation();
             }
         }
     }
