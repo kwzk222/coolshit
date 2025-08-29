@@ -192,22 +192,15 @@ public class TutorialModClient implements ClientModInitializer {
 
                 switch (action) {
                     case PLACE_TNT_MINECART:
-                        // Camera Snap Logic
-                        Vec3d playerEyePos = client.player.getEyePos();
-                        Vec3d railCenterPos = railPos.toCenterPos();
-                        Vec3d direction = railCenterPos.subtract(playerEyePos).normalize();
-
-                        float pitch = (float) Math.toDegrees(Math.asin(-direction.y));
-                        float yaw = (float) Math.toDegrees(Math.atan2(direction.z, direction.x)) - 90.0F;
-
-                        client.player.setYaw(yaw);
-                        client.player.setPitch(pitch);
-
                         client.player.getInventory().selectedSlot = findTntMinecartInHotbar(client.player);
-                        // Check distance to prevent placing from too far away
-                        if (playerEyePos.distanceTo(railCenterPos) < 4.5F) {
-                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
-                        }
+
+                        BlockHitResult hitResult = new BlockHitResult(
+                                railPos.toCenterPos(),
+                                Direction.UP,
+                                railPos,
+                                false
+                        );
+                        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
 
                         placementCooldown = 5; // Wait a bit before switching back
                         nextPlacementAction = PlacementAction.SWITCH_BACK_FROM_MINECART;
