@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPlayerInteractionManager.class)
-public class ClientPlayerInteractionManagerMixin {
+public class ClientPlayerInteractionManagerAttackEntityMixin {
     @Inject(at = @At("HEAD"), method = "attackEntity(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/entity/Entity;)V", cancellable = true)
     private void onAttackEntity(PlayerEntity player, Entity target, CallbackInfo info) {
         ActionResult result = AttackEntityCallback.EVENT.invoker().interact(player, target);

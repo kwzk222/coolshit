@@ -65,6 +65,12 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapEnabled = newValue)
                     .build());
 
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement Enabled"), TutorialMod.CONFIG.tntMinecartPlacementEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the automatic TNT minecart placement feature."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue)
+                    .build());
+
             return builder.build();
         };
     }

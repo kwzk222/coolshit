@@ -21,6 +21,7 @@ public class ModConfig {
     public boolean totemSwapEnabled = true;
     public boolean axeSwapEnabled = true;
     public boolean maceSwapEnabled = true;
+    public boolean tntMinecartPlacementEnabled = true;
 
     public static ModConfig load() {
         if (CONFIG_FILE.exists()) {

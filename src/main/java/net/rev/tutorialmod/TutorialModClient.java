@@ -12,13 +12,23 @@ import net.minecraft.item.AxeItem;
 import net.minecraft.util.ActionResult;
 import net.minecraft.entity.Entity;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.util.Hand;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.block.BlockState;
+import net.minecraft.item.BlockItem;
+import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.text.Text;
 
 
 public class TutorialModClient implements ClientModInitializer {
+
+    private static TutorialModClient instance;
 
     private enum SwapAction {
         NONE,
@@ -31,8 +41,23 @@ public class TutorialModClient implements ClientModInitializer {
     private SwapAction nextAction = SwapAction.NONE;
     private Entity targetEntity = null;
 
+    private enum PlacementAction {
+        NONE,
+        PLACE_TNT_MINECART,
+        SWITCH_BACK_FROM_MINECART
+    }
+
+    private int placementCooldown = -1;
+    private int originalRailSlot = -1;
+    private PlacementAction nextPlacementAction = PlacementAction.NONE;
+    private BlockPos railPos = null;
+
+    public static BlockPos expectedRailPos = null;
+    public static boolean awaitingRailConfirmation = false;
+
     @Override
     public void onInitializeClient() {
+        instance = this;
 
         // Register the totem swap feature (already in your code)
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -155,6 +180,49 @@ public class TutorialModClient implements ClientModInitializer {
             }
         });
 
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (placementCooldown > 0) {
+                placementCooldown--;
+            } else if (placementCooldown == 0) {
+                PlacementAction action = nextPlacementAction;
+                nextPlacementAction = PlacementAction.NONE;
+                placementCooldown = -1;
+
+                if (client.player == null || client.interactionManager == null) return;
+
+                switch (action) {
+                    case PLACE_TNT_MINECART:
+                        // Camera Snap Logic
+                        Vec3d playerEyePos = client.player.getEyePos();
+                        Vec3d railCenterPos = railPos.toCenterPos();
+                        Vec3d direction = railCenterPos.subtract(playerEyePos).normalize();
+
+                        float pitch = (float) Math.toDegrees(Math.asin(-direction.y));
+                        float yaw = (float) Math.toDegrees(Math.atan2(direction.z, direction.x)) - 90.0F;
+
+                        client.player.setYaw(yaw);
+                        client.player.setPitch(pitch);
+
+                        client.player.getInventory().selectedSlot = findTntMinecartInHotbar(client.player);
+                        // Check distance to prevent placing from too far away
+                        if (playerEyePos.distanceTo(railCenterPos) < 4.5F) {
+                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        }
+
+                        placementCooldown = 5; // Wait a bit before switching back
+                        nextPlacementAction = PlacementAction.SWITCH_BACK_FROM_MINECART;
+                        break;
+                    case SWITCH_BACK_FROM_MINECART:
+                        client.player.getInventory().selectedSlot = originalRailSlot;
+                        railPos = null;
+                        originalRailSlot = -1;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
+
     }
 
     private boolean isArmored(PlayerEntity player) {
@@ -184,5 +252,45 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
         return -1;
+    }
+
+    private int findTntMinecartInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = player.getInventory().getStack(i);
+            if (stack.getItem() == Items.TNT_MINECART) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static void setAwaitingRailConfirmation(BlockPos pos) {
+        awaitingRailConfirmation = true;
+        expectedRailPos = pos;
+    }
+
+    public static void confirmRailPlacement(BlockPos pos, BlockState state) {
+        if (awaitingRailConfirmation && pos.equals(expectedRailPos) && state.getBlock() instanceof net.minecraft.block.RailBlock) {
+            if (instance != null) {
+                instance.startRailPlacement(pos);
+            }
+            awaitingRailConfirmation = false;
+            expectedRailPos = null;
+        }
+    }
+
+    public void startRailPlacement(BlockPos pos) {
+        if (placementCooldown != -1) return;
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+
+        int tntMinecartSlot = findTntMinecartInHotbar(client.player);
+        if (tntMinecartSlot != -1) {
+            this.originalRailSlot = client.player.getInventory().selectedSlot;
+            this.railPos = pos;
+            this.placementCooldown = 1;
+            this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
+        }
     }
 }
