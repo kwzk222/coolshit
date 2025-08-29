@@ -30,15 +30,13 @@ public class TutorialModClient implements ClientModInitializer {
     private int originalHotbarSlot = -1;
     private SwapAction nextAction = SwapAction.NONE;
     private Entity targetEntity = null;
-    private ModConfig config;
 
     @Override
     public void onInitializeClient() {
-        config = ModConfig.load();
 
         // Register the totem swap feature (already in your code)
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (!config.totemSwapEnabled) return;
+            if (!TutorialMod.CONFIG.totemSwapEnabled) return;
             if (client.player == null || client.currentScreen == null || client.interactionManager == null) {
                 return;
             }
@@ -91,7 +89,7 @@ public class TutorialModClient implements ClientModInitializer {
                 boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
                 boolean hasArmor = isArmored(attackedPlayer);
 
-                if (isShielding && config.axeSwapEnabled) {
+                if (isShielding && TutorialMod.CONFIG.axeSwapEnabled) {
                     int axeSlot = findAxeInHotbar(player);
                     if (axeSlot != -1 && player.getInventory().selectedSlot != axeSlot) {
                         originalHotbarSlot = player.getInventory().selectedSlot;
@@ -99,22 +97,22 @@ public class TutorialModClient implements ClientModInitializer {
                         targetEntity = entity; // Store entity for potential combo
 
                         int maceSlot = findMaceInHotbar(player);
-                        if (hasArmor && maceSlot != -1 && config.maceSwapEnabled) {
+                        if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled) {
                             // Combo case
-                            swapCooldown = config.comboSwapDelay;
+                            swapCooldown = TutorialMod.CONFIG.comboSwapDelay;
                             nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
                         } else {
                             // Axe-only case
-                            swapCooldown = config.axeSwapDelay;
+                            swapCooldown = TutorialMod.CONFIG.axeSwapDelay;
                             nextAction = SwapAction.SWITCH_BACK;
                         }
                     }
-                } else if (hasArmor && config.maceSwapEnabled) {
+                } else if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled) {
                     int maceSlot = findMaceInHotbar(player);
                     if (maceSlot != -1 && player.getInventory().selectedSlot != maceSlot) {
                         originalHotbarSlot = player.getInventory().selectedSlot;
                         player.getInventory().selectedSlot = maceSlot;
-                        swapCooldown = config.maceSwapDelay;
+                        swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
                         nextAction = SwapAction.SWITCH_BACK;
                     }
                 }
@@ -144,7 +142,7 @@ public class TutorialModClient implements ClientModInitializer {
                             int maceSlot = findMaceInHotbar(client.player);
                             if (maceSlot != -1) {
                                 client.player.getInventory().selectedSlot = maceSlot;
-                                swapCooldown = config.postComboAxeSwapDelay;
+                                swapCooldown = TutorialMod.CONFIG.postComboAxeSwapDelay;
                                 nextAction = SwapAction.SWITCH_BACK;
                             }
                         }
