@@ -49,6 +49,24 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> config.postComboAxeSwapDelay = newValue)
                     .build());
 
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Totem Swap Enabled"), config.totemSwapEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the automatic totem swapping feature."))
+                    .setSaveConsumer(newValue -> config.totemSwapEnabled = newValue)
+                    .build());
+
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Axe Swap Enabled"), config.axeSwapEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the automatic axe swapping feature."))
+                    .setSaveConsumer(newValue -> config.axeSwapEnabled = newValue)
+                    .build());
+
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Mace Swap Enabled"), config.maceSwapEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the automatic mace swapping feature."))
+                    .setSaveConsumer(newValue -> config.maceSwapEnabled = newValue)
+                    .build());
+
             return builder.build();
         };
     }

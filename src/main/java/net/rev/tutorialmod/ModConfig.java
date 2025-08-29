@@ -18,6 +18,10 @@ public class ModConfig {
     public int comboSwapDelay = 1;
     public int postComboAxeSwapDelay = 2;
 
+    public boolean totemSwapEnabled = true;
+    public boolean axeSwapEnabled = true;
+    public boolean maceSwapEnabled = true;
+
     public static ModConfig load() {
         if (CONFIG_FILE.exists()) {
             try (FileReader reader = new FileReader(CONFIG_FILE)) {

@@ -20,9 +20,6 @@ import net.minecraft.text.Text;
 
 public class TutorialModClient implements ClientModInitializer {
 
-    private static boolean modEnabled = true;
-    private static KeyBinding toggleKeyBinding;
-
     private enum SwapAction {
         NONE,
         SWITCH_BACK,
@@ -38,16 +35,10 @@ public class TutorialModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         config = ModConfig.load();
-        toggleKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tutorialmod.toggle", // The translation key
-                InputUtil.Type.KEYSYM, // The type of input
-                GLFW.GLFW_KEY_K, // The default key
-                "key.categories.tutorialmod" // The category
-        ));
 
         // Register the totem swap feature (already in your code)
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (!modEnabled) return;
+            if (!config.totemSwapEnabled) return;
             if (client.player == null || client.currentScreen == null || client.interactionManager == null) {
                 return;
             }
@@ -91,8 +82,8 @@ public class TutorialModClient implements ClientModInitializer {
         });
 
         AttackEntityCallback.EVENT.register((player, entity) -> {
-            if (!modEnabled || swapCooldown != -1) {
-                return ActionResult.PASS; // Mod disabled or swap already in progress
+            if (swapCooldown != -1) {
+                return ActionResult.PASS; // Swap already in progress
             }
 
             if (entity instanceof PlayerEntity) {
@@ -100,7 +91,7 @@ public class TutorialModClient implements ClientModInitializer {
                 boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
                 boolean hasArmor = isArmored(attackedPlayer);
 
-                if (isShielding) {
+                if (isShielding && config.axeSwapEnabled) {
                     int axeSlot = findAxeInHotbar(player);
                     if (axeSlot != -1 && player.getInventory().selectedSlot != axeSlot) {
                         originalHotbarSlot = player.getInventory().selectedSlot;
@@ -108,7 +99,7 @@ public class TutorialModClient implements ClientModInitializer {
                         targetEntity = entity; // Store entity for potential combo
 
                         int maceSlot = findMaceInHotbar(player);
-                        if (hasArmor && maceSlot != -1) {
+                        if (hasArmor && maceSlot != -1 && config.maceSwapEnabled) {
                             // Combo case
                             swapCooldown = config.comboSwapDelay;
                             nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
@@ -118,7 +109,7 @@ public class TutorialModClient implements ClientModInitializer {
                             nextAction = SwapAction.SWITCH_BACK;
                         }
                     }
-                } else if (hasArmor) {
+                } else if (hasArmor && config.maceSwapEnabled) {
                     int maceSlot = findMaceInHotbar(player);
                     if (maceSlot != -1 && player.getInventory().selectedSlot != maceSlot) {
                         originalHotbarSlot = player.getInventory().selectedSlot;
@@ -166,14 +157,6 @@ public class TutorialModClient implements ClientModInitializer {
             }
         });
 
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (toggleKeyBinding.wasPressed()) {
-                modEnabled = !modEnabled;
-                if (client.player != null) {
-                    client.player.sendMessage(Text.of("TutorialMod Features " + (modEnabled ? "Enabled" : "Disabled")), false);
-                }
-            }
-        });
     }
 
     private boolean isArmored(PlayerEntity player) {
