@@ -33,9 +33,11 @@ public class TutorialModClient implements ClientModInitializer {
     private int originalHotbarSlot = -1;
     private SwapAction nextAction = SwapAction.NONE;
     private Entity targetEntity = null;
+    private ModConfig config;
 
     @Override
     public void onInitializeClient() {
+        config = ModConfig.load();
         toggleKeyBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.tutorialmod.toggle", // The translation key
                 InputUtil.Type.KEYSYM, // The type of input
@@ -108,11 +110,11 @@ public class TutorialModClient implements ClientModInitializer {
                         int maceSlot = findMaceInHotbar(player);
                         if (hasArmor && maceSlot != -1) {
                             // Combo case
-                            swapCooldown = 1;
+                            swapCooldown = config.comboSwapDelay;
                             nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
                         } else {
                             // Axe-only case
-                            swapCooldown = 5;
+                            swapCooldown = config.axeSwapDelay;
                             nextAction = SwapAction.SWITCH_BACK;
                         }
                     }
@@ -121,7 +123,7 @@ public class TutorialModClient implements ClientModInitializer {
                     if (maceSlot != -1 && player.getInventory().selectedSlot != maceSlot) {
                         originalHotbarSlot = player.getInventory().selectedSlot;
                         player.getInventory().selectedSlot = maceSlot;
-                        swapCooldown = 1;
+                        swapCooldown = config.maceSwapDelay;
                         nextAction = SwapAction.SWITCH_BACK;
                     }
                 }
@@ -151,7 +153,7 @@ public class TutorialModClient implements ClientModInitializer {
                             int maceSlot = findMaceInHotbar(client.player);
                             if (maceSlot != -1) {
                                 client.player.getInventory().selectedSlot = maceSlot;
-                                swapCooldown = 2;
+                                swapCooldown = config.postComboAxeSwapDelay;
                                 nextAction = SwapAction.SWITCH_BACK;
                             }
                         }
