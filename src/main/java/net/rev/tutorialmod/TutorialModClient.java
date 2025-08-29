@@ -17,6 +17,7 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.block.BlockState;
@@ -192,15 +193,18 @@ public class TutorialModClient implements ClientModInitializer {
 
                 switch (action) {
                     case PLACE_TNT_MINECART:
-                        client.player.getInventory().selectedSlot = findTntMinecartInHotbar(client.player);
+                        HitResult crosshairTarget = client.crosshairTarget;
+                        if (crosshairTarget != null && crosshairTarget.getType() == HitResult.Type.BLOCK && ((BlockHitResult) crosshairTarget).getBlockPos().equals(railPos)) {
+                            client.player.getInventory().selectedSlot = findTntMinecartInHotbar(client.player);
 
-                        BlockHitResult hitResult = new BlockHitResult(
-                                railPos.toCenterPos(),
-                                Direction.UP,
-                                railPos,
-                                false
-                        );
-                        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
+                            BlockHitResult hitResult = new BlockHitResult(
+                                    railPos.toCenterPos(),
+                                    Direction.UP,
+                                    railPos,
+                                    false
+                            );
+                            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
+                        }
 
                         placementCooldown = 5; // Wait a bit before switching back
                         nextPlacementAction = PlacementAction.SWITCH_BACK_FROM_MINECART;
