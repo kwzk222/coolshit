@@ -52,6 +52,7 @@ public class TutorialModClient implements ClientModInitializer {
         AWAITING_LAVA_PLACEMENT,
         SWITCH_TO_CROSSBOW,
         AWAITING_CROSSBOW_SHOT,
+        SWITCH_TO_EMPTY_BUCKET,
         PICK_UP_LAVA,
         SWITCH_TO_BOW
     }
@@ -257,8 +258,12 @@ public class TutorialModClient implements ClientModInitializer {
                         placementCooldown = 1;
                         nextPlacementAction = PlacementAction.AWAITING_CROSSBOW_SHOT;
                         break;
-                    case PICK_UP_LAVA:
+                    case SWITCH_TO_EMPTY_BUCKET:
                         client.player.getInventory().selectedSlot = lavaBucketSlot;
+                        placementCooldown = 1;
+                        nextPlacementAction = PlacementAction.PICK_UP_LAVA;
+                        break;
+                    case PICK_UP_LAVA:
                         BlockHitResult lavaHitResult = new BlockHitResult(
                                 lavaPos.toCenterPos(),
                                 Direction.UP,
@@ -350,7 +355,7 @@ public class TutorialModClient implements ClientModInitializer {
     public static void confirmCrossbowShot() {
         if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_CROSSBOW_SHOT) {
             instance.placementCooldown = TutorialMod.CONFIG.lavaPickupDelay;
-            instance.nextPlacementAction = PlacementAction.PICK_UP_LAVA;
+            instance.nextPlacementAction = PlacementAction.SWITCH_TO_EMPTY_BUCKET;
         }
     }
 
