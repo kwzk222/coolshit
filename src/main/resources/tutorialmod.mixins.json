@@ -2,12 +2,13 @@
 	"required": true,
 	"package": "net.rev.tutorialmod.mixin",
 	"compatibilityLevel": "JAVA_21",
-	"mixins": [],
-	"client": [
-		"ClientPlayerInteractionManagerMixin",
-		"ClientPlayNetworkHandlerMixin",
+	"mixins": [
 		"BowItemMixin",
 		"CrossbowItemMixin"
+	],
+	"client": [
+		"ClientPlayerInteractionManagerMixin",
+		"ClientPlayNetworkHandlerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
