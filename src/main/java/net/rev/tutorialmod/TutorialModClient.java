@@ -22,9 +22,13 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.block.BlockState;
 import net.minecraft.item.BlockItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.text.Text;
+
+import java.util.List;
 
 
 public class TutorialModClient implements ClientModInitializer {
@@ -44,12 +48,24 @@ public class TutorialModClient implements ClientModInitializer {
 
     private enum PlacementAction {
         NONE,
-        PLACE_TNT_MINECART
+        PLACE_TNT_MINECART,
+        AWAITING_LAVA_PLACEMENT,
+        SWITCH_TO_CROSSBOW,
+        AWAITING_CROSSBOW_SHOT,
+        PICK_UP_LAVA,
+        SWITCH_TO_BOW
     }
 
     private int placementCooldown = -1;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
+    private BlockPos lavaPos = null;
+    private int lavaBucketSlot = -1;
+    private int crossbowSlot = -1;
+    private int lavaTimeout = -1;
+    private int lastLavaCheckSlot = -1;
+
+    public static long lastBowShotTick = -1;
 
     public static int awaitingRailConfirmationCooldown = -1;
 
@@ -179,12 +195,25 @@ public class TutorialModClient implements ClientModInitializer {
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (lavaTimeout > 0) {
+                lavaTimeout--;
+                if (client.player != null && client.player.getInventory().selectedSlot != lavaBucketSlot) {
+                    lavaTimeout = 0; // Cancel if player switches slot
+                }
+            }
+
             if (placementCooldown > 0) {
                 placementCooldown--;
-            } else if (placementCooldown == 0) {
+            }
+
+            if (placementCooldown == 0) {
                 PlacementAction action = nextPlacementAction;
+                if (action == PlacementAction.NONE) {
+                    placementCooldown = -1;
+                    return;
+                }
+
                 nextPlacementAction = PlacementAction.NONE;
-                placementCooldown = -1;
 
                 if (client.player == null || client.interactionManager == null) return;
 
@@ -201,10 +230,48 @@ public class TutorialModClient implements ClientModInitializer {
                                     false
                             );
                             client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
+                            startPostMinecartSequence();
+                        } else {
+                            // If crosshair check fails, just end the sequence.
+                            railPos = null;
                         }
-
-                        placementCooldown = -1; // No need to switch back, so we're done.
-                        railPos = null;
+                        break;
+                    case AWAITING_LAVA_PLACEMENT:
+                        if (lavaTimeout == 0) {
+                            // Timeout or slot changed, cancel sequence
+                            lavaBucketSlot = -1;
+                            crossbowSlot = -1;
+                        } else {
+                            // Continue waiting, re-queue this action
+                            placementCooldown = 1;
+                            nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
+                        }
+                        break;
+                    case SWITCH_TO_CROSSBOW:
+                        client.player.getInventory().selectedSlot = crossbowSlot;
+                        nextPlacementAction = PlacementAction.AWAITING_CROSSBOW_SHOT;
+                        placementCooldown = 1; // Re-queue to wait
+                        break;
+                    case AWAITING_CROSSBOW_SHOT:
+                        // Just wait, do nothing. The mixin will advance the state.
+                        placementCooldown = 1;
+                        nextPlacementAction = PlacementAction.AWAITING_CROSSBOW_SHOT;
+                        break;
+                    case PICK_UP_LAVA:
+                        client.player.getInventory().selectedSlot = lavaBucketSlot;
+                        BlockHitResult lavaHitResult = new BlockHitResult(
+                                lavaPos.toCenterPos(),
+                                Direction.UP,
+                                lavaPos,
+                                false
+                        );
+                        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, lavaHitResult);
+                        lavaBucketSlot = -1;
+                        crossbowSlot = -1;
+                        lavaPos = null;
+                        break;
+                    case SWITCH_TO_BOW:
+                        // Logic for this will be in startPostMinecartSequence
                         break;
                     default:
                         break;
@@ -271,6 +338,22 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
+    public static void confirmLavaPlacement(BlockPos pos, BlockState state) {
+        if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_LAVA_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.LAVA) {
+            instance.lavaPos = pos;
+            instance.placementCooldown = 1;
+            instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
+            instance.lavaTimeout = -1; // Stop the timeout
+        }
+    }
+
+    public static void confirmCrossbowShot() {
+        if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_CROSSBOW_SHOT) {
+            instance.placementCooldown = TutorialMod.CONFIG.lavaPickupDelay;
+            instance.nextPlacementAction = PlacementAction.PICK_UP_LAVA;
+        }
+    }
+
     public void startRailPlacement(BlockPos pos) {
         if (placementCooldown != -1) return;
 
@@ -283,5 +366,80 @@ public class TutorialModClient implements ClientModInitializer {
             this.placementCooldown = 1;
             this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
         }
+    }
+
+    public void startPostMinecartSequence() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+
+        if (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled) {
+            int lavaSlot = findLavaBucketInHotbar(client.player);
+            int crossSlot = findLoadedCrossbowInHotbar(client.player);
+
+            if (lavaSlot != -1 && crossSlot != -1) {
+                this.lavaBucketSlot = lavaSlot;
+                this.crossbowSlot = crossSlot;
+                client.player.getInventory().selectedSlot = lavaSlot;
+                this.lavaTimeout = 60; // 3 seconds
+                this.placementCooldown = 1;
+                this.nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
+                return; // End sequence here if this path is taken
+            }
+        }
+
+        if (TutorialMod.CONFIG.bowSequenceEnabled) {
+            long currentTime = client.world.getTime();
+            if (lastBowShotTick == -1 || (currentTime - lastBowShotTick) > 100) { // 5 second cooldown
+                int bowSlot = findBowInHotbar(client.player);
+                if (bowSlot != -1 && findArrowInInventory(client.player)) {
+                    client.player.getInventory().selectedSlot = bowSlot;
+                }
+            }
+        }
+    }
+
+    private int findLavaBucketInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = player.getInventory().getStack(i);
+            if (stack.getItem() == Items.LAVA_BUCKET) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int findLoadedCrossbowInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = player.getInventory().getStack(i);
+            if (stack.getItem() == Items.CROSSBOW && CrossbowItem.isCharged(stack)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static void recordBowUsage() {
+        if (instance != null) {
+            instance.lastBowShotTick = MinecraftClient.getInstance().world.getTime();
+        }
+    }
+
+    private int findBowInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = player.getInventory().getStack(i);
+            if (stack.getItem() == Items.BOW) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean findArrowInInventory(PlayerEntity player) {
+        for (ItemStack stack : player.getInventory().main) {
+            if (stack.getItem() == Items.ARROW) {
+                return true;
+            }
+        }
+        return false;
     }
 }

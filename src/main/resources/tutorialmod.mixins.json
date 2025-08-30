@@ -4,9 +4,10 @@
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [],
 	"client": [
-		"ClientPlayerInteractionManagerAttackEntityMixin",
-		"ClientPlayerInteractionManagerInteractBlockMixin",
-		"ClientPlayNetworkHandlerMixin"
+		"ClientPlayerInteractionManagerMixin",
+		"ClientPlayNetworkHandlerMixin",
+		"BowItemMixin",
+		"CrossbowItemMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

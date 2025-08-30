@@ -71,6 +71,24 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue)
                     .build());
 
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence Enabled"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the Lava/Crossbow sequence after placing a minecart."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue)
+                    .build());
+
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence Enabled"), TutorialMod.CONFIG.bowSequenceEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the Bow sequence after placing a minecart."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue)
+                    .build());
+
+            general.addEntry(entryBuilder.startIntSlider(Text.literal("Lava Pickup Delay"), TutorialMod.CONFIG.lavaPickupDelay, 0, 20)
+                    .setDefaultValue(5)
+                    .setTooltip(Text.literal("The delay in ticks after shooting the crossbow before picking up the lava."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaPickupDelay = newValue)
+                    .build());
+
             return builder.build();
         };
     }

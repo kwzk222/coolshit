@@ -22,6 +22,9 @@ public class ModConfig {
     public boolean axeSwapEnabled = true;
     public boolean maceSwapEnabled = true;
     public boolean tntMinecartPlacementEnabled = true;
+    public boolean lavaCrossbowSequenceEnabled = true;
+    public boolean bowSequenceEnabled = true;
+    public int lavaPickupDelay = 5;
 
     public static ModConfig load() {
         if (CONFIG_FILE.exists()) {

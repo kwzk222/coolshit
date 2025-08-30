@@ -13,5 +13,6 @@ public class ClientPlayNetworkHandlerMixin {
     @Inject(method = "onBlockUpdate", at = @At("TAIL"))
     private void onBlockUpdate(BlockUpdateS2CPacket packet, CallbackInfo info) {
         TutorialModClient.confirmRailPlacement(packet.getPos(), packet.getState());
+        TutorialModClient.confirmLavaPlacement(packet.getPos(), packet.getState());
     }
 }
