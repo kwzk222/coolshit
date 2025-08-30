@@ -51,20 +51,15 @@ public class TutorialModClient implements ClientModInitializer {
         PLACE_TNT_MINECART,
         AWAITING_LAVA_PLACEMENT,
         SWITCH_TO_CROSSBOW,
-        AWAITING_CROSSBOW_SHOT,
-        SWITCH_TO_EMPTY_BUCKET,
-        PICK_UP_LAVA,
         SWITCH_TO_BOW
     }
 
     private int placementCooldown = -1;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
-    private BlockPos lavaPos = null;
     private int lavaBucketSlot = -1;
     private int crossbowSlot = -1;
     private int lavaTimeout = -1;
-    private int lastLavaCheckSlot = -1;
 
     public static long lastBowShotTick = -1;
 
@@ -250,30 +245,9 @@ public class TutorialModClient implements ClientModInitializer {
                         break;
                     case SWITCH_TO_CROSSBOW:
                         client.player.getInventory().selectedSlot = crossbowSlot;
-                        nextPlacementAction = PlacementAction.AWAITING_CROSSBOW_SHOT;
-                        placementCooldown = 1; // Re-queue to wait
-                        break;
-                    case AWAITING_CROSSBOW_SHOT:
-                        // Just wait, do nothing. The mixin will advance the state.
-                        placementCooldown = 1;
-                        nextPlacementAction = PlacementAction.AWAITING_CROSSBOW_SHOT;
-                        break;
-                    case SWITCH_TO_EMPTY_BUCKET:
-                        client.player.getInventory().selectedSlot = lavaBucketSlot;
-                        placementCooldown = 1;
-                        nextPlacementAction = PlacementAction.PICK_UP_LAVA;
-                        break;
-                    case PICK_UP_LAVA:
-                        BlockHitResult lavaHitResult = new BlockHitResult(
-                                lavaPos.toCenterPos(),
-                                Direction.UP,
-                                lavaPos,
-                                false
-                        );
-                        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, lavaHitResult);
+                        // End of sequence
                         lavaBucketSlot = -1;
                         crossbowSlot = -1;
-                        lavaPos = null;
                         break;
                     case SWITCH_TO_BOW:
                         // Logic for this will be in startPostMinecartSequence
@@ -345,17 +319,9 @@ public class TutorialModClient implements ClientModInitializer {
 
     public static void confirmLavaPlacement(BlockPos pos, BlockState state) {
         if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_LAVA_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.LAVA) {
-            instance.lavaPos = pos;
             instance.placementCooldown = 1;
             instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
             instance.lavaTimeout = -1; // Stop the timeout
-        }
-    }
-
-    public static void confirmCrossbowShot() {
-        if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_CROSSBOW_SHOT) {
-            instance.placementCooldown = TutorialMod.CONFIG.lavaPickupDelay;
-            instance.nextPlacementAction = PlacementAction.SWITCH_TO_EMPTY_BUCKET;
         }
     }
 
