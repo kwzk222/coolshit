@@ -23,6 +23,12 @@ public class ModMenuIntegration implements ModMenuApi {
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Switch"), TutorialMod.CONFIG.masterEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("The main switch to enable or disable all features of the mod at once."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.masterEnabled = newValue)
+                    .build());
+
             general.addEntry(entryBuilder.startIntSlider(Text.literal("Axe Swap Delay"), TutorialMod.CONFIG.axeSwapDelay, 0, 20)
                     .setDefaultValue(5)
                     .setTooltip(Text.literal("The delay in ticks before swapping back from the axe."))
@@ -45,6 +51,12 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(2)
                     .setTooltip(Text.literal("The delay in ticks before swapping back to the original item after a mace combo."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.postComboAxeSwapDelay = newValue)
+                    .build());
+
+            general.addEntry(entryBuilder.startIntSlider(Text.literal("Minimum Fall Distance for Combo"), TutorialMod.CONFIG.minFallDistance, 1, 5)
+                    .setDefaultValue(3)
+                    .setTooltip(Text.literal("The minimum fall distance required to trigger the Axe-Mace combo."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.minFallDistance = newValue)
                     .build());
 
             general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Totem Swap Enabled"), TutorialMod.CONFIG.totemSwapEnabled)

@@ -64,14 +64,22 @@ public class TutorialModClient implements ClientModInitializer {
     public static long lastBowShotTick = -1;
 
     public static int awaitingRailConfirmationCooldown = -1;
+    private static KeyBinding masterToggleKeybind;
 
     @Override
     public void onInitializeClient() {
         instance = this;
 
+        masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.tutorialmod.master_toggle",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_M,
+                "key.categories.tutorialmod"
+        ));
+
         // Register the totem swap feature (already in your code)
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (!TutorialMod.CONFIG.totemSwapEnabled) return;
+            if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.totemSwapEnabled) return;
             if (client.player == null || client.currentScreen == null || client.interactionManager == null) {
                 return;
             }
@@ -115,8 +123,8 @@ public class TutorialModClient implements ClientModInitializer {
         });
 
         AttackEntityCallback.EVENT.register((player, entity) -> {
-            if (swapCooldown != -1) {
-                return ActionResult.PASS; // Swap already in progress
+            if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) {
+                return ActionResult.PASS; // Mod disabled or swap already in progress
             }
 
             if (entity instanceof PlayerEntity) {
@@ -132,7 +140,7 @@ public class TutorialModClient implements ClientModInitializer {
                         targetEntity = entity; // Store entity for potential combo
 
                         int maceSlot = findMaceInHotbar(player);
-                        if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled) {
+                        if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
                             // Combo case
                             swapCooldown = TutorialMod.CONFIG.comboSwapDelay;
                             nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
@@ -263,6 +271,16 @@ public class TutorialModClient implements ClientModInitializer {
                 awaitingRailConfirmationCooldown--;
             }
         });
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (masterToggleKeybind.wasPressed()) {
+                TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
+                TutorialMod.CONFIG.save();
+                if (client.player != null) {
+                    client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
+                }
+            }
+        });
     }
 
     private boolean isArmored(PlayerEntity player) {
@@ -305,6 +323,7 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public static void setAwaitingRailConfirmation() {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.tntMinecartPlacementEnabled) return;
         awaitingRailConfirmationCooldown = 2;
     }
 

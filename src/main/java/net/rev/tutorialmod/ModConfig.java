@@ -25,6 +25,8 @@ public class ModConfig {
     public boolean lavaCrossbowSequenceEnabled = true;
     public boolean bowSequenceEnabled = true;
     public int lavaPickupDelay = 5;
+    public int minFallDistance = 3;
+    public boolean masterEnabled = true;
 
     public static ModConfig load() {
         if (CONFIG_FILE.exists()) {
