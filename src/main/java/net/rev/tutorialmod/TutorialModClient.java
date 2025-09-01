@@ -23,37 +23,33 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.block.BlockState;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.CrossbowItem;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.text.Text;
-
-import java.util.List;
-
 
 public class TutorialModClient implements ClientModInitializer {
 
     private static TutorialModClient instance;
 
-    private enum SwapAction {
-        NONE,
-        SWITCH_BACK,
-        SWITCH_BACK_ATTACK_MACE
+    // --- State Machines ---
+    private enum SwapAction { NONE, SWITCH_BACK, SWITCH_BACK_ATTACK_MACE }
+
+    // Defines the states for the multi-tick placement sequence.
+    private enum PlacementAction {
+        NONE,                   // Default state, no action pending.
+        PLACE_TNT_MINECART,     // Ready to place the TNT minecart.
+        AWAITING_LAVA_PLACEMENT,// Waiting for the player to place lava.
+        SWITCH_TO_CROSSBOW,     // Ready to switch to the crossbow.
+        SWITCH_TO_BOW           // Ready to switch to the bow.
     }
 
+    // --- State Fields ---
+    // For combat swapping
     private int swapCooldown = -1;
     private int originalHotbarSlot = -1;
     private SwapAction nextAction = SwapAction.NONE;
     private Entity targetEntity = null;
 
-    private enum PlacementAction {
-        NONE,
-        PLACE_TNT_MINECART,
-        AWAITING_LAVA_PLACEMENT,
-        SWITCH_TO_CROSSBOW,
-        SWITCH_TO_BOW
-    }
-
+    // For placement sequence
     private int placementCooldown = -1;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
@@ -61,8 +57,8 @@ public class TutorialModClient implements ClientModInitializer {
     private int crossbowSlot = -1;
     private int lavaTimeout = -1;
 
+    // For async confirmations and cooldowns
     public static long lastBowShotTick = -1;
-
     public static int awaitingRailConfirmationCooldown = -1;
     private static KeyBinding masterToggleKeybind;
 
@@ -77,211 +73,193 @@ public class TutorialModClient implements ClientModInitializer {
                 "key.categories.tutorialmod"
         ));
 
-        // Register the totem swap feature (already in your code)
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.totemSwapEnabled) return;
-            if (client.player == null || client.currentScreen == null || client.interactionManager == null) {
-                return;
+        ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
+        AttackEntityCallback.EVENT.register(this::onAttackEntity);
+    }
+
+    /**
+     * Main tick loop for the mod. Consolidates all tick-based logic into one place.
+     */
+    private void onClientTick(MinecraftClient client) {
+        handleKeybinds(client);
+
+        if (!TutorialMod.CONFIG.masterEnabled) {
+            return; // Don't process any features if the master switch is off.
+        }
+
+        handleTotemSwap(client);
+        handleCombatSwap(client);
+        handlePlacementSequence(client);
+        handleConfirmationCooldowns(client);
+    }
+
+    // --- Tick Logic Handlers ---
+
+    private void handleKeybinds(MinecraftClient client) {
+        while (masterToggleKeybind.wasPressed()) {
+            TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
+            TutorialMod.CONFIG.save();
+            if (client.player != null) {
+                client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
             }
-            if (client.player.isCreative()) {
-                return;
-            }
-            if (client.currentScreen instanceof HandledScreen<?> screen) {
-                ItemStack offHandStack = client.player.getOffHandStack();
+        }
+    }
 
-                if (offHandStack.getItem() == Items.TOTEM_OF_UNDYING) {
-                    return; // already have totem
-                }
+    private void handleTotemSwap(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.totemSwapEnabled) return;
+        if (client.player == null || client.currentScreen == null || client.interactionManager == null) return;
+        if (client.player.isCreative()) return;
 
-                double scaledMouseX = client.mouse.getX() * client.getWindow().getScaledWidth() / client.getWindow().getWidth();
-                double scaledMouseY = client.mouse.getY() * client.getWindow().getScaledHeight() / client.getWindow().getHeight();
+        if (client.currentScreen instanceof HandledScreen<?> screen) {
+            if (client.player.getOffHandStack().getItem() == Items.TOTEM_OF_UNDYING) return;
 
-                int guiLeft = (client.getWindow().getScaledWidth() - 176) / 2;
-                int guiTop = (client.getWindow().getScaledHeight() - 166) / 2;
+            double scaledMouseX = client.mouse.getX() * client.getWindow().getScaledWidth() / client.getWindow().getWidth();
+            double scaledMouseY = client.mouse.getY() * client.getWindow().getScaledHeight() / client.getWindow().getHeight();
+            int guiLeft = (client.getWindow().getScaledWidth() - 176) / 2;
+            int guiTop = (client.getWindow().getScaledHeight() - 166) / 2;
 
-                for (Slot slot : screen.getScreenHandler().slots) {
+            for (Slot slot : screen.getScreenHandler().slots) {
+                if (slot.getStack().getItem() == Items.TOTEM_OF_UNDYING) {
                     int slotX = guiLeft + slot.x;
                     int slotY = guiTop + slot.y;
-
-                    if (scaledMouseX >= slotX && scaledMouseX < slotX + 16 &&
-                            scaledMouseY >= slotY && scaledMouseY < slotY + 16) {
-
-                        ItemStack hoveredStack = slot.getStack();
-                        if (hoveredStack.getItem() == Items.TOTEM_OF_UNDYING) {
-                            client.interactionManager.clickSlot(
-                                    screen.getScreenHandler().syncId,
-                                    slot.id,
-                                    40,
-                                    net.minecraft.screen.slot.SlotActionType.SWAP,
-                                    client.player
-                            );
-                        }
+                    if (scaledMouseX >= slotX && scaledMouseX < slotX + 16 && scaledMouseY >= slotY && scaledMouseY < slotY + 16) {
+                        client.interactionManager.clickSlot(screen.getScreenHandler().syncId, slot.id, 40, net.minecraft.screen.slot.SlotActionType.SWAP, client.player);
                         break;
                     }
                 }
             }
-        });
+        }
+    }
 
-        AttackEntityCallback.EVENT.register((player, entity) -> {
-            if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) {
-                return ActionResult.PASS; // Mod disabled or swap already in progress
-            }
-
-            if (entity instanceof PlayerEntity) {
-                PlayerEntity attackedPlayer = (PlayerEntity) entity;
-                boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
-                boolean hasArmor = isArmored(attackedPlayer);
-
-                if (isShielding && TutorialMod.CONFIG.axeSwapEnabled) {
-                    int axeSlot = findAxeInHotbar(player);
-                    if (axeSlot != -1 && player.getInventory().selectedSlot != axeSlot) {
-                        originalHotbarSlot = player.getInventory().selectedSlot;
-                        player.getInventory().selectedSlot = axeSlot;
-                        targetEntity = entity; // Store entity for potential combo
-
-                        int maceSlot = findMaceInHotbar(player);
-                        if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
-                            // Combo case
-                            swapCooldown = TutorialMod.CONFIG.comboSwapDelay;
-                            nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
-                        } else {
-                            // Axe-only case
-                            swapCooldown = TutorialMod.CONFIG.axeSwapDelay;
+    private void handleCombatSwap(MinecraftClient client) {
+        if (swapCooldown > 0) {
+            swapCooldown--;
+        } else if (swapCooldown == 0) {
+            SwapAction action = nextAction;
+            nextAction = SwapAction.NONE;
+            swapCooldown = -1;
+            if (client.player == null) return;
+            switch (action) {
+                case SWITCH_BACK:
+                    client.player.getInventory().selectedSlot = originalHotbarSlot;
+                    break;
+                case SWITCH_BACK_ATTACK_MACE:
+                    client.player.getInventory().selectedSlot = originalHotbarSlot;
+                    if (client.interactionManager != null && targetEntity != null && targetEntity.isAlive()) {
+                        client.interactionManager.attackEntity(client.player, targetEntity);
+                        int maceSlot = findMaceInHotbar(client.player);
+                        if (maceSlot != -1) {
+                            client.player.getInventory().selectedSlot = maceSlot;
+                            swapCooldown = TutorialMod.CONFIG.postComboAxeSwapDelay;
                             nextAction = SwapAction.SWITCH_BACK;
                         }
                     }
-                } else if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled) {
+                    break;
+                default: break;
+            }
+            targetEntity = null;
+        }
+    }
+
+    private void handlePlacementSequence(MinecraftClient client) {
+        // Handle the 3-second timeout for lava placement
+        if (lavaTimeout > 0) {
+            lavaTimeout--;
+            if (client.player != null && client.player.getInventory().selectedSlot != lavaBucketSlot) {
+                lavaTimeout = 0;
+            }
+        }
+
+        if (placementCooldown > 0) {
+            placementCooldown--;
+        }
+
+        if (placementCooldown == 0) {
+            PlacementAction action = nextPlacementAction;
+            if (action == PlacementAction.NONE) {
+                placementCooldown = -1;
+                return;
+            }
+            nextPlacementAction = PlacementAction.NONE;
+            if (client.player == null || client.interactionManager == null) return;
+
+            switch (action) {
+                case PLACE_TNT_MINECART:
+                    HitResult crosshairTarget = client.crosshairTarget;
+                    if (crosshairTarget != null && crosshairTarget.getType() == HitResult.Type.BLOCK && ((BlockHitResult) crosshairTarget).getBlockPos().equals(railPos)) {
+                        client.player.getInventory().selectedSlot = findTntMinecartInHotbar(client.player);
+                        BlockHitResult hitResult = new BlockHitResult(railPos.toCenterPos(), Direction.UP, railPos, false);
+                        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
+                        startPostMinecartSequence();
+                    } else {
+                        railPos = null;
+                    }
+                    break;
+                case AWAITING_LAVA_PLACEMENT:
+                    if (lavaTimeout == 0) {
+                        lavaBucketSlot = -1;
+                        crossbowSlot = -1;
+                    } else {
+                        placementCooldown = 1;
+                        nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
+                    }
+                    break;
+                case SWITCH_TO_CROSSBOW:
+                    client.player.getInventory().selectedSlot = crossbowSlot;
+                    lavaBucketSlot = -1;
+                    crossbowSlot = -1;
+                    break;
+                default: break;
+            }
+        }
+    }
+
+    private void handleConfirmationCooldowns(MinecraftClient client) {
+        if (awaitingRailConfirmationCooldown > 0) {
+            awaitingRailConfirmationCooldown--;
+        }
+    }
+
+    // --- Event Handlers ---
+
+    private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
+        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) {
+            return ActionResult.PASS;
+        }
+        if (target instanceof PlayerEntity) {
+            PlayerEntity attackedPlayer = (PlayerEntity) target;
+            boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
+            boolean hasArmor = isArmored(attackedPlayer);
+
+            if (isShielding && TutorialMod.CONFIG.axeSwapEnabled) {
+                int axeSlot = findAxeInHotbar(player);
+                if (axeSlot != -1 && player.getInventory().selectedSlot != axeSlot) {
+                    originalHotbarSlot = player.getInventory().selectedSlot;
+                    player.getInventory().selectedSlot = axeSlot;
+                    targetEntity = target;
                     int maceSlot = findMaceInHotbar(player);
-                    if (maceSlot != -1 && player.getInventory().selectedSlot != maceSlot) {
-                        originalHotbarSlot = player.getInventory().selectedSlot;
-                        player.getInventory().selectedSlot = maceSlot;
-                        swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
+                    if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
+                        swapCooldown = TutorialMod.CONFIG.comboSwapDelay;
+                        nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
+                    } else {
+                        swapCooldown = TutorialMod.CONFIG.axeSwapDelay;
                         nextAction = SwapAction.SWITCH_BACK;
                     }
                 }
-            }
-
-            return ActionResult.PASS;
-        });
-
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (swapCooldown > 0) {
-                swapCooldown--;
-            } else if (swapCooldown == 0) {
-                SwapAction action = nextAction;
-                nextAction = SwapAction.NONE;
-                swapCooldown = -1;
-
-                if (client.player == null) return;
-
-                switch (action) {
-                    case SWITCH_BACK:
-                        client.player.getInventory().selectedSlot = originalHotbarSlot;
-                        break;
-                    case SWITCH_BACK_ATTACK_MACE:
-                        client.player.getInventory().selectedSlot = originalHotbarSlot;
-                        if (client.interactionManager != null && targetEntity != null && targetEntity.isAlive()) {
-                            client.interactionManager.attackEntity(client.player, targetEntity);
-                            int maceSlot = findMaceInHotbar(client.player);
-                            if (maceSlot != -1) {
-                                client.player.getInventory().selectedSlot = maceSlot;
-                                swapCooldown = TutorialMod.CONFIG.postComboAxeSwapDelay;
-                                nextAction = SwapAction.SWITCH_BACK;
-                            }
-                        }
-                        break;
-                    default:
-                        // Do nothing for NONE
-                        break;
-                }
-                targetEntity = null; // Clean up stored entity
-            }
-        });
-
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (lavaTimeout > 0) {
-                lavaTimeout--;
-                if (client.player != null && client.player.getInventory().selectedSlot != lavaBucketSlot) {
-                    lavaTimeout = 0; // Cancel if player switches slot
+            } else if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled) {
+                int maceSlot = findMaceInHotbar(player);
+                if (maceSlot != -1 && player.getInventory().selectedSlot != maceSlot) {
+                    originalHotbarSlot = player.getInventory().selectedSlot;
+                    player.getInventory().selectedSlot = maceSlot;
+                    swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
+                    nextAction = SwapAction.SWITCH_BACK;
                 }
             }
-
-            if (placementCooldown > 0) {
-                placementCooldown--;
-            }
-
-            if (placementCooldown == 0) {
-                PlacementAction action = nextPlacementAction;
-                if (action == PlacementAction.NONE) {
-                    placementCooldown = -1;
-                    return;
-                }
-
-                nextPlacementAction = PlacementAction.NONE;
-
-                if (client.player == null || client.interactionManager == null) return;
-
-                switch (action) {
-                    case PLACE_TNT_MINECART:
-                        HitResult crosshairTarget = client.crosshairTarget;
-                        if (crosshairTarget != null && crosshairTarget.getType() == HitResult.Type.BLOCK && ((BlockHitResult) crosshairTarget).getBlockPos().equals(railPos)) {
-                            client.player.getInventory().selectedSlot = findTntMinecartInHotbar(client.player);
-
-                            BlockHitResult hitResult = new BlockHitResult(
-                                    railPos.toCenterPos(),
-                                    Direction.UP,
-                                    railPos,
-                                    false
-                            );
-                            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
-                            startPostMinecartSequence();
-                        } else {
-                            // If crosshair check fails, just end the sequence.
-                            railPos = null;
-                        }
-                        break;
-                    case AWAITING_LAVA_PLACEMENT:
-                        if (lavaTimeout == 0) {
-                            // Timeout or slot changed, cancel sequence
-                            lavaBucketSlot = -1;
-                            crossbowSlot = -1;
-                        } else {
-                            // Continue waiting, re-queue this action
-                            placementCooldown = 1;
-                            nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
-                        }
-                        break;
-                    case SWITCH_TO_CROSSBOW:
-                        client.player.getInventory().selectedSlot = crossbowSlot;
-                        // End of sequence
-                        lavaBucketSlot = -1;
-                        crossbowSlot = -1;
-                        break;
-                    case SWITCH_TO_BOW:
-                        // Logic for this will be in startPostMinecartSequence
-                        break;
-                    default:
-                        break;
-                }
-            }
-        });
-
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (awaitingRailConfirmationCooldown > 0) {
-                awaitingRailConfirmationCooldown--;
-            }
-        });
-
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (masterToggleKeybind.wasPressed()) {
-                TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
-                TutorialMod.CONFIG.save();
-                if (client.player != null) {
-                    client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
-                }
-            }
-        });
+        }
+        return ActionResult.PASS;
     }
+
+    // --- Helper Methods ---
 
     private boolean isArmored(PlayerEntity player) {
         for (ItemStack armorStack : player.getArmorItems()) {
@@ -294,30 +272,21 @@ public class TutorialModClient implements ClientModInitializer {
 
     private int findAxeInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
-            ItemStack stack = player.getInventory().getStack(i);
-            if (stack.getItem() instanceof AxeItem) {
-                return i;
-            }
+            if (player.getInventory().getStack(i).getItem() instanceof AxeItem) return i;
         }
         return -1;
     }
 
     private int findMaceInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
-            ItemStack stack = player.getInventory().getStack(i);
-            if (stack.getItem() == Items.MACE) {
-                return i;
-            }
+            if (player.getInventory().getStack(i).getItem() == Items.MACE) return i;
         }
         return -1;
     }
 
     private int findTntMinecartInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
-            ItemStack stack = player.getInventory().getStack(i);
-            if (stack.getItem() == Items.TNT_MINECART) {
-                return i;
-            }
+            if (player.getInventory().getStack(i).getItem() == Items.TNT_MINECART) return i;
         }
         return -1;
     }
@@ -340,18 +309,15 @@ public class TutorialModClient implements ClientModInitializer {
         if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_LAVA_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.LAVA) {
             instance.placementCooldown = 1;
             instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
-            instance.lavaTimeout = -1; // Stop the timeout
+            instance.lavaTimeout = -1;
         }
     }
 
     public void startRailPlacement(BlockPos pos) {
         if (placementCooldown != -1) return;
-
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
-
-        int tntMinecartSlot = findTntMinecartInHotbar(client.player);
-        if (tntMinecartSlot != -1) {
+        if (findTntMinecartInHotbar(client.player) != -1) {
             this.railPos = pos;
             this.placementCooldown = 1;
             this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
@@ -365,7 +331,6 @@ public class TutorialModClient implements ClientModInitializer {
         if (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled) {
             int lavaSlot = findLavaBucketInHotbar(client.player);
             int crossSlot = findLoadedCrossbowInHotbar(client.player);
-
             if (lavaSlot != -1 && crossSlot != -1) {
                 this.lavaBucketSlot = lavaSlot;
                 this.crossbowSlot = crossSlot;
@@ -373,7 +338,7 @@ public class TutorialModClient implements ClientModInitializer {
                 this.lavaTimeout = 60; // 3 seconds
                 this.placementCooldown = 1;
                 this.nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
-                return; // End sequence here if this path is taken
+                return;
             }
         }
 
@@ -390,10 +355,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     private int findLavaBucketInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
-            ItemStack stack = player.getInventory().getStack(i);
-            if (stack.getItem() == Items.LAVA_BUCKET) {
-                return i;
-            }
+            if (player.getInventory().getStack(i).getItem() == Items.LAVA_BUCKET) return i;
         }
         return -1;
     }
@@ -416,10 +378,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     private int findBowInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
-            ItemStack stack = player.getInventory().getStack(i);
-            if (stack.getItem() == Items.BOW) {
-                return i;
-            }
+            if (player.getInventory().getStack(i).getItem() == Items.BOW) return i;
         }
         return -1;
     }
