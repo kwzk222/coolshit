@@ -20,10 +20,10 @@ public class CommandManager {
         dispatcher.register(literal("ts")
                 .executes(context -> {
                     TeamManager teamManager = TutorialMod.CONFIG.teamManager;
-                    if (teamManager.getFriends().isEmpty()) {
-                        context.getSource().sendFeedback(Text.of("You have no friends on your list."));
+                    if (teamManager.getTeammates().isEmpty()) {
+                        context.getSource().sendFeedback(Text.of("You have no teammates on your list."));
                     } else {
-                        context.getSource().sendFeedback(Text.of("Friends: " + String.join(", ", teamManager.getFriends())));
+                        context.getSource().sendFeedback(Text.of("Teammates: " + String.join(", ", teamManager.getTeammates())));
                     }
                     return 1;
                 }));
@@ -35,21 +35,27 @@ public class CommandManager {
                                 builder))
                         .executes(context -> {
                             String name = StringArgumentType.getString(context, "name");
-                            TutorialMod.CONFIG.teamManager.addFriend(name);
-                            context.getSource().sendFeedback(Text.of("Added " + name + " to your friends list."));
+                            TutorialMod.CONFIG.teamManager.addTeammate(name);
+                            context.getSource().sendFeedback(Text.of("Added " + name + " to your teammates list."));
                             return 1;
                         })));
 
         dispatcher.register(literal("tr")
                 .then(argument("name", StringArgumentType.word())
                         .suggests((context, builder) -> CommandSource.suggestMatching(
-                                TutorialMod.CONFIG.teamManager.getFriends(),
+                                TutorialMod.CONFIG.teamManager.getTeammates(),
                                 builder))
                         .executes(context -> {
                             String name = StringArgumentType.getString(context, "name");
-                            TutorialMod.CONFIG.teamManager.removeFriend(name);
-                            context.getSource().sendFeedback(Text.of("Removed " + name + " from your friends list."));
+                            TutorialMod.CONFIG.teamManager.removeTeammate(name);
+                            context.getSource().sendFeedback(Text.of("Removed " + name + " from your teammates list."));
                             return 1;
                         })));
+        dispatcher.register(literal("tc")
+                .executes(context -> {
+                    TutorialMod.CONFIG.teamManager.clearTeammates();
+                    context.getSource().sendFeedback(Text.of("Teammate list cleared."));
+                    return 1;
+                }));
     }
 }

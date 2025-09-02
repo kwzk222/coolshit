@@ -31,7 +31,7 @@ public class ModConfig {
     public boolean masterEnabled = true;
     public int bowCooldown = 100;
 
-    public List<String> friends = new ArrayList<>();
+    public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
 
     public static ModConfig load() {
@@ -46,7 +46,7 @@ public class ModConfig {
         } else {
             config = new ModConfig();
         }
-        config.teamManager = new TeamManager(config.friends);
+        config.teamManager = new TeamManager(config.teammates);
         return config;
     }
 
