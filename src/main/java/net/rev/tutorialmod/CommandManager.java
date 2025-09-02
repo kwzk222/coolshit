@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.command.CommandRegistryAccess;
+import net.minecraft.command.CommandSource;
 import net.minecraft.text.Text;
 
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
@@ -29,6 +30,9 @@ public class CommandManager {
 
         dispatcher.register(literal("ta")
                 .then(argument("name", StringArgumentType.word())
+                        .suggests((context, builder) -> CommandSource.suggestMatching(
+                                context.getSource().getClient().getNetworkHandler().getPlayerList().stream().map(p -> p.getProfile().getName()),
+                                builder))
                         .executes(context -> {
                             String name = StringArgumentType.getString(context, "name");
                             TutorialMod.CONFIG.teamManager.addFriend(name);
@@ -38,6 +42,9 @@ public class CommandManager {
 
         dispatcher.register(literal("tr")
                 .then(argument("name", StringArgumentType.word())
+                        .suggests((context, builder) -> CommandSource.suggestMatching(
+                                TutorialMod.CONFIG.teamManager.getFriends(),
+                                builder))
                         .executes(context -> {
                             String name = StringArgumentType.getString(context, "name");
                             TutorialMod.CONFIG.teamManager.removeFriend(name);
