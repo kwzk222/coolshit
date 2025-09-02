@@ -60,10 +60,18 @@ public class CommandManager {
         dispatcher.register(literal("tm")
                 .then(argument("message", StringArgumentType.greedyString())
                         .executes(context -> {
-                            String message = StringArgumentType.getString(context, "message");
+                            String originalMessage = StringArgumentType.getString(context, "message");
+                            String finalMessage = originalMessage;
+
+                            if (originalMessage.contains("<")) {
+                                net.minecraft.util.math.Vec3d pos = context.getSource().getClient().player.getPos();
+                                String coords = String.format("(%d, %d, %d)", (int) pos.x, (int) pos.y, (int) pos.z);
+                                finalMessage = originalMessage.replace("<", coords);
+                            }
+
                             TeamManager teamManager = TutorialMod.CONFIG.teamManager;
                             for (String teammate : teamManager.getTeammates()) {
-                                context.getSource().getClient().player.sendChatMessage("/msg " + teammate + " " + message, (Text) null);
+                                context.getSource().getClient().player.sendChatMessage("/msg " + teammate + " " + finalMessage);
                             }
                             context.getSource().sendFeedback(Text.of("Message sent to " + teamManager.getTeammates().size() + " teammates."));
                             return 1;
