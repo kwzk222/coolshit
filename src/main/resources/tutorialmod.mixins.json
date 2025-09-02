@@ -3,7 +3,8 @@
 	"package": "net.rev.tutorialmod.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"BowItemMixin"
+		"BowItemMixin",
+		"PlayerInventoryMixin"
 	],
 	"client": [
 		"ClientPlayerInteractionManagerMixin",
