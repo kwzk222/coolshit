@@ -63,7 +63,7 @@ public class CommandManager {
                             String message = StringArgumentType.getString(context, "message");
                             TeamManager teamManager = TutorialMod.CONFIG.teamManager;
                             for (String teammate : teamManager.getTeammates()) {
-                                context.getSource().getClient().player.sendChatMessage("/msg " + teammate + " " + message);
+                                context.getSource().getClient().player.sendChatMessage("/msg " + teammate + " " + message, (Text) null);
                             }
                             context.getSource().sendFeedback(Text.of("Message sent to " + teamManager.getTeammates().size() + " teammates."));
                             return 1;

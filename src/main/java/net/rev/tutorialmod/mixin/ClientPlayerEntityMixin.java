@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 @Mixin(ClientPlayerEntity.class)
 public class ClientPlayerEntityMixin {
 
-    @ModifyVariable(method = "sendChatMessage", at = @At("HEAD"), argsOnly = true)
+    @ModifyVariable(method = "sendChatMessage(Ljava/lang/String;Lnet/minecraft/text/Text;)V", at = @At("HEAD"), argsOnly = true)
     private String modifyChatMessage(String message) {
         if (message.contains("<")) {
             MinecraftClient client = MinecraftClient.getInstance();
