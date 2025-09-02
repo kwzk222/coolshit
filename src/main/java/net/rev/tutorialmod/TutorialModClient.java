@@ -60,13 +60,16 @@ public class TutorialModClient implements ClientModInitializer {
     public static long lastBowShotTick = -1;
     public static int awaitingRailConfirmationCooldown = -1;
     private static KeyBinding masterToggleKeybind;
+    private static KeyBinding friendKeybind;
 
     @Override
     public void onInitializeClient() {
         instance = this;
         masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.master_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.tutorialmod"));
+        friendKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.friend_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
+        new CommandManager().registerCommands();
     }
 
     private void onClientTick(MinecraftClient client) {
@@ -86,6 +89,25 @@ public class TutorialModClient implements ClientModInitializer {
             TutorialMod.CONFIG.save();
             if (client.player != null) {
                 client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
+            }
+        }
+        while (friendKeybind.wasPressed()) {
+            handleFriendKeybind(client);
+        }
+    }
+
+    private void handleFriendKeybind(MinecraftClient client) {
+        if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
+            Entity target = ((net.minecraft.util.hit.EntityHitResult) client.crosshairTarget).getEntity();
+            if (target instanceof PlayerEntity) {
+                String name = target.getName().getString();
+                if (TutorialMod.CONFIG.teamManager.isFriend(name)) {
+                    TutorialMod.CONFIG.teamManager.removeFriend(name);
+                    client.player.sendMessage(Text.of("Removed " + name + " from your friends list."), false);
+                } else {
+                    TutorialMod.CONFIG.teamManager.addFriend(name);
+                    client.player.sendMessage(Text.of("Added " + name + " to your friends list."), false);
+                }
             }
         }
     }
