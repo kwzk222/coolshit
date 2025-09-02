@@ -27,10 +27,12 @@ import net.minecraft.item.CrossbowItem;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.text.Text;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
+import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
 
     private static TutorialModClient instance;
+    private TriggerBot triggerBot;
 
     // --- State Machines ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_BACK_ATTACK_MACE }
@@ -70,10 +72,14 @@ public class TutorialModClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
         new CommandManager().registerCommands();
+        triggerBot = new TriggerBot();
     }
 
     private void onClientTick(MinecraftClient client) {
         handleKeybinds(client);
+        if (triggerBot != null) {
+            triggerBot.onTick(client);
+        }
         if (!TutorialMod.CONFIG.masterEnabled) return;
         handleTotemSwap(client);
         handleCombatSwap(client);

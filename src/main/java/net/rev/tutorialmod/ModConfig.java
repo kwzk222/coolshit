@@ -31,6 +31,14 @@ public class ModConfig {
     public boolean masterEnabled = true;
     public int bowCooldown = 100;
 
+    public boolean triggerBotEnabled = true;
+    public boolean triggerBotIncludePlayers = true;
+    public boolean triggerBotExcludeTeammates = true;
+    public boolean triggerBotIncludeHostiles = true;
+    public boolean triggerBotIncludePassives = false;
+    public boolean triggerBotExcludeVillagers = true;
+    public boolean triggerBotIncludeCrystals = true;
+
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
 

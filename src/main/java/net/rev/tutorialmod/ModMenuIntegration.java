@@ -109,6 +109,50 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue)
                     .build());
 
+            ConfigCategory triggerBot = builder.getOrCreateCategory(Text.literal("TriggerBot"));
+
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable TriggerBot"), TutorialMod.CONFIG.triggerBotEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the TriggerBot feature."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotEnabled = newValue)
+                    .build());
+
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.triggerBotIncludePlayers)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Attack players."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludePlayers = newValue)
+                    .build());
+
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Exclude Teammates"), TutorialMod.CONFIG.triggerBotExcludeTeammates)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Avoid attacking teammates."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotExcludeTeammates = newValue)
+                    .build());
+
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Hostiles"), TutorialMod.CONFIG.triggerBotIncludeHostiles)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Attack hostile mobs."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludeHostiles = newValue)
+                    .build());
+
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Passives"), TutorialMod.CONFIG.triggerBotIncludePassives)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Attack passive mobs."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludePassives = newValue)
+                    .build());
+
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Exclude Villagers"), TutorialMod.CONFIG.triggerBotExcludeVillagers)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Avoid attacking villagers even if passives are included."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotExcludeVillagers = newValue)
+                    .build());
+
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Crystals"), TutorialMod.CONFIG.triggerBotIncludeCrystals)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Attack end crystals."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludeCrystals = newValue)
+                    .build());
+
             return builder.build();
         };
     }
