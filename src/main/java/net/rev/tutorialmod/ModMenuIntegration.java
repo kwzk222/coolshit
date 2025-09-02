@@ -7,6 +7,7 @@ import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
 public class ModMenuIntegration implements ModMenuApi {
 
@@ -15,7 +16,8 @@ public class ModMenuIntegration implements ModMenuApi {
         return parent -> {
             ConfigBuilder builder = ConfigBuilder.create()
                     .setParentScreen(parent)
-                    .setTitle(Text.literal("Tutorial Mod Config"));
+                    .setTitle(Text.literal("Tutorial Mod Config"))
+                    .setDefaultBackgroundTexture(Identifier.ofVanilla("textures/gui/options_background.png"));
 
             builder.setSavingRunnable(TutorialMod.CONFIG::save);
 
