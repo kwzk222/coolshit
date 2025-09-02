@@ -12,6 +12,9 @@ import net.minecraft.item.AxeItem;
 import net.minecraft.util.ActionResult;
 import net.minecraft.entity.Entity;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientSendMessageEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -69,7 +72,40 @@ public class TutorialModClient implements ClientModInitializer {
         teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
+        ClientSendMessageEvents.CHAT.register(this::onChatMessage);
+        ClientSendMessageEvents.COMMAND.register(this::onCommandMessage);
         new CommandManager().registerCommands();
+    }
+
+    private void onChatMessage(String message) {
+        if (handleCoordinateReplacement(message)) {
+            throw new RuntimeException("Cancelled by TutorialMod");
+        }
+    }
+
+    private void onCommandMessage(String command) {
+        if (handleCoordinateReplacement("/" + command)) {
+            throw new RuntimeException("Cancelled by TutorialMod");
+        }
+    }
+
+    private boolean handleCoordinateReplacement(String text) {
+        if (text.contains("<")) {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.player != null) {
+                net.minecraft.util.math.Vec3d pos = client.player.getPos();
+                String coords = String.format("(%d, %d, %d)", (int) pos.x, (int) pos.y, (int) pos.z);
+                String newText = text.replace("<", coords);
+
+                if (newText.startsWith("/")) {
+                    client.player.networkHandler.sendChatCommand(newText.substring(1));
+                } else {
+                    client.player.networkHandler.sendChatMessage(newText);
+                }
+                return true;
+            }
+        }
+        return false;
     }
 
     private void onClientTick(MinecraftClient client) {
