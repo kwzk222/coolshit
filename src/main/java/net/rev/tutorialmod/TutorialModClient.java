@@ -33,31 +33,28 @@ public class TutorialModClient implements ClientModInitializer {
     // --- State Machines ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_BACK_ATTACK_MACE }
 
-    // Defines the states for the multi-tick placement sequence.
     private enum PlacementAction {
-        NONE,                   // Default state, no action pending.
-        PLACE_TNT_MINECART,     // Ready to place the TNT minecart.
-        AWAITING_LAVA_PLACEMENT,// Waiting for the player to place lava.
-        SWITCH_TO_CROSSBOW,     // Ready to switch to the crossbow.
-        SWITCH_TO_BOW           // Ready to switch to the bow.
+        NONE,
+        PLACE_TNT_MINECART,
+        AWAITING_LAVA_PLACEMENT,
+        AWAITING_FIRE_PLACEMENT,
+        SWITCH_TO_CROSSBOW,
+        SWITCH_TO_BOW
     }
 
     // --- State Fields ---
-    // For combat swapping
     private int swapCooldown = -1;
     private int originalHotbarSlot = -1;
     private SwapAction nextAction = SwapAction.NONE;
     private Entity targetEntity = null;
 
-    // For placement sequence
     private int placementCooldown = -1;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
-    private int lavaBucketSlot = -1;
+    private int utilitySlot = -1; // Can be lava bucket or flint and steel
     private int crossbowSlot = -1;
-    private int lavaTimeout = -1;
+    private int actionTimeout = -1;
 
-    // For async confirmations and cooldowns
     public static long lastBowShotTick = -1;
     public static int awaitingRailConfirmationCooldown = -1;
     private static KeyBinding masterToggleKeybind;
@@ -65,28 +62,14 @@ public class TutorialModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         instance = this;
-
-        masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.tutorialmod.master_toggle",
-                InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_M,
-                "key.categories.tutorialmod"
-        ));
-
+        masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.master_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.tutorialmod"));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
     }
 
-    /**
-     * Main tick loop for the mod. Consolidates all tick-based logic into one place.
-     */
     private void onClientTick(MinecraftClient client) {
         handleKeybinds(client);
-
-        if (!TutorialMod.CONFIG.masterEnabled) {
-            return; // Don't process any features if the master switch is off.
-        }
-
+        if (!TutorialMod.CONFIG.masterEnabled) return;
         handleTotemSwap(client);
         handleCombatSwap(client);
         handlePlacementSequence(client);
@@ -107,17 +90,13 @@ public class TutorialModClient implements ClientModInitializer {
 
     private void handleTotemSwap(MinecraftClient client) {
         if (!TutorialMod.CONFIG.totemSwapEnabled) return;
-        if (client.player == null || client.currentScreen == null || client.interactionManager == null) return;
-        if (client.player.isCreative()) return;
-
+        if (client.player == null || client.currentScreen == null || client.interactionManager == null || client.player.isCreative()) return;
         if (client.currentScreen instanceof HandledScreen<?> screen) {
             if (client.player.getOffHandStack().getItem() == Items.TOTEM_OF_UNDYING) return;
-
             double scaledMouseX = client.mouse.getX() * client.getWindow().getScaledWidth() / client.getWindow().getWidth();
             double scaledMouseY = client.mouse.getY() * client.getWindow().getScaledHeight() / client.getWindow().getHeight();
             int guiLeft = (client.getWindow().getScaledWidth() - 176) / 2;
             int guiTop = (client.getWindow().getScaledHeight() - 166) / 2;
-
             for (Slot slot : screen.getScreenHandler().slots) {
                 if (slot.getStack().getItem() == Items.TOTEM_OF_UNDYING) {
                     int slotX = guiLeft + slot.x;
@@ -162,18 +141,15 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handlePlacementSequence(MinecraftClient client) {
-        // Handle the 3-second timeout for lava placement
-        if (lavaTimeout > 0) {
-            lavaTimeout--;
-            if (client.player != null && client.player.getInventory().selectedSlot != lavaBucketSlot) {
-                lavaTimeout = 0;
+        if (actionTimeout > 0) {
+            actionTimeout--;
+            if (client.player != null && client.player.getInventory().selectedSlot != utilitySlot) {
+                actionTimeout = 0;
             }
         }
-
         if (placementCooldown > 0) {
             placementCooldown--;
         }
-
         if (placementCooldown == 0) {
             PlacementAction action = nextPlacementAction;
             if (action == PlacementAction.NONE) {
@@ -182,7 +158,6 @@ public class TutorialModClient implements ClientModInitializer {
             }
             nextPlacementAction = PlacementAction.NONE;
             if (client.player == null || client.interactionManager == null) return;
-
             switch (action) {
                 case PLACE_TNT_MINECART:
                     HitResult crosshairTarget = client.crosshairTarget;
@@ -190,23 +165,24 @@ public class TutorialModClient implements ClientModInitializer {
                         client.player.getInventory().selectedSlot = findTntMinecartInHotbar(client.player);
                         BlockHitResult hitResult = new BlockHitResult(railPos.toCenterPos(), Direction.UP, railPos, false);
                         client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
-                        startPostMinecartSequence();
+                        startPostMinecartSequence(client);
                     } else {
                         railPos = null;
                     }
                     break;
                 case AWAITING_LAVA_PLACEMENT:
-                    if (lavaTimeout == 0) {
-                        lavaBucketSlot = -1;
+                case AWAITING_FIRE_PLACEMENT:
+                    if (actionTimeout == 0) {
+                        utilitySlot = -1;
                         crossbowSlot = -1;
                     } else {
                         placementCooldown = 1;
-                        nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
+                        nextPlacementAction = action;
                     }
                     break;
                 case SWITCH_TO_CROSSBOW:
                     client.player.getInventory().selectedSlot = crossbowSlot;
-                    lavaBucketSlot = -1;
+                    utilitySlot = -1;
                     crossbowSlot = -1;
                     break;
                 default: break;
@@ -223,14 +199,11 @@ public class TutorialModClient implements ClientModInitializer {
     // --- Event Handlers ---
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) {
-            return ActionResult.PASS;
-        }
+        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
         if (target instanceof PlayerEntity) {
             PlayerEntity attackedPlayer = (PlayerEntity) target;
             boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
             boolean hasArmor = isArmored(attackedPlayer);
-
             if (isShielding && TutorialMod.CONFIG.axeSwapEnabled) {
                 int axeSlot = findAxeInHotbar(player);
                 if (axeSlot != -1 && player.getInventory().selectedSlot != axeSlot) {
@@ -298,9 +271,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     public static void confirmRailPlacement(BlockPos pos, BlockState state) {
         if (awaitingRailConfirmationCooldown > 0 && state.getBlock() instanceof net.minecraft.block.RailBlock) {
-            if (instance != null) {
-                instance.startRailPlacement(pos);
-            }
+            if (instance != null) instance.startRailPlacement(pos);
             awaitingRailConfirmationCooldown = -1;
         }
     }
@@ -309,44 +280,59 @@ public class TutorialModClient implements ClientModInitializer {
         if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_LAVA_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.LAVA) {
             instance.placementCooldown = 1;
             instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
-            instance.lavaTimeout = -1;
+            instance.actionTimeout = -1;
+        }
+    }
+
+    public static void confirmFirePlacement(BlockPos pos, BlockState state) {
+        if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_FIRE_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.FIRE) {
+            instance.placementCooldown = 1;
+            instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
+            instance.actionTimeout = -1;
         }
     }
 
     public void startRailPlacement(BlockPos pos) {
         if (placementCooldown != -1) return;
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null) return;
-        if (findTntMinecartInHotbar(client.player) != -1) {
-            this.railPos = pos;
-            this.placementCooldown = 1;
-            this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
-        }
+        if (client.player == null || findTntMinecartInHotbar(client.player) == -1) return;
+        this.railPos = pos;
+        this.placementCooldown = 1;
+        this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
     }
 
-    public void startPostMinecartSequence() {
-        MinecraftClient client = MinecraftClient.getInstance();
+    public void startPostMinecartSequence(MinecraftClient client) {
         if (client.player == null) return;
-
         if (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled) {
-            int lavaSlot = findLavaBucketInHotbar(client.player);
             int crossSlot = findLoadedCrossbowInHotbar(client.player);
-            if (lavaSlot != -1 && crossSlot != -1) {
-                this.lavaBucketSlot = lavaSlot;
-                this.crossbowSlot = crossSlot;
-                client.player.getInventory().selectedSlot = lavaSlot;
-                this.lavaTimeout = 60; // 3 seconds
-                this.placementCooldown = 1;
-                this.nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
-                return;
+            if (crossSlot != -1) {
+                int lavaSlot = findLavaBucketInHotbar(client.player);
+                if (lavaSlot != -1) {
+                    this.utilitySlot = lavaSlot;
+                    this.crossbowSlot = crossSlot;
+                    client.player.getInventory().selectedSlot = lavaSlot;
+                    this.actionTimeout = 60; // 3 seconds
+                    this.placementCooldown = 1;
+                    this.nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
+                    return;
+                }
+                int flintSlot = findFlintAndSteelInHotbar(client.player);
+                if (flintSlot != -1) {
+                    this.utilitySlot = flintSlot;
+                    this.crossbowSlot = crossSlot;
+                    client.player.getInventory().selectedSlot = flintSlot;
+                    this.actionTimeout = 60; // 3 seconds
+                    this.placementCooldown = 1;
+                    this.nextPlacementAction = PlacementAction.AWAITING_FIRE_PLACEMENT;
+                    return;
+                }
             }
         }
-
         if (TutorialMod.CONFIG.bowSequenceEnabled) {
             long currentTime = client.world.getTime();
-            if (lastBowShotTick == -1 || (currentTime - lastBowShotTick) > 100) { // 5 second cooldown
+            if (lastBowShotTick == -1 || (currentTime - lastBowShotTick) > 100) {
                 int bowSlot = findBowInHotbar(client.player);
-                if (bowSlot != -1 && findArrowInInventory(client.player)) {
+                if (bowSlot != -1) {
                     client.player.getInventory().selectedSlot = bowSlot;
                 }
             }
@@ -383,12 +369,10 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    private boolean findArrowInInventory(PlayerEntity player) {
-        for (ItemStack stack : player.getInventory().main) {
-            if (stack.getItem() == Items.ARROW) {
-                return true;
-            }
+    private int findFlintAndSteelInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).getItem() == Items.FLINT_AND_STEEL) return i;
         }
-        return false;
+        return -1;
     }
 }
