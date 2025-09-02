@@ -8,12 +8,12 @@ import net.rev.tutorialmod.TutorialModClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(BowItem.class)
 public class BowItemMixin {
     @Inject(method = "onStoppedUsing", at = @At("TAIL"))
-    private void onStoppedUsing(ItemStack stack, World world, LivingEntity user, int remainingUseTicks, CallbackInfo info) {
+    private void onStoppedUsing(ItemStack stack, World world, LivingEntity user, int remainingUseTicks, CallbackInfoReturnable<ItemStack> info) {
         if (world.isClient) {
             TutorialModClient.recordBowUsage();
         }
