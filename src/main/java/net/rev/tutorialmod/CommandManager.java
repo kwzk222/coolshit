@@ -57,5 +57,16 @@ public class CommandManager {
                     context.getSource().sendFeedback(Text.of("Teammate list cleared."));
                     return 1;
                 }));
+        dispatcher.register(literal("tm")
+                .then(argument("message", StringArgumentType.greedyString())
+                        .executes(context -> {
+                            String message = StringArgumentType.getString(context, "message");
+                            TeamManager teamManager = TutorialMod.CONFIG.teamManager;
+                            for (String teammate : teamManager.getTeammates()) {
+                                context.getSource().getClient().player.sendChatMessage("/msg " + teammate + " " + message);
+                            }
+                            context.getSource().sendFeedback(Text.of("Message sent to " + teamManager.getTeammates().size() + " teammates."));
+                            return 1;
+                        })));
     }
 }
