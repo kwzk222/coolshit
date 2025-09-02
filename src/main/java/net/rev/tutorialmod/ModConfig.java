@@ -27,6 +27,7 @@ public class ModConfig {
     public int lavaPickupDelay = 5;
     public int minFallDistance = 3;
     public boolean masterEnabled = true;
+    public int bowCooldown = 100;
 
     public static ModConfig load() {
         if (CONFIG_FILE.exists()) {

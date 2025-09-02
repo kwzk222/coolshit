@@ -330,7 +330,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
         if (TutorialMod.CONFIG.bowSequenceEnabled) {
             long currentTime = client.world.getTime();
-            if (lastBowShotTick == -1 || (currentTime - lastBowShotTick) > 100) {
+            if (lastBowShotTick == -1 || (currentTime - lastBowShotTick) > TutorialMod.CONFIG.bowCooldown) {
                 int bowSlot = findBowInHotbar(client.player);
                 if (bowSlot != -1) {
                     client.player.getInventory().selectedSlot = bowSlot;

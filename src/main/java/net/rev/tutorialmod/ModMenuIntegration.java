@@ -101,6 +101,12 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaPickupDelay = newValue)
                     .build());
 
+            general.addEntry(entryBuilder.startIntSlider(Text.literal("Bow Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200)
+                    .setDefaultValue(100)
+                    .setTooltip(Text.literal("The cooldown in ticks after shooting a bow before the Bow Sequence can trigger."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue)
+                    .build());
+
             return builder.build();
         };
     }
