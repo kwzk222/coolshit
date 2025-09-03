@@ -3,14 +3,14 @@
 	"package": "net.rev.tutorialmod.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"BowItemMixin",
-		"PlayerInventoryMixin",
-		"PlayerInventoryCobwebMixin"
+		"BowItemMixin"
 	],
 	"client": [
 		"ClientPlayerInteractionManagerMixin",
 		"ClientPlayNetworkHandlerMixin",
-		"HandledScreenAccessor"
+		"HandledScreenAccessor",
+		"PlayerInventoryMixin",
+		"PlayerInventoryCobwebMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
