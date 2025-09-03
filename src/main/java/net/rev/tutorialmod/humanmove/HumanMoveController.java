@@ -6,6 +6,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.mixin.HandledScreenAccessor;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -70,7 +71,7 @@ public final class HumanMoveController {
         job.currentY = y0;
     }
 
-    public void renderTick() {
+    public void renderTick(float tickDelta) {
         if (job == null || job.done()) return;
 
         var params = TutorialMod.CONFIG.movementParams;
@@ -140,8 +141,9 @@ public final class HumanMoveController {
     }
 
     public void moveToSlot(HandledScreen<?> screen, Slot slot) {
-        int sx = screen.getX();
-        int sy = screen.getY();
+        HandledScreenAccessor accessor = (HandledScreenAccessor) screen;
+        int sx = accessor.getX();
+        int sy = accessor.getY();
         int x = sx + slot.x + 8; // center of slot (16px slots)
         int y = sy + slot.y + 8;
         startGuiMove(x, y);

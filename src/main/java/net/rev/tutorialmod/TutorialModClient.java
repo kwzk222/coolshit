@@ -2,6 +2,7 @@ package net.rev.tutorialmod;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -72,14 +73,10 @@ public class TutorialModClient implements ClientModInitializer {
         masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.master_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.tutorialmod"));
         teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
-        ClientTickEvents.END_FRAME.register(this::onEndFrame);
+        WorldRenderEvents.LAST.register(context -> HumanMoveController.getInstance().renderTick(context.tickDelta()));
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
         new CommandManager().registerCommands();
         triggerBot = new TriggerBot();
-    }
-
-    private void onEndFrame(MinecraftClient client) {
-        HumanMoveController.getInstance().renderTick();
     }
 
     private void onClientTick(MinecraftClient client) {

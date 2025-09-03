@@ -8,7 +8,8 @@
 	],
 	"client": [
 		"ClientPlayerInteractionManagerMixin",
-		"ClientPlayNetworkHandlerMixin"
+		"ClientPlayNetworkHandlerMixin",
+		"HandledScreenAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1
