@@ -5,13 +5,15 @@ import java.util.Random;
 final class MovementJob {
     final Mode mode;
     final float[] xs, ys;
+    final Runnable onDone;
     int i = 0;
     float currentX, currentY; // applied (after blending)
 
-    MovementJob(Mode m, float[] xs, float[] ys) {
+    MovementJob(Mode m, float[] xs, float[] ys, Runnable onDone) {
         this.mode = m;
         this.xs = xs;
         this.ys = ys;
+        this.onDone = onDone;
     }
 
     boolean done() {

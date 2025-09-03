@@ -27,7 +27,7 @@ public final class HumanMoveController {
         return INSTANCE;
     }
 
-    public void startCameraMove(float targetYaw, float targetPitch) {
+    public void startCameraMove(float targetYaw, float targetPitch, Runnable onDone) {
         var mc = MinecraftClient.getInstance();
         var p = mc.player;
         if (p == null) return;
@@ -46,12 +46,12 @@ public final class HumanMoveController {
         bufs.add(pc.ys);
         MovementGenerator.maybeAppendCorrections(targetYaw, targetPitch, bufs, params, rnd);
 
-        job = new MovementJob(MovementJob.Mode.CAMERA, bufs.get(0), bufs.get(1));
+        job = new MovementJob(MovementJob.Mode.CAMERA, bufs.get(0), bufs.get(1), onDone);
         job.currentX = y0;
         job.currentY = p0;
     }
 
-    public void startGuiMove(float guiX, float guiY) {
+    public void startGuiMove(float guiX, float guiY, Runnable onDone) {
         var mc = MinecraftClient.getInstance();
         float x0 = getGuiCursorX(mc), y0 = getGuiCursorY(mc);
         var params = TutorialMod.CONFIG.movementParams;
@@ -66,13 +66,21 @@ public final class HumanMoveController {
         bufs.add(pc.ys);
         MovementGenerator.maybeAppendCorrections(guiX, guiY, bufs, params, rnd);
 
-        job = new MovementJob(MovementJob.Mode.GUI, bufs.get(0), bufs.get(1));
+        job = new MovementJob(MovementJob.Mode.GUI, bufs.get(0), bufs.get(1), onDone);
         job.currentX = x0;
         job.currentY = y0;
     }
 
     public void renderTick() {
-        if (job == null || job.done()) return;
+        if (job == null) return;
+
+        if (job.done()) {
+            if (job.onDone != null) {
+                job.onDone.run();
+            }
+            job = null;
+            return;
+        }
 
         var params = TutorialMod.CONFIG.movementParams;
         int idx = job.i++;
@@ -103,33 +111,22 @@ public final class HumanMoveController {
         double wx = guiX * scale;
         double wy = guiY * scale;
 
-        // In Minecraft, the GUI coordinate system has its origin at the top-left,
-        // but the window coordinate system used by GLFW has its origin at the top-left as well.
-        // However, the mouse events are scaled, so we need to reverse the scaling.
-        // We also need to update our internal tracker.
         lastGuiX = guiX;
         lastGuiY = guiY;
         GLFW.glfwSetCursorPos(win.getHandle(), wx, wy);
     }
 
     private float getGuiCursorX(MinecraftClient mc) {
-        if (lastGuiX != -1) {
-            return lastGuiX;
-        }
-        // If we haven't moved the mouse yet, start from the center of the screen.
+        if (lastGuiX != -1) return lastGuiX;
         return mc.getWindow().getScaledWidth() / 2f;
     }
 
     private float getGuiCursorY(MinecraftClient mc) {
-        if (lastGuiY != -1) {
-            return lastGuiY;
-        }
+        if (lastGuiY != -1) return lastGuiY;
         return mc.getWindow().getScaledHeight() / 2f;
     }
 
-    // --- Public API ---
-
-    public void lookAt(Vec3d target) {
+    public void lookAt(Vec3d target, Runnable onDone) {
         var mc = MinecraftClient.getInstance();
         var p = mc.player;
         if (p == null) return;
@@ -137,15 +134,23 @@ public final class HumanMoveController {
         Vec3d d = target.subtract(eye).normalize();
         float yaw = (float) (Math.atan2(d.z, d.x) * -180 / Math.PI) + 90f;
         float pitch = (float) (Math.asin(d.y) * -180 / Math.PI);
-        startCameraMove(yaw, pitch);
+        startCameraMove(yaw, pitch, onDone);
     }
 
-    public void moveToSlot(HandledScreen<?> screen, Slot slot) {
+    public void moveToSlot(HandledScreen<?> screen, Slot slot, Runnable onDone) {
         HandledScreenAccessor accessor = (HandledScreenAccessor) screen;
         int sx = accessor.getX();
         int sy = accessor.getY();
-        int x = sx + slot.x + 8; // center of slot (16px slots)
+        int x = sx + slot.x + 8;
         int y = sy + slot.y + 8;
-        startGuiMove(x, y);
+        startGuiMove(x, y, onDone);
+    }
+
+    public void lookAt(Vec3d target) {
+        lookAt(target, null);
+    }
+
+    public void moveToSlot(HandledScreen<?> screen, Slot slot) {
+        moveToSlot(screen, slot, null);
     }
 }
