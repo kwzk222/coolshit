@@ -27,6 +27,7 @@ import net.minecraft.item.CrossbowItem;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.text.Text;
+import net.rev.tutorialmod.humanmove.HumanMoveController;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.TriggerBot;
 
@@ -71,9 +72,14 @@ public class TutorialModClient implements ClientModInitializer {
         masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.master_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.tutorialmod"));
         teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
+        ClientTickEvents.END_FRAME.register(this::onEndFrame);
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
         new CommandManager().registerCommands();
         triggerBot = new TriggerBot();
+    }
+
+    private void onEndFrame(MinecraftClient client) {
+        HumanMoveController.getInstance().renderTick();
     }
 
     private void onClientTick(MinecraftClient client) {
