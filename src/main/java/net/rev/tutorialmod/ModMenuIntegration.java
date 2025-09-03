@@ -144,11 +144,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The maximum distance at which the TriggerBot will activate."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMaxRange = newValue / 100.0)
                     .build());
-            triggerBot.addEntry(entryBuilder.startLongSlider(Text.literal("Range Randomness (x100)"), (long) (TutorialMod.CONFIG.triggerBotRangeRandomness * 100), 0L, 300L)
-                    .setDefaultValue(0L)
-                    .setTooltip(Text.literal("Adds a random amount (up to this value) to be subtracted from the max range check."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotRangeRandomness = newValue / 100.0)
-                    .build());
             triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Max Attack Delay (ticks)"), TutorialMod.CONFIG.triggerBotAttackDelay, 0, 20)
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("Adds a random delay (from 0 to this value) in ticks before attacking."))

@@ -63,10 +63,8 @@ public class TriggerBot {
                 // Range Check
                 double distance = client.player.distanceTo(target);
                 double maxRange = TutorialMod.CONFIG.triggerBotMaxRange;
-                double rangeRandomness = TutorialMod.CONFIG.triggerBotRangeRandomness;
-                double effectiveRange = maxRange - (rangeRandomness > 0 ? random.nextDouble() * rangeRandomness : 0);
 
-                if (distance <= effectiveRange) {
+                if (distance <= maxRange) {
                     // Cooldown Check
                     if (client.player.getAttackCooldownProgress(0.5f) == 1.0f) {
                         // Initiate attack sequence

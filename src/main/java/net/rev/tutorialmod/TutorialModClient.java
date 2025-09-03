@@ -24,6 +24,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.item.BlockItem;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.CrossbowItem;
+import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.text.Text;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
@@ -235,9 +236,17 @@ public class TutorialModClient implements ClientModInitializer {
         if (target instanceof PlayerEntity) {
             PlayerEntity attackedPlayer = (PlayerEntity) target;
             boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
+
+            // Facing Check
+            Vec3d selfPos = player.getPos();
+            Vec3d targetPos = attackedPlayer.getPos();
+            Vec3d targetLookVec = attackedPlayer.getRotationVector();
+            Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
+            boolean isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
+
             boolean hasArmor = isArmored(attackedPlayer);
             PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
-            if (isShielding && TutorialMod.CONFIG.axeSwapEnabled) {
+            if (isShielding && isFacing && TutorialMod.CONFIG.axeSwapEnabled) {
                 int axeSlot = findAxeInHotbar(player);
                 if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
                     originalHotbarSlot = inventory.getSelectedSlot();

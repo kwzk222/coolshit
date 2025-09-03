@@ -39,7 +39,6 @@ public class ModConfig {
     public boolean triggerBotIncludeCrystals = true;
     public boolean triggerBotActiveInInventory = false;
     public double triggerBotMaxRange = 4.5;
-    public double triggerBotRangeRandomness = 0.0;
     public int triggerBotAttackDelay = 0;
 
     public List<String> teammates = new ArrayList<>();
