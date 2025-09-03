@@ -74,8 +74,7 @@ public class TutorialModClient implements ClientModInitializer {
         teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
         WorldRenderEvents.LAST.register(context -> {
-            float tickDelta = MinecraftClient.getInstance().getRenderTickCounter().getTickDelta();
-            HumanMoveController.getInstance().renderTick(tickDelta);
+            HumanMoveController.getInstance().renderTick();
         });
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
         new CommandManager().registerCommands();

@@ -71,7 +71,7 @@ public final class HumanMoveController {
         job.currentY = y0;
     }
 
-    public void renderTick(float tickDelta) {
+    public void renderTick() {
         if (job == null || job.done()) return;
 
         var params = TutorialMod.CONFIG.movementParams;
