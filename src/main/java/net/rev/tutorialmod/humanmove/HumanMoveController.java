@@ -51,6 +51,10 @@ public final class HumanMoveController {
         job.currentY = p0;
     }
 
+    public void startCameraMove(float targetYaw, float targetPitch) {
+        startCameraMove(targetYaw, targetPitch, null);
+    }
+
     public void startGuiMove(float guiX, float guiY, Runnable onDone) {
         var mc = MinecraftClient.getInstance();
         float x0 = getGuiCursorX(mc), y0 = getGuiCursorY(mc);
@@ -69,6 +73,10 @@ public final class HumanMoveController {
         job = new MovementJob(MovementJob.Mode.GUI, bufs.get(0), bufs.get(1), onDone);
         job.currentX = x0;
         job.currentY = y0;
+    }
+
+    public void startGuiMove(float guiX, float guiY) {
+        startGuiMove(guiX, guiY, null);
     }
 
     public void renderTick() {
