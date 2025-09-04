@@ -140,19 +140,13 @@ public class AutoCobwebFeature {
         Box searchBox = new Box(from, to).expand(0.1);
 
         for (Entity e : client.world.getOtherEntities(self, searchBox)) {
-            if (e.isSpectator()) continue;
+            // Ignore spectators and the actual target entity, since they are not at the landing spot yet.
+            if (e.isSpectator() || e == target) continue;
 
             Optional<Vec3d> entHit = e.getBoundingBox().expand(0.1).raycast(from, to);
             if (entHit.isPresent()) {
-                // If we hit our target, it's only a blocker if the hit is closer than the block candidate
-                if (e == target) {
-                    if (from.squaredDistanceTo(entHit.get()) < candidateDistSq) {
-                        return true;
-                    }
-                } else {
-                    // Any other entity is a blocker
-                    return true;
-                }
+                // Any other entity is a blocker.
+                return true;
             }
         }
         return false;
@@ -211,7 +205,19 @@ public class AutoCobwebFeature {
             BlockHitResult hit = client.world.raycast(raycastContext);
 
             if (hit.getType() == HitResult.Type.BLOCK) {
-                return hit.getBlockPos();
+                BlockPos hitPos = hit.getBlockPos();
+                BlockPos.Mutable mutable = new BlockPos.Mutable(hitPos.getX(), hitPos.getY() + 10, hitPos.getZ());
+
+                // Scan downwards from 10 blocks above the collision point
+                for (int y = mutable.getY(); y > client.world.getBottomY(); y--) {
+                    mutable.setY(y);
+                    if (!client.world.getBlockState(mutable).isAir() && client.world.getBlockState(mutable.up()).isAir()) {
+                        // Found a solid block with air directly above it. This is our landing surface.
+                        return mutable.toImmutable();
+                    }
+                }
+                // Fallback to the original hit position if no suitable surface is found
+                return hitPos;
             }
 
             simPos = nextPos;
