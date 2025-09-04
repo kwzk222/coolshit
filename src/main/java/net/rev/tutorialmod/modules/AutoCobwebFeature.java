@@ -3,6 +3,7 @@ package net.rev.tutorialmod.modules;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
@@ -30,7 +31,7 @@ public class AutoCobwebFeature {
         // Make sure we run on the client thread (safe)
         client.execute(() -> {
             if (client.player == null || client.world == null) return;
-            PlayerEntity self = client.player;
+            ClientPlayerEntity self = client.player;
 
             self.sendMessage(Text.literal("[AutoCobweb] Triggered"), false);
 
@@ -115,7 +116,7 @@ public class AutoCobwebFeature {
                 client.interactionManager.interactBlock(self, Hand.MAIN_HAND, bhr);
                 self.sendMessage(Text.literal("[AutoCobweb] interactBlock called."), false);
             } else {
-                self.sendMessage(Text.literal("[AutoCobweb] No interaction manager available."), false);
+                self.sendMessage(Text.literal("[AutoCobweb] No interaction manager available."), false;
             }
         }); // end client.execute
     }
