@@ -140,9 +140,14 @@ public final class HumanMoveController {
         if (p == null) return;
         Vec3d eye = p.getEyePos();
         Vec3d d = target.subtract(eye).normalize();
-        float yaw = (float) (Math.atan2(d.z, d.x) * -180 / Math.PI) + 90f;
+
+        float targetYaw = (float) (Math.atan2(d.z, d.x) * -180 / Math.PI) + 90f;
         float pitch = (float) (Math.asin(d.y) * -180 / Math.PI);
-        startCameraMove(yaw, pitch, onDone);
+
+        float currentYaw = wrapDeg(p.getYaw());
+        float finalTargetYaw = currentYaw + wrapDeg(targetYaw - currentYaw);
+
+        startCameraMove(finalTargetYaw, pitch, onDone);
     }
 
     public void moveToSlot(HandledScreen<?> screen, Slot slot, Runnable onDone) {
