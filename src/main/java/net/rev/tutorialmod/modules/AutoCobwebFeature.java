@@ -66,10 +66,16 @@ public class AutoCobwebFeature {
 
             self.sendMessage(Text.literal("[AutoCobweb] Target selected: " + bestTarget.getName().getString()), false);
 
-            BlockPos under = BlockPos.ofFloored(bestTarget.getX(), bestTarget.getY() - 0.1, bestTarget.getZ());
-            self.sendMessage(Text.literal("[AutoCobweb] Target block: " + under.toShortString()), false);
+            BlockPos targetBlock;
+            if (!bestTarget.isOnGround()) {
+                targetBlock = predictLandingPos(bestTarget, client);
+                self.sendMessage(Text.literal("[AutoCobweb] Target is airborne, predicting landing position."), false);
+            } else {
+                targetBlock = bestTarget.getBlockPos().down();
+            }
+            self.sendMessage(Text.literal("[AutoCobweb] Target block: " + targetBlock.toShortString()), false);
 
-            Optional<BlockHitResult> hitResultOpt = findVisibleHitOnBlock(client, self, bestTarget, under);
+            Optional<BlockHitResult> hitResultOpt = findVisibleHitOnBlock(client, self, bestTarget, targetBlock);
 
             if (hitResultOpt.isEmpty()) {
                 self.sendMessage(Text.literal("[AutoCobweb] No visible & unobstructed aim point found."), false);
@@ -180,5 +186,55 @@ public class AutoCobwebFeature {
             }
         }
         return points.get(points.size() - 1);
+    }
+
+    private static BlockPos predictLandingPos(PlayerEntity player, MinecraftClient client) {
+        if (client.world == null) {
+            return player.getBlockPos().down();
+        }
+
+        Vec3d simPos = player.getPos();
+        Vec3d simVel = player.getVelocity();
+
+        // Simulate tick-by-tick
+        for (int i = 0; i < 200; i++) { // Max 10 seconds prediction
+            Vec3d nextPos = simPos.add(simVel);
+
+            RaycastContext raycastContext = new RaycastContext(
+                    simPos,
+                    nextPos,
+                    RaycastContext.ShapeType.COLLIDER,
+                    RaycastContext.FluidHandling.NONE,
+                    player
+            );
+
+            BlockHitResult hit = client.world.raycast(raycastContext);
+
+            if (hit.getType() == HitResult.Type.BLOCK) {
+                return hit.getBlockPos();
+            }
+
+            simPos = nextPos;
+
+            // Apply physics for next tick
+            simVel = simVel.multiply(0.98, 0.98, 0.98);
+            simVel = simVel.add(0, -0.08, 0);
+        }
+
+        // Fallback if no landing spot found (e.g. over void)
+        BlockHitResult hit = client.world.raycast(new RaycastContext(
+                simPos,
+                new Vec3d(simPos.x, client.world.getBottomY(), simPos.z),
+                RaycastContext.ShapeType.COLLIDER,
+                RaycastContext.FluidHandling.NONE,
+                player
+        ));
+
+        if (hit.getType() == HitResult.Type.BLOCK) {
+            return hit.getBlockPos();
+        }
+
+        // Absolute fallback
+        return player.getBlockPos().down();
     }
 }
