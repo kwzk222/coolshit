@@ -1,6 +1,5 @@
 package net.rev.tutorialmod.modules;
 
-import net.minecraft.block.Block;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
@@ -62,13 +61,14 @@ public class AutoCobwebFeature {
             client.player.sendMessage(Text.literal("Target found: " + bestTarget.getName().getString()), false);
             BlockPos targetBlockPos = bestTarget.getBlockPos().down();
 
-            Vec3d aimTarget = findVisiblePointOnBlock(selfEyePos, targetBlockPos);
+            BlockHitResult hitResult = findVisibleHitOnBlock(selfEyePos, targetBlockPos);
 
-            if (aimTarget == null) {
+            if (hitResult == null) {
                 client.player.sendMessage(Text.literal("Could not find a visible spot on the target block."), false);
                 return;
             }
 
+            Vec3d aimTarget = hitResult.getPos();
             client.player.sendMessage(Text.literal("Aiming at " + aimTarget), false);
 
             // Calculate yaw and pitch
@@ -82,7 +82,6 @@ public class AutoCobwebFeature {
 
             // Place block
             client.player.sendMessage(Text.literal("Placing cobweb."), false);
-            BlockHitResult hitResult = new BlockHitResult(aimTarget, Direction.UP, targetBlockPos, false);
             if (client.interactionManager != null) {
                 client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
             }
@@ -91,41 +90,32 @@ public class AutoCobwebFeature {
         }
     }
 
-    private static Vec3d findVisiblePointOnBlock(Vec3d playerEyes, BlockPos block) {
+    private static BlockHitResult findVisibleHitOnBlock(Vec3d playerEyes, BlockPos block) {
+        double[] offsets = {0.0, -0.4, 0.4};
+        for (double dx : offsets) {
+            for (double dz : offsets) {
+                Vec3d targetPoint = new Vec3d(block.getX() + 0.5 + dx, block.getY() + 1.0, block.getZ() + 0.5 + dz);
+                BlockHitResult hit = getVisibleHit(playerEyes, targetPoint, block);
+                if (hit != null) {
+                    return hit;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static BlockHitResult getVisibleHit(Vec3d from, Vec3d to, BlockPos targetBlock) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null) return null;
 
-        // Check center of top face first
-        Vec3d centerPoint = block.toCenterPos().add(0, 0.5, 0);
-        if (isPointVisible(playerEyes, centerPoint, block)) {
-            return centerPoint;
-        }
-
-        // Check edges of top face
-        for (double i = 0.1; i <= 0.4; i += 0.1) {
-            // Check N, S, E, W edges
-            Vec3d p1 = new Vec3d(block.getX() + 0.5, block.getY() + 1, block.getZ() + 0.5 - i);
-            if (isPointVisible(playerEyes, p1, block)) return p1;
-            Vec3d p2 = new Vec3d(block.getX() + 0.5, block.getY() + 1, block.getZ() + 0.5 + i);
-            if (isPointVisible(playerEyes, p2, block)) return p2;
-            Vec3d p3 = new Vec3d(block.getX() + 0.5 - i, block.getY() + 1, block.getZ() + 0.5);
-            if (isPointVisible(playerEyes, p3, block)) return p3;
-            Vec3d p4 = new Vec3d(block.getX() + 0.5 + i, block.getY() + 1, block.getZ() + 0.5);
-            if (isPointVisible(playerEyes, p4, block)) return p4;
-        }
-
-        return null; // No visible point found
-    }
-
-    private static boolean isPointVisible(Vec3d from, Vec3d to, BlockPos targetBlock) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null) return false;
-
-        RaycastContext context = new RaycastContext(from, to, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, client.player);
+        RaycastContext context = new RaycastContext(from, to, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player);
         BlockHitResult hitResult = client.world.raycast(context);
 
-        return hitResult.getType() == HitResult.Type.BLOCK &&
-               hitResult.getBlockPos().equals(targetBlock) &&
-               hitResult.getSide() == Direction.UP;
+        if (hitResult.getType() == HitResult.Type.BLOCK &&
+            hitResult.getBlockPos().equals(targetBlock) &&
+            hitResult.getSide() == Direction.UP) {
+            return hitResult;
+        }
+        return null;
     }
 }
