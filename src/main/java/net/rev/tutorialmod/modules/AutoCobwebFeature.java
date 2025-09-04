@@ -1,12 +1,16 @@
 package net.rev.tutorialmod.modules;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
@@ -61,7 +65,7 @@ public class AutoCobwebFeature {
             client.player.sendMessage(Text.literal("Target found: " + bestTarget.getName().getString()), false);
             BlockPos targetBlockPos = bestTarget.getBlockPos().down();
 
-            BlockHitResult hitResult = findVisibleHitOnBlock(selfEyePos, targetBlockPos);
+            BlockHitResult hitResult = findVisibleHitOnBlock(self, bestTarget, targetBlockPos);
 
             if (hitResult == null) {
                 client.player.sendMessage(Text.literal("Could not find a visible spot on the target block."), false);
@@ -90,12 +94,13 @@ public class AutoCobwebFeature {
         }
     }
 
-    private static BlockHitResult findVisibleHitOnBlock(Vec3d playerEyes, BlockPos block) {
+    private static BlockHitResult findVisibleHitOnBlock(PlayerEntity self, PlayerEntity target, BlockPos block) {
+        Vec3d playerEyes = self.getEyePos();
         double[] offsets = {0.0, -0.3, 0.3};
         for (double dx : offsets) {
             for (double dz : offsets) {
                 Vec3d targetPoint = new Vec3d(block.getX() + 0.5 + dx, block.getY() + 1.0, block.getZ() + 0.5 + dz);
-                BlockHitResult hit = getVisibleHit(playerEyes, targetPoint, block);
+                BlockHitResult hit = getVisibleHit(self, target, playerEyes, targetPoint, block);
                 if (hit != null) {
                     return hit;
                 }
@@ -104,19 +109,25 @@ public class AutoCobwebFeature {
         return null;
     }
 
-    private static BlockHitResult getVisibleHit(Vec3d from, Vec3d to, BlockPos targetBlock) {
+    private static BlockHitResult getVisibleHit(PlayerEntity self, PlayerEntity bestTarget, Vec3d from, Vec3d to, BlockPos targetBlock) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null) return null;
 
-        RaycastContext context = new RaycastContext(from, to, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player);
-        BlockHitResult hitResult = client.world.raycast(context);
+        // Stage 1: Check for entity obstruction
+        Box searchBox = new Box(from, to).expand(1.0);
+        EntityHitResult entityHit = ProjectileUtil.raycast(self, from, to, searchBox, (entity) -> !entity.isSpectator() && entity.canBeHit(), from.squaredDistanceTo(to));
 
-        if (hitResult.getType() == HitResult.Type.BLOCK && hitResult.getBlockPos().equals(targetBlock)) {
-            // Check if the hit position is on the top face of the block, allowing for a small tolerance.
-            if (Math.abs(hitResult.getPos().y - (targetBlock.getY() + 1.0)) < 0.001) {
-                // To ensure the placement is correct, we should return a new BlockHitResult
-                // that explicitly states the hit was on the UP face.
-                return new BlockHitResult(hitResult.getPos(), Direction.UP, hitResult.getBlockPos(), hitResult.isInsideBlock());
+        if (entityHit != null && entityHit.getEntity() != bestTarget) {
+            return null; // Path is blocked by an unexpected entity
+        }
+
+        // Stage 2: Check for block obstruction
+        RaycastContext context = new RaycastContext(from, to, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, self);
+        BlockHitResult blockHit = client.world.raycast(context);
+
+        if (blockHit.getType() == HitResult.Type.BLOCK && blockHit.getBlockPos().equals(targetBlock)) {
+            if (Math.abs(blockHit.getPos().y - (targetBlock.getY() + 1.0)) < 0.001) {
+                return new BlockHitResult(blockHit.getPos(), Direction.UP, blockHit.getBlockPos(), blockHit.isInsideBlock());
             }
         }
         return null;
