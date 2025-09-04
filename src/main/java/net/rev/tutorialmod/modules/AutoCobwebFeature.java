@@ -78,6 +78,32 @@ public class AutoCobwebFeature {
             Optional<BlockHitResult> hitResultOpt = findVisibleHitOnBlock(client, self, bestTarget, targetBlock);
 
             if (hitResultOpt.isEmpty()) {
+                self.sendMessage(Text.literal("[AutoCobweb] Primary placement failed. Trying fallback..."), false);
+                BlockPos selfBlock = self.getBlockPos();
+
+                Vec3d selfEyePos = self.getEyePos();
+                Vec3d targetCenterPos = targetBlock.toCenterPos();
+                Vec3d direction = targetCenterPos.subtract(selfEyePos).normalize();
+                double maxDist = self.distanceTo(bestTarget);
+
+                for (double dist = 0; dist < maxDist; dist += 0.5) {
+                    Vec3d candidatePos = targetCenterPos.subtract(direction.multiply(dist));
+                    BlockPos candidateBlock = BlockPos.ofFloored(candidatePos);
+
+                    if (candidateBlock.equals(selfBlock)) continue;
+
+                    if (client.world.getBlockState(candidateBlock).isSolid() && client.world.getBlockState(candidateBlock.up()).isAir()) {
+                        Optional<BlockHitResult> fallbackHitOpt = findVisibleHitOnBlock(client, self, bestTarget, candidateBlock);
+                        if (fallbackHitOpt.isPresent()) {
+                            self.sendMessage(Text.literal("[AutoCobweb] Found fallback block: " + candidateBlock.toShortString()), false);
+                            hitResultOpt = fallbackHitOpt;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (hitResultOpt.isEmpty()) {
                 self.sendMessage(Text.literal("[AutoCobweb] No visible & unobstructed aim point found."), false);
                 return;
             }
