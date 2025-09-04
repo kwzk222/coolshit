@@ -68,20 +68,7 @@ public class AutoCobwebFeature {
 
             self.sendMessage(Text.literal("[AutoCobweb] Target selected: " + bestTarget.getName().getString()), false);
 
-            BlockPos targetBlock;
-            if (!bestTarget.isOnGround()) {
-                self.sendMessage(Text.literal("[AutoCobweb] Target is airborne, finding ground below."), false);
-                BlockPos.Mutable mutable = bestTarget.getBlockPos().down().mutableCopy();
-                for (int y = mutable.getY(); y > client.world.getBottomY(); y--) {
-                    mutable.setY(y);
-                    if (!client.world.getBlockState(mutable).isAir()) {
-                        break;
-                    }
-                }
-                targetBlock = mutable.toImmutable();
-            } else {
-                targetBlock = bestTarget.getBlockPos();
-            }
+            BlockPos targetBlock = BlockPos.ofFloored(bestTarget.getX(), bestTarget.getY() - 0.1, bestTarget.getZ());
             self.sendMessage(Text.literal("[AutoCobweb] Target block: " + targetBlock.toShortString()), false);
 
             Optional<BlockHitResult> hitResultOpt = findVisibleHitOnBlock(client, self, bestTarget, targetBlock);
@@ -89,32 +76,26 @@ public class AutoCobwebFeature {
             if (hitResultOpt.isEmpty()) {
                 self.sendMessage(Text.literal("[AutoCobweb] Primary placement failed. Trying fallback..."), false);
                 BlockPos selfBlock = self.getBlockPos();
-                Optional<BlockHitResult> lastValidFallback = Optional.empty();
 
-                Vec3d selfEyePos = self.getEyePos();
-                Vec3d targetCenterPos = targetBlock.toCenterPos();
-                Vec3d direction = targetCenterPos.subtract(selfEyePos).normalize();
-                double maxDist = self.distanceTo(bestTarget);
+                // Simple 3x3 grid search around the target block
+                for (int x = -1; x <= 1; x++) {
+                    for (int z = -1; z <= 1; z++) {
+                        if (x == 0 && z == 0) continue; // Skip the original failing block
 
-                // Iterate from player towards the target, finding the furthest valid spot
-                for (double dist = 1; dist < maxDist; dist += 0.5) {
-                    Vec3d candidatePos = selfEyePos.add(direction.multiply(dist));
-                    BlockPos candidateBlock = BlockPos.ofFloored(candidatePos);
+                        BlockPos candidateBlock = targetBlock.add(x, 0, z);
+                        if (candidateBlock.equals(selfBlock)) continue;
 
-                    if (candidateBlock.equals(selfBlock)) continue;
-
-                    BlockState candidateState = client.world.getBlockState(candidateBlock);
-                    if (candidateState.isSideSolid(client.world, candidateBlock, Direction.UP, SideShapeType.FULL) && client.world.getBlockState(candidateBlock.up()).isAir()) {
-                        Optional<BlockHitResult> fallbackHitOpt = findVisibleHitOnBlock(client, self, bestTarget, candidateBlock);
-                        if (fallbackHitOpt.isPresent()) {
-                            lastValidFallback = fallbackHitOpt;
+                        BlockState candidateState = client.world.getBlockState(candidateBlock);
+                        if (candidateState.isSideSolid(client.world, candidateBlock, Direction.UP, SideShapeType.FULL) && client.world.getBlockState(candidateBlock.up()).isAir()) {
+                            Optional<BlockHitResult> fallbackHitOpt = findVisibleHitOnBlock(client, self, bestTarget, candidateBlock);
+                            if (fallbackHitOpt.isPresent()) {
+                                self.sendMessage(Text.literal("[AutoCobweb] Found fallback block: " + candidateBlock.toShortString()), false);
+                                hitResultOpt = fallbackHitOpt;
+                                break; // Use the first one we find
+                            }
                         }
                     }
-                }
-
-                if (lastValidFallback.isPresent()) {
-                    self.sendMessage(Text.literal("[AutoCobweb] Found fallback block: " + lastValidFallback.get().getBlockPos().toShortString()), false);
-                    hitResultOpt = lastValidFallback;
+                    if (hitResultOpt.isPresent()) break; // Break outer loop
                 }
             }
 
