@@ -3,11 +3,9 @@ package net.rev.tutorialmod.modules;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -99,37 +97,44 @@ public class AutoCobwebFeature {
         double[] offsets = {0.0, -0.3, 0.3};
         for (double dx : offsets) {
             for (double dz : offsets) {
-                Vec3d targetPoint = new Vec3d(block.getX() + 0.5 + dx, block.getY() + 1.0, block.getZ() + 0.5 + dz);
-                BlockHitResult hit = getVisibleHit(self, target, playerEyes, targetPoint, block);
-                if (hit != null) {
-                    return hit;
+                Vec3d candidate = new Vec3d(block.getX() + 0.5 + dx, block.getY() + 1.0, block.getZ() + 0.5 + dz);
+
+                // Stage 1: Check for entity obstruction
+                if (isLineBlockedByEntities(playerEyes, candidate, self, target)) {
+                    continue; // Skip this candidate, entity is in the way
+                }
+
+                // Stage 2: Check for block obstruction
+                RaycastContext context = new RaycastContext(playerEyes, candidate, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, self);
+                BlockHitResult blockHit = self.getWorld().raycast(context);
+
+                if (blockHit.getType() == HitResult.Type.BLOCK && blockHit.getBlockPos().equals(block) && blockHit.getSide() == Direction.UP) {
+                    return blockHit; // Found a valid spot
                 }
             }
         }
         return null;
     }
 
-    private static BlockHitResult getVisibleHit(PlayerEntity self, PlayerEntity bestTarget, Vec3d from, Vec3d to, BlockPos targetBlock) {
+    private static boolean isLineBlockedByEntities(Vec3d from, Vec3d to, PlayerEntity self, PlayerEntity target) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null) return null;
+        if (client.world == null) return false;
 
-        // Stage 1: Check for entity obstruction
-        Box searchBox = new Box(from, to).expand(1.0);
-        EntityHitResult entityHit = ProjectileUtil.raycast(self, from, to, searchBox, (entity) -> !entity.isSpectator() && entity.isCollidable(), from.squaredDistanceTo(to));
+        // AABB that covers the line segment
+        Box box = new Box(from, to).expand(0.1); // small tolerance
 
-        if (entityHit != null && entityHit.getEntity() != bestTarget) {
-            return null; // Path is blocked by an unexpected entity
-        }
+        // Get entities along the ray, excluding self and intended target
+        for (Entity e : client.world.getOtherEntities(self, box)) {
+            if (e == self || e == target) continue;
+            if (e.isSpectator()) continue;
 
-        // Stage 2: Check for block obstruction
-        RaycastContext context = new RaycastContext(from, to, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, self);
-        BlockHitResult blockHit = client.world.raycast(context);
-
-        if (blockHit.getType() == HitResult.Type.BLOCK && blockHit.getBlockPos().equals(targetBlock)) {
-            if (Math.abs(blockHit.getPos().y - (targetBlock.getY() + 1.0)) < 0.001) {
-                return new BlockHitResult(blockHit.getPos(), Direction.UP, blockHit.getBlockPos(), blockHit.isInsideBlock());
+            // Check if ray actually intersects this entity's hitbox
+            Box entityBox = e.getBoundingBox().expand(0.1);
+            if (entityBox.raycast(from, to).isPresent()) {
+                return true; // blocked
             }
         }
-        return null;
+
+        return false; // clear
     }
 }
