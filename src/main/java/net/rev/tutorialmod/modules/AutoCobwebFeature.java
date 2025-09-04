@@ -116,7 +116,7 @@ public class AutoCobwebFeature {
                 client.interactionManager.interactBlock(self, Hand.MAIN_HAND, bhr);
                 self.sendMessage(Text.literal("[AutoCobweb] interactBlock called."), false);
             } else {
-                self.sendMessage(Text.literal("[AutoCobweb] No interaction manager available."), false;
+                self.sendMessage(Text.literal("[AutoCobweb] No interaction manager available."), false);
             }
         }); // end client.execute
     }
