@@ -61,9 +61,8 @@ public class AutoCobwebFeature {
 
         if (bestTarget != null) {
             client.player.sendMessage(Text.literal("Target found: " + bestTarget.getName().getString()), false);
-            BlockPos targetBlockPos = bestTarget.getBlockPos().down();
 
-            BlockHitResult hitResult = findVisibleHitOnBlock(self, bestTarget, targetBlockPos);
+            BlockHitResult hitResult = findVisibleHitOnBlock(self, bestTarget);
 
             if (hitResult == null) {
                 client.player.sendMessage(Text.literal("Could not find a visible spot on the target block."), false);
@@ -92,25 +91,49 @@ public class AutoCobwebFeature {
         }
     }
 
-    private static BlockHitResult findVisibleHitOnBlock(PlayerEntity self, PlayerEntity target, BlockPos block) {
-        Vec3d playerEyes = self.getEyePos();
-        double[] offsets = {0.0, -0.3, 0.3};
+    private static BlockHitResult findVisibleHitOnBlock(PlayerEntity self, PlayerEntity target) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.world == null) return null;
+
+        Vec3d eyePos = self.getEyePos();
+        BlockPos block = target.getBlockPos().down();
+
+        // Offsets to sample around the center of the block's top face
+        double[] offsets = {-0.3, 0.0, 0.3};
+
         for (double dx : offsets) {
             for (double dz : offsets) {
-                Vec3d candidate = new Vec3d(block.getX() + 0.5 + dx, block.getY() + 1.0, block.getZ() + 0.5 + dz);
+                Vec3d candidate = new Vec3d(
+                    block.getX() + 0.5 + dx,
+                    block.getY() + 1.0,
+                    block.getZ() + 0.5 + dz
+                );
 
-                // Stage 1: Check for entity obstruction
-                if (isLineBlockedByEntities(playerEyes, candidate, self, target)) {
-                    continue; // Skip this candidate, entity is in the way
+                // --- Step 1: Block raycast ---
+                RaycastContext rayCtx = new RaycastContext(
+                    eyePos, candidate,
+                    RaycastContext.ShapeType.OUTLINE,
+                    RaycastContext.FluidHandling.NONE,
+                    self
+                );
+                BlockHitResult blockHit = client.world.raycast(rayCtx);
+
+                if (blockHit.getType() != HitResult.Type.BLOCK || !blockHit.getBlockPos().equals(block) || blockHit.getSide() != Direction.UP) {
+                    // self.sendMessage(Text.literal("Candidate: " + candidate + " -> FAILED (Block Raycast)"), false);
+                    continue;
                 }
 
-                // Stage 2: Check for block obstruction
-                RaycastContext context = new RaycastContext(playerEyes, candidate, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, self);
-                BlockHitResult blockHit = self.getWorld().raycast(context);
-
-                if (blockHit.getType() == HitResult.Type.BLOCK && blockHit.getBlockPos().equals(block) && blockHit.getSide() == Direction.UP) {
-                    return blockHit; // Found a valid spot
+                // --- Step 2: Entity check ---
+                if (isLineBlockedByEntities(eyePos, candidate, self, target)) {
+                    // self.sendMessage(Text.literal("Candidate: " + candidate + " -> FAILED (Entity Obstruction)"), false);
+                    continue; // blocked by some other entity
                 }
+
+                self.sendMessage(Text.literal("Candidate: " + candidate + " -> passed"), false);
+                // Passed both checks → return adjusted hit
+                return new BlockHitResult(
+                    candidate, Direction.UP, block, false
+                );
             }
         }
         return null;
@@ -120,21 +143,16 @@ public class AutoCobwebFeature {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null) return false;
 
-        // AABB that covers the line segment
-        Box box = new Box(from, to).expand(0.1); // small tolerance
+        Box searchBox = new Box(from, to).expand(0.1);
 
-        // Get entities along the ray, excluding self and intended target
-        for (Entity e : client.world.getOtherEntities(self, box)) {
+        for (Entity e : client.world.getOtherEntities(self, searchBox)) {
             if (e == self || e == target) continue;
             if (e.isSpectator()) continue;
 
-            // Check if ray actually intersects this entity's hitbox
-            Box entityBox = e.getBoundingBox().expand(0.1);
-            if (entityBox.raycast(from, to).isPresent()) {
+            if (e.getBoundingBox().expand(0.1).raycast(from, to).isPresent()) {
                 return true; // blocked
             }
         }
-
         return false; // clear
     }
 }
