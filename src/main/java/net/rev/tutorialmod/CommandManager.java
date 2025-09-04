@@ -4,11 +4,9 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.CommandSource;
 import net.minecraft.text.Text;
-import net.minecraft.util.math.Vec3d;
 
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
@@ -68,31 +66,6 @@ public class CommandManager {
                                 context.getSource().getClient().player.networkHandler.sendChatCommand("msg " + teammate + " " + message);
                             }
                             context.getSource().sendFeedback(Text.of("Message sent to " + teamManager.getTeammates().size() + " teammates."));
-                            return 1;
-                        })));
-
-        dispatcher.register(literal("testmove")
-                .then(literal("camera")
-                        .executes(context -> {
-                            MinecraftClient client = context.getSource().getClient();
-                            if (client.player != null) {
-                                Vec3d target = client.player.getPos().add(5, 2, 5);
-                                Human.move().lookAt(target);
-                                context.getSource().sendFeedback(Text.of("Testing camera movement..."));
-                            }
-                            return 1;
-                        }))
-                .then(literal("gui")
-                        .executes(context -> {
-                            MinecraftClient client = context.getSource().getClient();
-                            if (client.currentScreen != null) {
-                                float x = client.getWindow().getScaledWidth() / 2f;
-                                float y = client.getWindow().getScaledHeight() / 2f;
-                                Human.move().startGuiMove(x, y);
-                                context.getSource().sendFeedback(Text.of("Testing GUI movement..."));
-                            } else {
-                                context.getSource().sendError(Text.of("You must be in a GUI to test GUI movement."));
-                            }
                             return 1;
                         })));
     }

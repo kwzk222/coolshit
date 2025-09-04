@@ -150,56 +150,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackDelay = newValue)
                     .build());
 
-            // Human Movement Category
-            ConfigCategory humanMovement = builder.getOrCreateCategory(Text.literal("Human Movement"));
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Base Move Time (ms)"), TutorialMod.CONFIG.movementParams.baseMs)
-                    .setDefaultValue(120f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.baseMs = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Time per Unit (ms)"), TutorialMod.CONFIG.movementParams.kPerUnit)
-                    .setDefaultValue(6f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.kPerUnit = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Min Move Time (ms)"), TutorialMod.CONFIG.movementParams.minMs)
-                    .setDefaultValue(60f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.minMs = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Max Move Time (ms)"), TutorialMod.CONFIG.movementParams.maxMs)
-                    .setDefaultValue(600f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.maxMs = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Min Reaction Delay (ms)"), TutorialMod.CONFIG.movementParams.reactMinMs)
-                    .setDefaultValue(100f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.reactMinMs = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Max Reaction Delay (ms)"), TutorialMod.CONFIG.movementParams.reactMaxMs)
-                    .setDefaultValue(250f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.reactMaxMs = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Correction Threshold (deg/px)"), TutorialMod.CONFIG.movementParams.correctionThreshold)
-                    .setDefaultValue(0.3f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.correctionThreshold = newValue).build());
-            humanMovement.addEntry(entryBuilder.startIntField(Text.literal("Max Corrections"), TutorialMod.CONFIG.movementParams.maxCorrections)
-                    .setDefaultValue(3).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.maxCorrections = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Correction Duration Scale"), TutorialMod.CONFIG.movementParams.correctionDurScale)
-                    .setDefaultValue(0.25f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.correctionDurScale = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Speed Noise Scale"), TutorialMod.CONFIG.movementParams.alphaNoise)
-                    .setDefaultValue(0.003f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.alphaNoise = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Noise Jitter Factor"), TutorialMod.CONFIG.movementParams.noiseJitterFactor)
-                    .setDefaultValue(0.3f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.noiseJitterFactor = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Tremor Amplitude"), TutorialMod.CONFIG.movementParams.tremorAmp)
-                    .setDefaultValue(0.03f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.tremorAmp = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Tremor Frequency 1"), TutorialMod.CONFIG.movementParams.tremorF1)
-                    .setDefaultValue(9f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.tremorF1 = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Tremor Frequency 2"), TutorialMod.CONFIG.movementParams.tremorF2)
-                    .setDefaultValue(22f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.tremorF2 = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Drift Amplitude"), TutorialMod.CONFIG.movementParams.driftAmp)
-                    .setDefaultValue(0.02f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.driftAmp = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Drift Frequency (Hz)"), TutorialMod.CONFIG.movementParams.driftHz)
-                    .setDefaultValue(1.2f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.driftHz = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Via-Point Chance"), TutorialMod.CONFIG.movementParams.viaPointChance)
-                    .setDefaultValue(0.35f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.viaPointChance = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Min Via-Point Offset"), TutorialMod.CONFIG.movementParams.viaOffsetMin)
-                    .setDefaultValue(0.05f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.viaOffsetMin = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Max Via-Point Offset"), TutorialMod.CONFIG.movementParams.viaOffsetMax)
-                    .setDefaultValue(0.25f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.viaOffsetMax = newValue).build());
-            humanMovement.addEntry(entryBuilder.startIntField(Text.literal("Sample Rate (Hz)"), TutorialMod.CONFIG.movementParams.sampleHz)
-                    .setDefaultValue(120).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.sampleHz = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Micro-Lag Blending"), TutorialMod.CONFIG.movementParams.blend)
-                    .setDefaultValue(0.9f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.blend = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Min Pitch"), TutorialMod.CONFIG.movementParams.pitchMin)
-                    .setDefaultValue(-90f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.pitchMin = newValue).build());
-            humanMovement.addEntry(entryBuilder.startFloatField(Text.literal("Max Pitch"), TutorialMod.CONFIG.movementParams.pitchMax)
-                    .setDefaultValue(90f).setSaveConsumer(newValue -> TutorialMod.CONFIG.movementParams.pitchMax = newValue).build());
-
-
             return builder.build();
         };
     }

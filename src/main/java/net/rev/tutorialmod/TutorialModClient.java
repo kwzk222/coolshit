@@ -2,7 +2,6 @@ package net.rev.tutorialmod;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -28,9 +27,8 @@ import net.minecraft.item.CrossbowItem;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 import net.minecraft.text.Text;
-import net.rev.tutorialmod.humanmove.HumanMoveController;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
-import net.rev.tutorialmod.modules.AutoCobweb;
+import net.rev.tutorialmod.modules.AutoCobwebFeature;
 import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -76,9 +74,6 @@ public class TutorialModClient implements ClientModInitializer {
         teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
         placeCobwebKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.place_cobweb", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_X, "key.categories.tutorialmod"));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
-        WorldRenderEvents.LAST.register(context -> {
-            HumanMoveController.getInstance().renderTick();
-        });
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
         new CommandManager().registerCommands();
         triggerBot = new TriggerBot();
@@ -111,7 +106,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
         while (placeCobwebKeybind.wasPressed()) {
             if (client.player != null && client.player.getMainHandStack().getItem() == Items.COBWEB) {
-                AutoCobweb.trigger();
+                AutoCobwebFeature.trigger();
             }
         }
     }

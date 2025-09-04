@@ -44,46 +44,6 @@ public class ModConfig {
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
 
-    public MovementParams movementParams = new MovementParams();
-
-    public static class MovementParams {
-        // Duration selection
-        public float baseMs = 120f;           // base time per move
-        public float kPerUnit = 6f;           // ms per deg (camera) or per px (GUI)
-        public float minMs = 60f, maxMs = 600f;
-
-        // Reaction delay before movement begins
-        public float reactMinMs = 100f, reactMaxMs = 250f;
-
-        // Corrections (closed-loop)
-        public float correctionThreshold = 0.3f; // deg or px
-        public int maxCorrections = 3;
-        public float correctionDurScale = 0.25f; // fraction of main duration
-
-        // Noise (signal-dependent)
-        public float alphaNoise = 0.003f;     // scales with speed
-        public float noiseJitterFactor = 0.3f;// randomness on alpha
-
-        // Tremor (high frequency micro jitter)
-        public float tremorAmp = 0.03f;       // deg/px
-        public float tremorF1 = 9f, tremorF2 = 22f;
-
-        // Low-frequency drift (optional)
-        public float driftAmp = 0.02f;        // deg/px
-        public float driftHz = 1.2f;
-
-        // Geometry / curvature
-        public float viaPointChance = 0.35f;
-        public float viaOffsetMin = 0.05f, viaOffsetMax = 0.25f; // fraction of distance
-
-        // Sampling / application
-        public int sampleHz = 120;            // 60–240 good
-        public float blend = 0.9f;            // micro-lag smoothing 0..1
-
-        // Safety
-        public float pitchMin = -90f, pitchMax = 90f;
-    }
-
     public static ModConfig load() {
         ModConfig config;
         if (CONFIG_FILE.exists()) {

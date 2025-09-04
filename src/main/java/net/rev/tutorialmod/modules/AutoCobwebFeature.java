@@ -9,12 +9,11 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
-import net.rev.tutorialmod.humanmove.MathUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class AutoCobweb {
+public class AutoCobwebFeature {
     private static final double MAX_RANGE = 5.0;
 
     public static void trigger() {
@@ -65,8 +64,8 @@ public class AutoCobweb {
 
             // Calculate yaw and pitch
             Vec3d d = targetVec.subtract(selfEyePos).normalize();
-            float yaw = (float) (Math.atan2(d.z, d.x) * -180 / Math.PI) + 90f;
-            float pitch = (float) (Math.asin(d.y) * -180 / Math.PI);
+            float yaw = (float) (Math.toDegrees(Math.atan2(d.z, d.x))) - 90f;
+            float pitch = (float) (-Math.toDegrees(Math.asin(d.y)));
 
             // Set rotation
             self.setYaw(yaw);
