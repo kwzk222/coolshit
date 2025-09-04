@@ -3,6 +3,7 @@ package net.rev.tutorialmod.modules;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.block.BlockState;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -68,8 +69,15 @@ public class AutoCobwebFeature {
 
             BlockPos targetBlock;
             if (!bestTarget.isOnGround()) {
-                targetBlock = predictLandingPos(bestTarget, client);
-                self.sendMessage(Text.literal("[AutoCobweb] Target is airborne, predicting landing position."), false);
+                self.sendMessage(Text.literal("[AutoCobweb] Target is airborne, finding ground below."), false);
+                BlockPos.Mutable mutable = new BlockPos.Mutable(bestTarget.getX(), bestTarget.getY(), bestTarget.getZ());
+                for (int y = mutable.getY(); y > client.world.getBottomY(); y--) {
+                    mutable.setY(y);
+                    if (!client.world.getBlockState(mutable).isAir()) {
+                        break;
+                    }
+                }
+                targetBlock = mutable.up().toImmutable();
             } else {
                 targetBlock = bestTarget.getBlockPos().down();
             }
@@ -80,26 +88,32 @@ public class AutoCobwebFeature {
             if (hitResultOpt.isEmpty()) {
                 self.sendMessage(Text.literal("[AutoCobweb] Primary placement failed. Trying fallback..."), false);
                 BlockPos selfBlock = self.getBlockPos();
+                Optional<BlockHitResult> lastValidFallback = Optional.empty();
 
                 Vec3d selfEyePos = self.getEyePos();
                 Vec3d targetCenterPos = targetBlock.toCenterPos();
                 Vec3d direction = targetCenterPos.subtract(selfEyePos).normalize();
                 double maxDist = self.distanceTo(bestTarget);
 
-                for (double dist = 0; dist < maxDist; dist += 0.5) {
-                    Vec3d candidatePos = targetCenterPos.subtract(direction.multiply(dist));
+                // Iterate from player towards the target, finding the furthest valid spot
+                for (double dist = 1; dist < maxDist; dist += 0.5) {
+                    Vec3d candidatePos = selfEyePos.add(direction.multiply(dist));
                     BlockPos candidateBlock = BlockPos.ofFloored(candidatePos);
 
                     if (candidateBlock.equals(selfBlock)) continue;
 
-                    if (client.world.getBlockState(candidateBlock).isSolid() && client.world.getBlockState(candidateBlock.up()).isAir()) {
+                    BlockState candidateState = client.world.getBlockState(candidateBlock);
+                    if (candidateState.isSideSolid(client.world, candidateBlock, Direction.UP) && client.world.getBlockState(candidateBlock.up()).isAir()) {
                         Optional<BlockHitResult> fallbackHitOpt = findVisibleHitOnBlock(client, self, bestTarget, candidateBlock);
                         if (fallbackHitOpt.isPresent()) {
-                            self.sendMessage(Text.literal("[AutoCobweb] Found fallback block: " + candidateBlock.toShortString()), false);
-                            hitResultOpt = fallbackHitOpt;
-                            break;
+                            lastValidFallback = fallbackHitOpt;
                         }
                     }
+                }
+
+                if (lastValidFallback.isPresent()) {
+                    self.sendMessage(Text.literal("[AutoCobweb] Found fallback block: " + lastValidFallback.get().getBlockPos().toShortString()), false);
+                    hitResultOpt = lastValidFallback;
                 }
             }
 
@@ -214,74 +228,4 @@ public class AutoCobwebFeature {
         return points.get(points.size() - 1);
     }
 
-    private static BlockPos predictLandingPos(PlayerEntity player, MinecraftClient client) {
-        if (client.world == null) {
-            return player.getBlockPos().down();
-        }
-
-        Vec3d simPos = player.getPos();
-        Vec3d simVel = player.getVelocity();
-
-        // Simulate tick-by-tick
-        for (int i = 0; i < 200; i++) { // Max 10 seconds prediction
-            Vec3d nextPos = simPos.add(simVel);
-
-            RaycastContext raycastContext = new RaycastContext(
-                    simPos,
-                    nextPos,
-                    RaycastContext.ShapeType.COLLIDER,
-                    RaycastContext.FluidHandling.NONE,
-                    player
-            );
-
-            BlockHitResult hit = client.world.raycast(raycastContext);
-
-            if (hit.getType() == HitResult.Type.BLOCK) {
-                Direction side = hit.getSide();
-                if (side.getAxis().isHorizontal()) {
-                    // Hit a wall. Stop horizontal movement and continue falling from the point of impact.
-                    simPos = hit.getPos();
-                    simVel = new Vec3d(0, simVel.y, 0);
-                    continue; // Continue to the next simulation tick
-                } else {
-                    // Hit a floor or ceiling. This is a terminal collision. Find the precise landing spot.
-                    BlockPos hitPos = hit.getBlockPos();
-                    BlockPos.Mutable mutable = new BlockPos.Mutable(hitPos.getX(), hitPos.getY() + 10, hitPos.getZ());
-
-                    // Scan downwards from 10 blocks above the collision point
-                    for (int y = mutable.getY(); y > client.world.getBottomY(); y--) {
-                        mutable.setY(y);
-                        if (!client.world.getBlockState(mutable).isAir() && client.world.getBlockState(mutable.up()).isAir()) {
-                            // Found a solid block with air directly above it. This is our landing surface.
-                            return mutable.toImmutable();
-                        }
-                    }
-                    // Fallback to the original hit position if no suitable surface is found
-                    return hitPos;
-                }
-            }
-
-            simPos = nextPos;
-
-            // Apply physics for next tick
-            simVel = simVel.multiply(0.98, 0.98, 0.98);
-            simVel = simVel.add(0, -0.08, 0);
-        }
-
-        // Fallback if no landing spot found (e.g. over void)
-        BlockHitResult hit = client.world.raycast(new RaycastContext(
-                simPos,
-                new Vec3d(simPos.x, client.world.getBottomY(), simPos.z),
-                RaycastContext.ShapeType.COLLIDER,
-                RaycastContext.FluidHandling.NONE,
-                player
-        ));
-
-        if (hit.getType() == HitResult.Type.BLOCK) {
-            return hit.getBlockPos();
-        }
-
-        // Absolute fallback
-        return player.getBlockPos().down();
-    }
 }
