@@ -2,6 +2,7 @@ package net.rev.tutorialmod.modules;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.block.SideShapeType;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -70,16 +71,16 @@ public class AutoCobwebFeature {
             BlockPos targetBlock;
             if (!bestTarget.isOnGround()) {
                 self.sendMessage(Text.literal("[AutoCobweb] Target is airborne, finding ground below."), false);
-                BlockPos.Mutable mutable = new BlockPos.Mutable(bestTarget.getX(), bestTarget.getY(), bestTarget.getZ());
+                BlockPos.Mutable mutable = bestTarget.getBlockPos().down().mutableCopy();
                 for (int y = mutable.getY(); y > client.world.getBottomY(); y--) {
                     mutable.setY(y);
                     if (!client.world.getBlockState(mutable).isAir()) {
                         break;
                     }
                 }
-                targetBlock = mutable.up().toImmutable();
+                targetBlock = mutable.toImmutable();
             } else {
-                targetBlock = bestTarget.getBlockPos().down();
+                targetBlock = bestTarget.getBlockPos();
             }
             self.sendMessage(Text.literal("[AutoCobweb] Target block: " + targetBlock.toShortString()), false);
 
@@ -103,7 +104,7 @@ public class AutoCobwebFeature {
                     if (candidateBlock.equals(selfBlock)) continue;
 
                     BlockState candidateState = client.world.getBlockState(candidateBlock);
-                    if (candidateState.isSideSolid(client.world, candidateBlock, Direction.UP) && client.world.getBlockState(candidateBlock.up()).isAir()) {
+                    if (candidateState.isSideSolid(client.world, candidateBlock, Direction.UP, SideShapeType.FULL) && client.world.getBlockState(candidateBlock.up()).isAir()) {
                         Optional<BlockHitResult> fallbackHitOpt = findVisibleHitOnBlock(client, self, bestTarget, candidateBlock);
                         if (fallbackHitOpt.isPresent()) {
                             lastValidFallback = fallbackHitOpt;
