@@ -91,7 +91,7 @@ public class AutoCobwebFeature {
     }
 
     private static BlockHitResult findVisibleHitOnBlock(Vec3d playerEyes, BlockPos block) {
-        double[] offsets = {0.0, -0.4, 0.4};
+        double[] offsets = {0.0, -0.3, 0.3};
         for (double dx : offsets) {
             for (double dz : offsets) {
                 Vec3d targetPoint = new Vec3d(block.getX() + 0.5 + dx, block.getY() + 1.0, block.getZ() + 0.5 + dz);
