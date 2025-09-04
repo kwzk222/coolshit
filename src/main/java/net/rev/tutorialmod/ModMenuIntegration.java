@@ -157,10 +157,10 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Enable or disable the Auto-Cobweb feature."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCobwebEnabled = newValue)
                     .build());
-            autoCobweb.addEntry(entryBuilder.startDoubleSlider(Text.literal("Max Range"), TutorialMod.CONFIG.autoCobwebMaxRange, 1.0, 7.0)
-                    .setDefaultValue(5.0)
+            autoCobweb.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range (x100)"), (long) (TutorialMod.CONFIG.autoCobwebMaxRange * 100), 100L, 700L)
+                    .setDefaultValue((long) (5.0 * 100))
                     .setTooltip(Text.literal("The maximum distance at which the Auto-Cobweb feature will activate."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCobwebMaxRange = newValue)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCobwebMaxRange = newValue / 100.0)
                     .build());
 
             return builder.build();
