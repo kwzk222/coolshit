@@ -135,7 +135,7 @@ public class AutoCobwebFeature {
 
         for (double dx : offs) {
             for (double dz : offs) {
-                Vec3d candidate = new Vec3d(block.getX() + 0.5 + dx, block.getY() + 1.0, block.getZ() + 0.5 + dz);
+                Vec3d candidate = new Vec3d(block.getX() + 0.5 + dx, block.getY() + 0.999, block.getZ() + 0.5 + dz);
                 double candDist2 = eye.squaredDistanceTo(candidate);
 
                 // 1) Check entity occlusion: any entity whose bbox intersects the segment sooner than the block?
@@ -146,7 +146,7 @@ public class AutoCobwebFeature {
                 }
 
                 // 2) Raycast to block (block-only) to ensure we hit the target block top
-                RaycastContext ctx = new RaycastContext(eye, candidate, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, self);
+                RaycastContext ctx = new RaycastContext(eye, candidate, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, self);
                 HitResult hit = client.world.raycast(ctx);
                 if (hit.getType() != HitResult.Type.BLOCK) {
                     self.sendMessage(Text.literal("[AutoCobweb] Candidate " + candidate + " raycast did not hit a block."), false);
