@@ -77,7 +77,8 @@ public class AutoCobwebFeature {
                     best.getName().getString(), distBest, angleDeg)), false);
 
             // 3) Find a visible point on top-of-block under the target
-            BlockPos under = best.getBlockPos().down();
+            BlockPos under = BlockPos.ofFloored(best.getX(), best.getY() - 0.1, best.getZ());
+            self.sendMessage(Text.literal("[AutoCobweb] Target block = " + under.toShortString()), false);
             Optional<Vec3d> visible = findVisiblePointOnTopFace(client, self, best, under);
 
             if (visible.isEmpty()) {
