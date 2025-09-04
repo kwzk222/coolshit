@@ -8,8 +8,8 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
-import net.rev.tutorialmod.Human;
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.humanmove.MathUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,17 +61,23 @@ public class AutoCobweb {
             BlockPos targetBlockPos = bestTarget.getBlockPos().down();
             Vec3d targetVec = targetBlockPos.toCenterPos();
 
-            client.player.sendMessage(Text.literal("Moving to place cobweb at " + targetBlockPos), false);
+            client.player.sendMessage(Text.literal("Aiming at " + targetBlockPos), false);
 
-            Runnable placeCobweb = () -> {
-                client.player.sendMessage(Text.literal("Placing cobweb."), false);
-                BlockHitResult hitResult = new BlockHitResult(targetVec, Direction.UP, targetBlockPos, false);
-                if (client.interactionManager != null) {
-                    client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
-                }
-            };
+            // Calculate yaw and pitch
+            Vec3d d = targetVec.subtract(selfEyePos).normalize();
+            float yaw = (float) (Math.atan2(d.z, d.x) * -180 / Math.PI) + 90f;
+            float pitch = (float) (Math.asin(d.y) * -180 / Math.PI);
 
-            Human.move().lookAt(targetVec, placeCobweb);
+            // Set rotation
+            self.setYaw(yaw);
+            self.setPitch(pitch);
+
+            // Place block
+            client.player.sendMessage(Text.literal("Placing cobweb."), false);
+            BlockHitResult hitResult = new BlockHitResult(targetVec, Direction.UP, targetBlockPos, false);
+            if (client.interactionManager != null) {
+                client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
+            }
         } else {
             client.player.sendMessage(Text.literal("No valid targets found."), false);
         }
