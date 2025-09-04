@@ -166,13 +166,19 @@ public class AutoCobwebFeature {
         Box searchBox = new Box(from, to).expand(0.1);
 
         for (Entity e : client.world.getOtherEntities(self, searchBox)) {
-            // Ignore spectators and the actual target entity, since they are not at the landing spot yet.
-            if (e.isSpectator() || e == target) continue;
+            if (e.isSpectator()) continue;
 
             Optional<Vec3d> entHit = e.getBoundingBox().expand(0.1).raycast(from, to);
             if (entHit.isPresent()) {
-                // Any other entity is a blocker.
-                return true;
+                // If we hit our target, it's only a blocker if the hit is closer than the block candidate
+                if (e == target) {
+                    if (from.squaredDistanceTo(entHit.get()) < candidateDistSq) {
+                        return true;
+                    }
+                } else {
+                    // Any other entity is a blocker
+                    return true;
+                }
             }
         }
         return false;
