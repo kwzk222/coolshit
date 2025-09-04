@@ -111,10 +111,13 @@ public class AutoCobwebFeature {
         RaycastContext context = new RaycastContext(from, to, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player);
         BlockHitResult hitResult = client.world.raycast(context);
 
-        if (hitResult.getType() == HitResult.Type.BLOCK &&
-            hitResult.getBlockPos().equals(targetBlock) &&
-            hitResult.getSide() == Direction.UP) {
-            return hitResult;
+        if (hitResult.getType() == HitResult.Type.BLOCK && hitResult.getBlockPos().equals(targetBlock)) {
+            // Check if the hit position is on the top face of the block, allowing for a small tolerance.
+            if (Math.abs(hitResult.getPos().y - (targetBlock.getY() + 1.0)) < 0.001) {
+                // To ensure the placement is correct, we should return a new BlockHitResult
+                // that explicitly states the hit was on the UP face.
+                return new BlockHitResult(hitResult.getPos(), Direction.UP, hitResult.getBlockPos(), hitResult.isInsideBlock());
+            }
         }
         return null;
     }
