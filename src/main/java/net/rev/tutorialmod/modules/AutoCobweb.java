@@ -2,7 +2,7 @@ package net.rev.tutorialmod.modules;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
@@ -17,11 +17,13 @@ import java.util.List;
 public class AutoCobweb {
     private static final double MAX_RANGE = 5.0;
 
-    public static void onHotbarSwitch(PlayerInventory inventory, int slot) {
+    public static void trigger() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) {
             return;
         }
+
+        client.player.sendMessage(Text.literal("AutoCobweb triggered. Scanning for targets..."), false);
 
         PlayerEntity self = client.player;
         List<PlayerEntity> validTargets = new ArrayList<>();
@@ -35,6 +37,7 @@ public class AutoCobweb {
         }
 
         if (validTargets.isEmpty()) {
+            client.player.sendMessage(Text.literal("No valid targets found."), false);
             return;
         }
 
@@ -54,15 +57,23 @@ public class AutoCobweb {
         }
 
         if (bestTarget != null) {
+            client.player.sendMessage(Text.literal("Target found: " + bestTarget.getName().getString()), false);
             BlockPos targetBlockPos = bestTarget.getBlockPos().down();
             Vec3d targetVec = targetBlockPos.toCenterPos();
 
+            client.player.sendMessage(Text.literal("Moving to place cobweb at " + targetBlockPos), false);
+
             Runnable placeCobweb = () -> {
+                client.player.sendMessage(Text.literal("Placing cobweb."), false);
                 BlockHitResult hitResult = new BlockHitResult(targetVec, Direction.UP, targetBlockPos, false);
-                client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
+                if (client.interactionManager != null) {
+                    client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
+                }
             };
 
             Human.move().lookAt(targetVec, placeCobweb);
+        } else {
+            client.player.sendMessage(Text.literal("No valid targets found."), false);
         }
     }
 }

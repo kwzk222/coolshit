@@ -30,6 +30,7 @@ import org.lwjgl.glfw.GLFW;
 import net.minecraft.text.Text;
 import net.rev.tutorialmod.humanmove.HumanMoveController;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
+import net.rev.tutorialmod.modules.AutoCobweb;
 import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -66,12 +67,14 @@ public class TutorialModClient implements ClientModInitializer {
     public static int awaitingRailConfirmationCooldown = -1;
     private static KeyBinding masterToggleKeybind;
     private static KeyBinding teammateKeybind;
+    private static KeyBinding placeCobwebKeybind;
 
     @Override
     public void onInitializeClient() {
         instance = this;
         masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.master_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.tutorialmod"));
         teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
+        placeCobwebKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.place_cobweb", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_X, "key.categories.tutorialmod"));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
         WorldRenderEvents.LAST.register(context -> {
             HumanMoveController.getInstance().renderTick();
@@ -105,6 +108,11 @@ public class TutorialModClient implements ClientModInitializer {
         }
         while (teammateKeybind.wasPressed()) {
             handleTeammateKeybind(client);
+        }
+        while (placeCobwebKeybind.wasPressed()) {
+            if (client.player != null && client.player.getMainHandStack().getItem() == Items.COBWEB) {
+                AutoCobweb.trigger();
+            }
         }
     }
 

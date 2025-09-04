@@ -9,8 +9,7 @@
 		"ClientPlayerInteractionManagerMixin",
 		"ClientPlayNetworkHandlerMixin",
 		"HandledScreenAccessor",
-		"PlayerInventoryMixin",
-		"PlayerInventoryCobwebMixin"
+		"PlayerInventoryMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
