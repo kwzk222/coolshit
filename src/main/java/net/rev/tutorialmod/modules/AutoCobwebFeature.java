@@ -205,19 +205,28 @@ public class AutoCobwebFeature {
             BlockHitResult hit = client.world.raycast(raycastContext);
 
             if (hit.getType() == HitResult.Type.BLOCK) {
-                BlockPos hitPos = hit.getBlockPos();
-                BlockPos.Mutable mutable = new BlockPos.Mutable(hitPos.getX(), hitPos.getY() + 10, hitPos.getZ());
+                Direction side = hit.getSide();
+                if (side.getAxis().isHorizontal()) {
+                    // Hit a wall. Stop horizontal movement and continue falling from the point of impact.
+                    simPos = hit.getPos();
+                    simVel = new Vec3d(0, simVel.y, 0);
+                    continue; // Continue to the next simulation tick
+                } else {
+                    // Hit a floor or ceiling. This is a terminal collision. Find the precise landing spot.
+                    BlockPos hitPos = hit.getBlockPos();
+                    BlockPos.Mutable mutable = new BlockPos.Mutable(hitPos.getX(), hitPos.getY() + 10, hitPos.getZ());
 
-                // Scan downwards from 10 blocks above the collision point
-                for (int y = mutable.getY(); y > client.world.getBottomY(); y--) {
-                    mutable.setY(y);
-                    if (!client.world.getBlockState(mutable).isAir() && client.world.getBlockState(mutable.up()).isAir()) {
-                        // Found a solid block with air directly above it. This is our landing surface.
-                        return mutable.toImmutable();
+                    // Scan downwards from 10 blocks above the collision point
+                    for (int y = mutable.getY(); y > client.world.getBottomY(); y--) {
+                        mutable.setY(y);
+                        if (!client.world.getBlockState(mutable).isAir() && client.world.getBlockState(mutable.up()).isAir()) {
+                            // Found a solid block with air directly above it. This is our landing surface.
+                            return mutable.toImmutable();
+                        }
                     }
+                    // Fallback to the original hit position if no suitable surface is found
+                    return hitPos;
                 }
-                // Fallback to the original hit position if no suitable surface is found
-                return hitPos;
             }
 
             simPos = nextPos;
