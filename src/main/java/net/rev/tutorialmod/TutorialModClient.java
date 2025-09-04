@@ -67,6 +67,10 @@ public class TutorialModClient implements ClientModInitializer {
     private static KeyBinding teammateKeybind;
     private static KeyBinding placeCobwebKeybind;
 
+    public static int autoCobwebPlacementDelay = -1;
+    public static float originalYaw;
+    public static float originalPitch;
+
     @Override
     public void onInitializeClient() {
         instance = this;
@@ -85,10 +89,30 @@ public class TutorialModClient implements ClientModInitializer {
             triggerBot.onTick(client);
         }
         if (!TutorialMod.CONFIG.masterEnabled) return;
+        handleAutoCobweb(client);
         handleTotemSwap(client);
         handleCombatSwap(client);
         handlePlacementSequence(client);
         handleConfirmationCooldowns(client);
+    }
+
+    private void handleAutoCobweb(MinecraftClient client) {
+        if (autoCobwebPlacementDelay > 0) {
+            autoCobwebPlacementDelay--;
+        } else if (autoCobwebPlacementDelay == 0) {
+            if (client.player != null) {
+                client.options.useKey.setPressed(true);
+                client.player.swingHand(Hand.MAIN_HAND);
+                autoCobwebPlacementDelay = -2; // Cooldown to release the key
+            }
+        } else if (autoCobwebPlacementDelay == -2) {
+            client.options.useKey.setPressed(false);
+            if (client.player != null) {
+                client.player.setYaw(originalYaw);
+                client.player.setPitch(originalPitch);
+            }
+            autoCobwebPlacementDelay = -1;
+        }
     }
 
     // --- Tick Logic Handlers ---

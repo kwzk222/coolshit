@@ -150,6 +150,19 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackDelay = newValue)
                     .build());
 
+            // Auto-Cobweb Category
+            ConfigCategory autoCobweb = builder.getOrCreateCategory(Text.literal("Auto-Cobweb"));
+            autoCobweb.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Auto-Cobweb"), TutorialMod.CONFIG.autoCobwebEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the Auto-Cobweb feature."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCobwebEnabled = newValue)
+                    .build());
+            autoCobweb.addEntry(entryBuilder.startDoubleSlider(Text.literal("Max Range"), TutorialMod.CONFIG.autoCobwebMaxRange, 1.0, 7.0)
+                    .setDefaultValue(5.0)
+                    .setTooltip(Text.literal("The maximum distance at which the Auto-Cobweb feature will activate."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCobwebMaxRange = newValue)
+                    .build());
+
             return builder.build();
         };
     }

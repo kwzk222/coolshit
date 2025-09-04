@@ -23,14 +23,13 @@ import java.util.Random;
 
 @Environment(EnvType.CLIENT)
 public class AutoCobwebFeature {
-    private static final double MAX_RANGE = 5.0; // placement reach
 
     public static void trigger() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null) return;
 
         client.execute(() -> {
-            if (client.player == null || client.world == null) return;
+            if (client.player == null || client.world == null || !TutorialMod.CONFIG.autoCobwebEnabled) return;
             ClientPlayerEntity self = client.player;
 
             self.sendMessage(Text.literal("[AutoCobweb] Triggered"), false);
@@ -42,7 +41,7 @@ public class AutoCobwebFeature {
 
             List<PlayerEntity> candidates = new ArrayList<>();
             for (PlayerEntity p : client.world.getPlayers()) {
-                if (p == self || p.isSpectator() || self.distanceTo(p) > MAX_RANGE || TutorialMod.CONFIG.teamManager.isTeammate(p.getName().getString())) {
+                if (p == self || p.isSpectator() || self.distanceTo(p) > TutorialMod.CONFIG.autoCobwebMaxRange || TutorialMod.CONFIG.teamManager.isTeammate(p.getName().getString())) {
                     continue;
                 }
                 candidates.add(p);
@@ -83,13 +82,13 @@ public class AutoCobwebFeature {
             Vec3d d = aim.subtract(eye).normalize();
             float yaw = (float) Math.toDegrees(Math.atan2(d.z, d.x)) - 90f;
             float pitch = (float) -Math.toDegrees(Math.asin(d.y));
+            TutorialModClient.originalYaw = self.getYaw();
+            TutorialModClient.originalPitch = self.getPitch();
+
             self.setYaw(yaw);
             self.setPitch(pitch);
 
-            if (client.interactionManager != null) {
-                self.sendMessage(Text.literal("[AutoCobweb] Placing cobweb..."), false);
-                client.interactionManager.interactBlock(self, Hand.MAIN_HAND, hitResult);
-            }
+            TutorialModClient.autoCobwebPlacementDelay = 1;
         });
     }
 

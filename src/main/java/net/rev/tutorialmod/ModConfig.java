@@ -41,6 +41,9 @@ public class ModConfig {
     public double triggerBotMaxRange = 4.5;
     public int triggerBotAttackDelay = 0;
 
+    public boolean autoCobwebEnabled = true;
+    public double autoCobwebMaxRange = 5.0;
+
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
 
