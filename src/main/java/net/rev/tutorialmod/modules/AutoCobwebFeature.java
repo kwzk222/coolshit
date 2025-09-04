@@ -115,7 +115,7 @@ public class AutoCobwebFeature {
 
         // Stage 1: Check for entity obstruction
         Box searchBox = new Box(from, to).expand(1.0);
-        EntityHitResult entityHit = ProjectileUtil.raycast(self, from, to, searchBox, (entity) -> !entity.isSpectator() && entity.canBeHit(), from.squaredDistanceTo(to));
+        EntityHitResult entityHit = ProjectileUtil.raycast(self, from, to, searchBox, (entity) -> !entity.isSpectator() && entity.isCollidable(), from.squaredDistanceTo(to));
 
         if (entityHit != null && entityHit.getEntity() != bestTarget) {
             return null; // Path is blocked by an unexpected entity
