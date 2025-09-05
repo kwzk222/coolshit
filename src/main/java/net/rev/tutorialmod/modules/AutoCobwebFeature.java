@@ -10,7 +10,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
-import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -26,18 +25,23 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 @Environment(EnvType.CLIENT)
 public class AutoCobwebFeature {
 
+    // --- State for Hold-to-Place ---
     private static boolean isPlacing = false;
     private static int placementCooldown = 0;
     private static final int COOLDOWN_TICKS = 4; // 5 times a second
 
+    // Store original camera angles for snapback
     public static float originalYaw;
     public static float originalPitch;
 
+    /**
+     * Called when the auto cobweb key is first pressed.
+     * Initializes the continuous placement state.
+     */
     public static void onTriggerPressed(MinecraftClient client) {
         if (client.player == null) return;
         isPlacing = true;
@@ -46,6 +50,10 @@ public class AutoCobwebFeature {
         originalPitch = client.player.getPitch();
     }
 
+    /**
+     * Called when the auto cobweb key is released.
+     * Stops the continuous placement and snaps the camera back.
+     */
     public static void onTriggerReleased(MinecraftClient client) {
         isPlacing = false;
         if (client.player != null) {
@@ -54,6 +62,9 @@ public class AutoCobwebFeature {
         }
     }
 
+    /**
+     * Called on every client tick. Contains the main logic for the feature.
+     */
     public static void onClientTick(MinecraftClient client) {
         if (!isPlacing || client.player == null || client.world == null) {
             return;
@@ -66,10 +77,86 @@ public class AutoCobwebFeature {
 
         ClientPlayerEntity self = client.player;
 
-        if (self.getMainHandStack().isEmpty() || self.getMainHandStack().getItem() != Items.COBWEB) {
+        // Prerequisite: Must be holding a cobweb.
+        if (self.getMainHandStack().getItem() != Items.COBWEB) {
             return;
         }
 
+        // --- Target Acquisition ---
+        // Find the best player target in range and in line of sight.
+        PlayerEntity bestTarget = findBestTarget(self, client);
+        if (bestTarget == null) {
+            return;
+        }
+
+        // --- Placement Logic ---
+        Optional<BlockHitResult> hitResultOpt = findPlacementSpot(self, bestTarget, client);
+
+        if (hitResultOpt.isEmpty()) {
+            return; // Failed to find any valid placement spot.
+        }
+
+        // If a valid spot was found, reset the cooldown for the next placement.
+        placementCooldown = COOLDOWN_TICKS;
+
+        // --- Execution ---
+        // Aim at the chosen spot and request a click from the client handler.
+        BlockHitResult hitResult = hitResultOpt.get();
+        aimAndPlace(self, hitResult.getPos());
+    }
+
+    /**
+     * Finds the best valid placement spot for a cobweb, trying primary and fallback locations.
+     */
+    private static Optional<BlockHitResult> findPlacementSpot(ClientPlayerEntity self, PlayerEntity bestTarget, MinecraftClient client) {
+        // --- Priority 1: Place on blocks the target is standing on ---
+        List<BlockPos> standingBlocks = getBlocksUnderPlayer(bestTarget, client);
+        standingBlocks.removeIf(pos -> client.world.getBlockState(pos).getBlock().asItem() == Items.COBWEB);
+
+        for (BlockPos standingBlock : standingBlocks) {
+            Optional<BlockHitResult> hitResult = findVisibleHitOnBlock(client, self, bestTarget, standingBlock);
+            if (hitResult.isPresent()) {
+                return hitResult; // Found a valid spot on a primary block.
+            }
+        }
+
+        // --- Priority 2: Fallback to a 3x3x3 grid search ---
+        BlockPos primaryTargetBlock = bestTarget.getBlockPos();
+        List<BlockHitResult> validFallbacks = new ArrayList<>();
+
+        for (int x = -1; x <= 1; x++) {
+            for (int z = -1; z <= 1; z++) {
+                for (int y = -1; y <= 1; y++) {
+                    if (x == 0 && y == 0 && z == 0) continue; // Skip the original failing block
+
+                    BlockPos candidateBlock = primaryTargetBlock.add(x, y, z);
+                    if (candidateBlock.equals(self.getBlockPos())) continue;
+
+                    BlockState candidateState = client.world.getBlockState(candidateBlock);
+                    if (candidateState.getBlock().asItem() != Items.COBWEB &&
+                        candidateState.isSideSolid(client.world, candidateBlock, Direction.UP, SideShapeType.FULL) &&
+                        client.world.getBlockState(candidateBlock.up()).isAir()) {
+                        findVisibleHitOnBlock(client, self, bestTarget, candidateBlock).ifPresent(validFallbacks::add);
+                    }
+                }
+            }
+        }
+
+        if (!validFallbacks.isEmpty()) {
+            // Find the one closest to the user from the valid fallbacks.
+            Optional<BlockHitResult> closestFallback = validFallbacks.stream()
+                    .min(Comparator.comparingDouble(h -> self.getEyePos().squaredDistanceTo(h.getPos())));
+            closestFallback.ifPresent(h -> self.sendMessage(Text.literal("[AutoCobweb] Found fallback block: " + h.getBlockPos().toShortString()), false));
+            return closestFallback;
+        }
+
+        return Optional.empty(); // No primary or fallback spot found.
+    }
+
+    /**
+     * Finds the best player entity to target.
+     */
+    private static PlayerEntity findBestTarget(ClientPlayerEntity self, MinecraftClient client) {
         List<PlayerEntity> candidates = new ArrayList<>();
         for (PlayerEntity p : client.world.getPlayers()) {
             if (p == self || p.isSpectator() || self.distanceTo(p) > TutorialMod.CONFIG.autoCobwebMaxRange || TutorialMod.CONFIG.teamManager.isTeammate(p.getName().getString())) {
@@ -79,85 +166,19 @@ public class AutoCobwebFeature {
         }
 
         if (candidates.isEmpty()) {
-            return;
+            return null;
         }
 
         Vec3d eye = self.getEyePos();
         Vec3d look = self.getRotationVector();
-        PlayerEntity bestTarget = candidates.stream()
+        return candidates.stream()
                 .max(Comparator.comparingDouble(p -> p.getPos().subtract(eye).normalize().dotProduct(look)))
                 .orElse(null);
-
-        if (bestTarget == null) {
-            return;
-        }
-
-        // --- New Targeting Logic ---
-        Optional<BlockHitResult> hitResultOpt = Optional.empty();
-
-        // Priority 1: Multi-Block Standing Positions
-        List<BlockPos> standingBlocks = getBlocksUnderPlayer(bestTarget, client);
-        // Filter out blocks that are already cobwebs
-        standingBlocks.removeIf(pos -> client.world.getBlockState(pos).getBlock().asItem() == Items.COBWEB);
-
-        for (BlockPos standingBlock : standingBlocks) {
-            hitResultOpt = findVisibleHitOnBlock(client, self, bestTarget, standingBlock);
-            if (hitResultOpt.isPresent()) {
-                break; // Found a valid spot
-            }
-        }
-
-        // Priority 2: Fallback
-        if (hitResultOpt.isEmpty()) {
-            BlockPos primaryTargetBlock = bestTarget.getBlockPos();
-            List<BlockHitResult> validFallbacks = new ArrayList<>();
-
-            for (int x = -1; x <= 1; x++) {
-                for (int z = -1; z <= 1; z++) {
-                    for (int y = -1; y <= 1; y++) {
-                        if (x == 0 && y == 0 && z == 0) continue; // Skip the original failing block
-
-                        BlockPos candidateBlock = primaryTargetBlock.add(x, y, z);
-                        if (candidateBlock.equals(self.getBlockPos())) continue;
-
-                        BlockState candidateState = client.world.getBlockState(candidateBlock);
-                        if (candidateState.getBlock().asItem() != Items.COBWEB &&
-                            candidateState.isSideSolid(client.world, candidateBlock, Direction.UP, SideShapeType.FULL) &&
-                            client.world.getBlockState(candidateBlock.up()).isAir()) {
-                            findVisibleHitOnBlock(client, self, bestTarget, candidateBlock).ifPresent(validFallbacks::add);
-                        }
-                    }
-                }
-            }
-
-            if (!validFallbacks.isEmpty()) {
-                // Find the one closest to the user
-                hitResultOpt = validFallbacks.stream()
-                        .min(Comparator.comparingDouble(h -> self.getEyePos().squaredDistanceTo(h.getPos())));
-                hitResultOpt.ifPresent(h -> self.sendMessage(Text.literal("[AutoCobweb] Found fallback block: " + h.getBlockPos().toShortString()), false));
-            }
-        }
-
-
-        if (hitResultOpt.isEmpty()) {
-            return; // Failed to find any valid placement
-        }
-
-        placementCooldown = COOLDOWN_TICKS; // Reset cooldown only if we are attempting a placement
-
-        BlockHitResult hitResult = hitResultOpt.get();
-        Vec3d aim = hitResult.getPos();
-
-        Vec3d d = aim.subtract(eye).normalize();
-        float yaw = (float) Math.toDegrees(Math.atan2(d.z, d.x)) - 90f;
-        float pitch = (float) -Math.toDegrees(Math.asin(d.y));
-
-        self.setYaw(yaw);
-        self.setPitch(pitch);
-
-        TutorialModClient.requestPlacement();
     }
 
+    /**
+     * Gets a list of all solid blocks intersecting the bottom of a player's bounding box.
+     */
     private static List<BlockPos> getBlocksUnderPlayer(PlayerEntity player, MinecraftClient client) {
         List<BlockPos> blocks = new ArrayList<>();
         Box bb = player.getBoundingBox();
@@ -171,13 +192,31 @@ public class AutoCobwebFeature {
                 blocks.add(pos.toImmutable());
             }
         }
-        // If no solid blocks found directly under, just use the player's blockpos as a default
+        // If no solid blocks found directly under, just use the player's blockpos as a default.
         if (blocks.isEmpty()) {
             blocks.add(player.getBlockPos());
         }
         return blocks;
     }
 
+    /**
+     * Aims the player's camera at a specific point and requests a placement action.
+     */
+    private static void aimAndPlace(ClientPlayerEntity self, Vec3d aim) {
+        Vec3d eye = self.getEyePos();
+        Vec3d d = aim.subtract(eye).normalize();
+        float yaw = (float) Math.toDegrees(Math.atan2(d.z, d.x)) - 90f;
+        float pitch = (float) -Math.toDegrees(Math.asin(d.y));
+
+        self.setYaw(yaw);
+        self.setPitch(pitch);
+
+        TutorialModClient.requestPlacement();
+    }
+
+    /**
+     * Checks if a specific point on a block's surface is visible and unobstructed.
+     */
     private static Optional<BlockHitResult> findVisibleHitOnBlock(MinecraftClient client, ClientPlayerEntity self, PlayerEntity target, BlockPos block) {
         Vec3d eye = self.getEyePos();
 
@@ -210,6 +249,9 @@ public class AutoCobwebFeature {
         return Optional.of(pickWeightedRandomPoint(eye, self.getRotationVector(), visibleHits));
     }
 
+    /**
+     * Checks if the line of sight to a point is blocked by an entity.
+     */
     private static boolean isBlockedByEntity(MinecraftClient client, Vec3d from, Vec3d to, PlayerEntity self, PlayerEntity target, double candidateDistSq) {
         if (client.world == null) return false;
 
@@ -232,6 +274,10 @@ public class AutoCobwebFeature {
         return false;
     }
 
+    /**
+     * From a list of visible points on a block, picks one with a weighted random chance.
+     * This is used to make the placement feel less robotic.
+     */
     private static BlockHitResult pickWeightedRandomPoint(Vec3d playerEyes, Vec3d lookVec, List<BlockHitResult> points) {
         Random rand = new Random();
         double[] weights = new double[points.size()];

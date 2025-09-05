@@ -3,6 +3,7 @@ package net.rev.tutorialmod;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.option.KeyBinding;
@@ -10,7 +11,10 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.*;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.Items;
+import net.minecraft.item.ItemStack;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
@@ -25,100 +29,166 @@ import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoCobwebFeature;
 import net.rev.tutorialmod.modules.TriggerBot;
 import org.lwjgl.glfw.GLFW;
-import net.minecraft.block.BlockState;
-
 
 public class TutorialModClient implements ClientModInitializer {
 
+    // --- Singleton Instance ---
     private static TutorialModClient instance;
+
+    // --- Keybindings ---
+    private static KeyBinding masterToggleKeybind;
+    private static KeyBinding teammateKeybind;
+    private static KeyBinding placeCobwebKeybind;
+
+    // --- Modules & Features ---
     private TriggerBot triggerBot;
 
-    // --- State Machines ---
+    // --- State: Auto Cobweb ---
+    private boolean isCobwebKeyHeld = false;
+    private static int clickCooldown = -1;
+
+    // --- State: Combat Swap ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_BACK_ATTACK_MACE }
-
-    private enum PlacementAction {
-        NONE,
-        PLACE_TNT_MINECART,
-        AWAITING_LAVA_PLACEMENT,
-        AWAITING_FIRE_PLACEMENT,
-        SWITCH_TO_CROSSBOW,
-        SWITCH_TO_BOW
-    }
-
-    // --- State Fields ---
     private int swapCooldown = -1;
     private int originalHotbarSlot = -1;
     private SwapAction nextAction = SwapAction.NONE;
     private Entity targetEntity = null;
 
+    // --- State: Placement Sequence (TNT Minecart, etc.) ---
+    private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_LAVA_PLACEMENT, AWAITING_FIRE_PLACEMENT, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
     private int placementCooldown = -1;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
-    private int utilitySlot = -1; // Can be lava bucket or flint and steel
+    private int utilitySlot = -1;
     private int crossbowSlot = -1;
     private int actionTimeout = -1;
 
+    // --- State: Misc ---
     public static long lastBowShotTick = -1;
     public static int awaitingRailConfirmationCooldown = -1;
-    private static KeyBinding masterToggleKeybind;
-    private static KeyBinding teammateKeybind;
-    private static KeyBinding placeCobwebKeybind;
 
-    // New state for hold-to-use cobweb
-    private boolean isCobwebKeyHeld = false;
-    private static int clickCooldown = -1;
 
+    //================================================================================
+    // INITIALIZATION
+    //================================================================================
 
     @Override
     public void onInitializeClient() {
         instance = this;
+        triggerBot = new TriggerBot();
+
+        // Register Keybindings
         masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.master_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.tutorialmod"));
         teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
         placeCobwebKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.place_cobweb", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_X, "key.categories.tutorialmod"));
+
+        // Register Event Listeners
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
         AttackEntityCallback.EVENT.register(this::onAttackEntity);
+
+        // Register Commands
         new CommandManager().registerCommands();
-        triggerBot = new TriggerBot();
     }
 
-    private void onClientTick(MinecraftClient client) {
-        handleKeybinds(client);
-        handleCobwebKeyState(client); // New handler for hold-to-use
 
+    //================================================================================
+    // EVENT HANDLERS (TICK & ATTACK)
+    //================================================================================
+
+    /**
+     * The main client tick loop where all continuous logic is handled.
+     */
+    private void onClientTick(MinecraftClient client) {
+        // Handle keybinds first, as they might toggle features on/off.
+        handleKeybinds(client);
+        handleCobwebKeyState(client);
+
+        // Handle TriggerBot separately, as it may have its own master toggle.
         if (triggerBot != null) {
             triggerBot.onTick(client);
         }
+
+        // Master toggle check for all subsequent features.
         if (!TutorialMod.CONFIG.masterEnabled) return;
 
-        AutoCobwebFeature.onClientTick(client); // AutoCobweb logic is now always ticking
-        handlePlacementClick(client); // New handler for simulating clicks
-
-        handleTotemSwap(client);
-        handleCombatSwap(client);
-        handlePlacementSequence(client);
-        handleConfirmationCooldowns(client);
+        // --- Feature Ticks ---
+        AutoCobwebFeature.onClientTick(client); // Handles continuous cobweb placement
+        handlePlacementClick(client);          // Handles the brief mouse click simulation
+        handleTotemSwap(client);               // Handles swapping to a totem when hovering in inventory
+        handleCombatSwap(client);              // Handles axe/mace swapping during combat
+        handlePlacementSequence(client);       // Handles the TNT Minecart -> Lava/Fire -> Crossbow sequence
+        handleConfirmationCooldowns(client);   // Handles timed confirmations for placements
     }
 
-    private void handlePlacementClick(MinecraftClient client) {
-        if (clickCooldown > 0) {
-            clickCooldown--;
-        } else if (clickCooldown == 0) {
-            client.options.useKey.setPressed(false);
-            clickCooldown = -1;
-        }
-    }
+    /**
+     * Intercepts entity attacks to trigger combat swaps (e.g., axe for shields).
+     */
+    private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
+        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
+        if (target instanceof PlayerEntity) {
+            PlayerEntity attackedPlayer = (PlayerEntity) target;
+            boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
 
-    public static void requestPlacement() {
-        if (clickCooldown == -1) { // Prevent requesting another click while one is in progress
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player != null) {
-                client.options.useKey.setPressed(true);
-                client.player.swingHand(Hand.MAIN_HAND);
-                clickCooldown = 1; // Release the click on the next tick
+            Vec3d selfPos = player.getPos();
+            Vec3d targetPos = attackedPlayer.getPos();
+            Vec3d targetLookVec = attackedPlayer.getRotationVector();
+            Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
+            boolean isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
+
+            boolean hasArmor = isArmored(attackedPlayer);
+            PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
+            if (isShielding && isFacing && TutorialMod.CONFIG.axeSwapEnabled) {
+                int axeSlot = findAxeInHotbar(player);
+                if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
+                    originalHotbarSlot = inventory.getSelectedSlot();
+                    inventory.setSelectedSlot(axeSlot);
+                    targetEntity = target;
+                    int maceSlot = findMaceInHotbar(player);
+                    if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
+                        swapCooldown = TutorialMod.CONFIG.comboSwapDelay;
+                        nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
+                    } else {
+                        swapCooldown = TutorialMod.CONFIG.axeSwapDelay;
+                        nextAction = SwapAction.SWITCH_BACK;
+                    }
+                }
+            } else if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled) {
+                int maceSlot = findMaceInHotbar(player);
+                if (maceSlot != -1 && inventory.getSelectedSlot() != maceSlot) {
+                    originalHotbarSlot = inventory.getSelectedSlot();
+                    inventory.setSelectedSlot(maceSlot);
+                    swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
+                    nextAction = SwapAction.SWITCH_BACK;
+                }
             }
         }
+        return ActionResult.PASS;
     }
 
+
+    //================================================================================
+    // TICK LOGIC HANDLERS (Called from onClientTick)
+    //================================================================================
+
+    /**
+     * Handles one-shot keybinds like the master toggle and teammate management.
+     */
+    private void handleKeybinds(MinecraftClient client) {
+        while (masterToggleKeybind.wasPressed()) {
+            TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
+            TutorialMod.CONFIG.save();
+            if (client.player != null) {
+                client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
+            }
+        }
+        while (teammateKeybind.wasPressed()) {
+            handleTeammateKeybind(client);
+        }
+    }
+
+    /**
+     * Handles the press-and-hold state for the AutoCobweb key.
+     */
     private void handleCobwebKeyState(MinecraftClient client) {
         if (placeCobwebKeybind.isPressed()) {
             if (!isCobwebKeyHeld) {
@@ -137,21 +207,18 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private void handleKeybinds(MinecraftClient client) {
-        while (masterToggleKeybind.wasPressed()) {
-            TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
-            TutorialMod.CONFIG.save();
-            if (client.player != null) {
-                client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
-            }
+    /**
+     * Manages the brief cooldown for simulated mouse clicks to ensure they are released.
+     */
+    private void handlePlacementClick(MinecraftClient client) {
+        if (clickCooldown > 0) {
+            clickCooldown--;
+        } else if (clickCooldown == 0) {
+            client.options.useKey.setPressed(false);
+            clickCooldown = -1;
         }
-        while (teammateKeybind.wasPressed()) {
-            handleTeammateKeybind(client);
-        }
-        // The old cobweb keybind logic is removed from here and handled by handleCobwebKeyState
     }
 
-    // ... The rest of the file remains the same ...
     private void handleTeammateKeybind(MinecraftClient client) {
         if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
             Entity target = ((net.minecraft.util.hit.EntityHitResult) client.crosshairTarget).getEntity();
@@ -278,75 +345,20 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
-        if (target instanceof PlayerEntity) {
-            PlayerEntity attackedPlayer = (PlayerEntity) target;
-            boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
 
-            Vec3d selfPos = player.getPos();
-            Vec3d targetPos = attackedPlayer.getPos();
-            Vec3d targetLookVec = attackedPlayer.getRotationVector();
-            Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
-            boolean isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
+    //================================================================================
+    // PUBLIC STATIC METHODS (for inter-class communication)
+    //================================================================================
 
-            boolean hasArmor = isArmored(attackedPlayer);
-            PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
-            if (isShielding && isFacing && TutorialMod.CONFIG.axeSwapEnabled) {
-                int axeSlot = findAxeInHotbar(player);
-                if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
-                    originalHotbarSlot = inventory.getSelectedSlot();
-                    inventory.setSelectedSlot(axeSlot);
-                    targetEntity = target;
-                    int maceSlot = findMaceInHotbar(player);
-                    if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
-                        swapCooldown = TutorialMod.CONFIG.comboSwapDelay;
-                        nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
-                    } else {
-                        swapCooldown = TutorialMod.CONFIG.axeSwapDelay;
-                        nextAction = SwapAction.SWITCH_BACK;
-                    }
-                }
-            } else if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled) {
-                int maceSlot = findMaceInHotbar(player);
-                if (maceSlot != -1 && inventory.getSelectedSlot() != maceSlot) {
-                    originalHotbarSlot = inventory.getSelectedSlot();
-                    inventory.setSelectedSlot(maceSlot);
-                    swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
-                    nextAction = SwapAction.SWITCH_BACK;
-                }
+    public static void requestPlacement() {
+        if (clickCooldown == -1) { // Prevent requesting another click while one is in progress
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.player != null) {
+                client.options.useKey.setPressed(true);
+                client.player.swingHand(Hand.MAIN_HAND);
+                clickCooldown = 1; // Release the click on the next tick
             }
         }
-        return ActionResult.PASS;
-    }
-
-    private boolean isArmored(PlayerEntity player) {
-        if (!player.getEquippedStack(EquipmentSlot.HEAD).isEmpty()) return true;
-        if (!player.getEquippedStack(EquipmentSlot.CHEST).isEmpty()) return true;
-        if (!player.getEquippedStack(EquipmentSlot.LEGS).isEmpty()) return true;
-        if (!player.getEquippedStack(EquipmentSlot.FEET).isEmpty()) return true;
-        return false;
-    }
-
-    private int findAxeInHotbar(PlayerEntity player) {
-        for (int i = 0; i < 9; i++) {
-            if (player.getInventory().getStack(i).getItem() instanceof AxeItem) return i;
-        }
-        return -1;
-    }
-
-    private int findMaceInHotbar(PlayerEntity player) {
-        for (int i = 0; i < 9; i++) {
-            if (player.getInventory().getStack(i).getItem() == Items.MACE) return i;
-        }
-        return -1;
-    }
-
-    private int findTntMinecartInHotbar(PlayerEntity player) {
-        for (int i = 0; i < 9; i++) {
-            if (player.getInventory().getStack(i).getItem() == Items.TNT_MINECART) return i;
-        }
-        return -1;
     }
 
     public static void setAwaitingRailConfirmation() {
@@ -376,6 +388,17 @@ public class TutorialModClient implements ClientModInitializer {
             instance.actionTimeout = -1;
         }
     }
+
+    public static void recordBowUsage() {
+        if (instance != null) {
+            instance.lastBowShotTick = MinecraftClient.getInstance().world.getTime();
+        }
+    }
+
+
+    //================================================================================
+    // PRIVATE HELPERS
+    //================================================================================
 
     public void startRailPlacement(BlockPos pos) {
         if (placementCooldown != -1) return;
@@ -425,6 +448,35 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
+    private boolean isArmored(PlayerEntity player) {
+        if (!player.getEquippedStack(EquipmentSlot.HEAD).isEmpty()) return true;
+        if (!player.getEquippedStack(EquipmentSlot.CHEST).isEmpty()) return true;
+        if (!player.getEquippedStack(EquipmentSlot.LEGS).isEmpty()) return true;
+        if (!player.getEquippedStack(EquipmentSlot.FEET).isEmpty()) return true;
+        return false;
+    }
+
+    private int findAxeInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).getItem() instanceof AxeItem) return i;
+        }
+        return -1;
+    }
+
+    private int findMaceInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).getItem() == Items.MACE) return i;
+        }
+        return -1;
+    }
+
+    private int findTntMinecartInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).getItem() == Items.TNT_MINECART) return i;
+        }
+        return -1;
+    }
+
     private int findLavaBucketInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
             if (player.getInventory().getStack(i).getItem() == Items.LAVA_BUCKET) return i;
@@ -440,12 +492,6 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
         return -1;
-    }
-
-    public static void recordBowUsage() {
-        if (instance != null) {
-            instance.lastBowShotTick = MinecraftClient.getInstance().world.getTime();
-        }
     }
 
     private int findBowInHotbar(PlayerEntity player) {
