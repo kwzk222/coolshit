@@ -97,6 +97,9 @@ public class AutoCobwebFeature {
 
         // Priority 1: Multi-Block Standing Positions
         List<BlockPos> standingBlocks = getBlocksUnderPlayer(bestTarget, client);
+        // Filter out blocks that are already cobwebs
+        standingBlocks.removeIf(pos -> client.world.getBlockState(pos).getBlock().asItem() == Items.COBWEB);
+
         for (BlockPos standingBlock : standingBlocks) {
             hitResultOpt = findVisibleHitOnBlock(client, self, bestTarget, standingBlock);
             if (hitResultOpt.isPresent()) {
@@ -111,14 +114,18 @@ public class AutoCobwebFeature {
 
             for (int x = -1; x <= 1; x++) {
                 for (int z = -1; z <= 1; z++) {
-                    if (x == 0 && z == 0) continue;
+                    for (int y = -1; y <= 1; y++) {
+                        if (x == 0 && y == 0 && z == 0) continue; // Skip the original failing block
 
-                    BlockPos candidateBlock = primaryTargetBlock.add(x, 0, z);
-                    if (candidateBlock.equals(self.getBlockPos())) continue;
+                        BlockPos candidateBlock = primaryTargetBlock.add(x, y, z);
+                        if (candidateBlock.equals(self.getBlockPos())) continue;
 
-                    BlockState candidateState = client.world.getBlockState(candidateBlock);
-                    if (candidateState.isSideSolid(client.world, candidateBlock, Direction.UP, SideShapeType.FULL) && client.world.getBlockState(candidateBlock.up()).isAir()) {
-                        findVisibleHitOnBlock(client, self, bestTarget, candidateBlock).ifPresent(validFallbacks::add);
+                        BlockState candidateState = client.world.getBlockState(candidateBlock);
+                        if (candidateState.getBlock().asItem() != Items.COBWEB &&
+                            candidateState.isSideSolid(client.world, candidateBlock, Direction.UP, SideShapeType.FULL) &&
+                            client.world.getBlockState(candidateBlock.up()).isAir()) {
+                            findVisibleHitOnBlock(client, self, bestTarget, candidateBlock).ifPresent(validFallbacks::add);
+                        }
                     }
                 }
             }
