@@ -23,17 +23,12 @@ public class ModMenuIntegration implements ModMenuApi {
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
-            // General Category
+            // General Category for master switch
             ConfigCategory general = builder.getOrCreateCategory(Text.literal("General"));
             general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Switch"), TutorialMod.CONFIG.masterEnabled)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("The main switch to enable or disable all features of the mod at once."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.masterEnabled = newValue)
-                    .build());
-            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Totem Swap Enabled"), TutorialMod.CONFIG.totemSwapEnabled)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("Enable or disable the automatic totem swapping feature."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.totemSwapEnabled = newValue)
                     .build());
 
             // Attribute Swapping Category
@@ -148,19 +143,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("Adds a random delay (from 0 to this value) in ticks before attacking."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackDelay = newValue)
-                    .build());
-
-            // Auto-Cobweb Category
-            ConfigCategory autoCobweb = builder.getOrCreateCategory(Text.literal("Auto-Cobweb"));
-            autoCobweb.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Auto-Cobweb"), TutorialMod.CONFIG.autoCobwebEnabled)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("Enable or disable the Auto-Cobweb feature."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCobwebEnabled = newValue)
-                    .build());
-            autoCobweb.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range (x100)"), (long) (TutorialMod.CONFIG.autoCobwebMaxRange * 100), 100L, 700L)
-                    .setDefaultValue((long) (5.0 * 100))
-                    .setTooltip(Text.literal("The maximum distance at which the Auto-Cobweb feature will activate."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCobwebMaxRange = newValue / 100.0)
                     .build());
 
             return builder.build();

@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
@@ -15,7 +14,6 @@ import net.minecraft.item.AxeItem;
 import net.minecraft.item.CrossbowItem;
 import net.minecraft.item.Items;
 import net.minecraft.item.ItemStack;
-import net.minecraft.screen.slot.Slot;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -26,7 +24,6 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
-import net.rev.tutorialmod.modules.AutoCobwebFeature;
 import net.rev.tutorialmod.modules.TriggerBot;
 import org.lwjgl.glfw.GLFW;
 
@@ -38,13 +35,10 @@ public class TutorialModClient implements ClientModInitializer {
     // --- Keybindings ---
     private static KeyBinding masterToggleKeybind;
     private static KeyBinding teammateKeybind;
-    private static KeyBinding placeCobwebKeybind;
 
     // --- Modules & Features ---
     private TriggerBot triggerBot;
 
-    // --- State: Auto Cobweb ---
-    private boolean isCobwebKeyHeld = false;
     private static int clickCooldown = -1;
 
     // --- State: Combat Swap ---
@@ -80,7 +74,6 @@ public class TutorialModClient implements ClientModInitializer {
         // Register Keybindings
         masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.master_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.tutorialmod"));
         teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
-        placeCobwebKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.place_cobweb", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_X, "key.categories.tutorialmod"));
 
         // Register Event Listeners
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
@@ -97,11 +90,11 @@ public class TutorialModClient implements ClientModInitializer {
 
     /**
      * The main client tick loop where all continuous logic is handled.
+     * This method is called at the end of every client tick.
      */
     private void onClientTick(MinecraftClient client) {
         // Handle keybinds first, as they might toggle features on/off.
         handleKeybinds(client);
-        handleCobwebKeyState(client);
 
         // Handle TriggerBot separately, as it may have its own master toggle.
         if (triggerBot != null) {
@@ -112,9 +105,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (!TutorialMod.CONFIG.masterEnabled) return;
 
         // --- Feature Ticks ---
-        AutoCobwebFeature.onClientTick(client); // Handles continuous cobweb placement
         handlePlacementClick(client);          // Handles the brief mouse click simulation
-        handleTotemSwap(client);               // Handles swapping to a totem when hovering in inventory
         handleCombatSwap(client);              // Handles axe/mace swapping during combat
         handlePlacementSequence(client);       // Handles the TNT Minecart -> Lava/Fire -> Crossbow sequence
         handleConfirmationCooldowns(client);   // Handles timed confirmations for placements
@@ -122,6 +113,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     /**
      * Intercepts entity attacks to trigger combat swaps (e.g., axe for shields).
+     * This method is called when the player attacks an entity.
      */
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
         if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
@@ -172,6 +164,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     /**
      * Handles one-shot keybinds like the master toggle and teammate management.
+     * This method is called from the main client tick loop.
      */
     private void handleKeybinds(MinecraftClient client) {
         while (masterToggleKeybind.wasPressed()) {
@@ -187,27 +180,6 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     /**
-     * Handles the press-and-hold state for the AutoCobweb key.
-     */
-    private void handleCobwebKeyState(MinecraftClient client) {
-        if (placeCobwebKeybind.isPressed()) {
-            if (!isCobwebKeyHeld) {
-                // Key was just pressed
-                isCobwebKeyHeld = true;
-                if (client.player != null && client.player.getMainHandStack().getItem() == Items.COBWEB) {
-                    AutoCobwebFeature.onTriggerPressed(client);
-                }
-            }
-        } else {
-            if (isCobwebKeyHeld) {
-                // Key was just released
-                isCobwebKeyHeld = false;
-                AutoCobwebFeature.onTriggerReleased(client);
-            }
-        }
-    }
-
-    /**
      * Manages the brief cooldown for simulated mouse clicks to ensure they are released.
      */
     private void handlePlacementClick(MinecraftClient client) {
@@ -219,6 +191,11 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
+    /**
+     * Handles the teammate keybind.
+     * This method is called when the teammate keybind is pressed.
+     * It adds or removes the player the user is looking at from the teammates list.
+     */
     private void handleTeammateKeybind(MinecraftClient client) {
         if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
             Entity target = ((net.minecraft.util.hit.EntityHitResult) client.crosshairTarget).getEntity();
@@ -230,28 +207,6 @@ public class TutorialModClient implements ClientModInitializer {
                 } else {
                     TutorialMod.CONFIG.teamManager.addTeammate(name);
                     client.player.sendMessage(Text.of("Added " + name + " to your teammates list."), false);
-                }
-            }
-        }
-    }
-
-    private void handleTotemSwap(MinecraftClient client) {
-        if (!TutorialMod.CONFIG.totemSwapEnabled) return;
-        if (client.player == null || client.currentScreen == null || client.interactionManager == null || client.player.isCreative()) return;
-        if (client.currentScreen instanceof HandledScreen<?> screen) {
-            if (client.player.getOffHandStack().getItem() == Items.TOTEM_OF_UNDYING) return;
-            double scaledMouseX = client.mouse.getX() * client.getWindow().getScaledWidth() / client.getWindow().getWidth();
-            double scaledMouseY = client.mouse.getY() * client.getWindow().getScaledHeight() / client.getWindow().getHeight();
-            int guiLeft = (client.getWindow().getScaledWidth() - 176) / 2;
-            int guiTop = (client.getWindow().getScaledHeight() - 166) / 2;
-            for (Slot slot : screen.getScreenHandler().slots) {
-                if (slot.getStack().getItem() == Items.TOTEM_OF_UNDYING) {
-                    int slotX = guiLeft + slot.x;
-                    int slotY = guiTop + slot.y;
-                    if (scaledMouseX >= slotX && scaledMouseX < slotX + 16 && scaledMouseY >= slotY && scaledMouseY < slotY + 16) {
-                        client.interactionManager.clickSlot(screen.getScreenHandler().syncId, slot.id, 40, net.minecraft.screen.slot.SlotActionType.SWAP, client.player);
-                        break;
-                    }
                 }
             }
         }

@@ -15,21 +15,26 @@ public class ModConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final File CONFIG_FILE = new File(FabricLoader.getInstance().getConfigDir().toFile(), "tutorialmod.json");
 
+    // --- Attribute Swapping ---
     public int axeSwapDelay = 5;
     public int maceSwapDelay = 1;
     public int comboSwapDelay = 1;
     public int postComboAxeSwapDelay = 2;
 
-    public boolean totemSwapEnabled = true;
     public boolean axeSwapEnabled = true;
     public boolean maceSwapEnabled = true;
+
+    // --- Minecart Tech ---
     public boolean tntMinecartPlacementEnabled = true;
     public boolean lavaCrossbowSequenceEnabled = true;
     public boolean bowSequenceEnabled = true;
     public int minFallDistance = 3;
+
+    // --- General ---
     public boolean masterEnabled = true;
     public int bowCooldown = 100;
 
+    // --- TriggerBot ---
     public boolean triggerBotEnabled = true;
     public boolean triggerBotIncludePlayers = true;
     public boolean triggerBotExcludeTeammates = true;
@@ -40,9 +45,6 @@ public class ModConfig {
     public boolean triggerBotActiveInInventory = false;
     public double triggerBotMaxRange = 4.5;
     public int triggerBotAttackDelay = 0;
-
-    public boolean autoCobwebEnabled = true;
-    public double autoCobwebMaxRange = 5.0;
 
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
