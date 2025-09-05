@@ -30,6 +30,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The main switch to enable or disable all features of the mod at once."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.masterEnabled = newValue)
                     .build());
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch"), TutorialMod.CONFIG.autoToolSwitchEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Automatically switches to the correct tool when breaking a block."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchEnabled = newValue)
+                    .build());
+            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Tool Durability Safety"), TutorialMod.CONFIG.toolDurabilitySafetyEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Stops mining when the tool has 1 durability left."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.toolDurabilitySafetyEnabled = newValue)
+                    .build());
 
             // Attribute Swapping Category
             ConfigCategory attributeSwapping = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));

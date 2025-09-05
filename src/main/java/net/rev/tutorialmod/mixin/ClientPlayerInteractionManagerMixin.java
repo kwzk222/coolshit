@@ -11,6 +11,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import net.rev.tutorialmod.event.AttackEntityCallback;
@@ -39,5 +40,10 @@ public class ClientPlayerInteractionManagerMixin {
                 TutorialModClient.setAwaitingRailConfirmation();
             }
         }
+    }
+
+    @Inject(method = "attackBlock", at = @At("HEAD"))
+    private void onAttackBlock(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
+        TutorialMod.getAutoToolSwitch().onBlockBreak(pos);
     }
 }
