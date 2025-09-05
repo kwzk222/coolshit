@@ -53,15 +53,15 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The delay in ticks before swapping back from the mace."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapDelay = newValue)
                     .build());
-            attributeSwapping.addEntry(entryBuilder.startIntSlider(Text.literal("Combo Swap Delay"), TutorialMod.CONFIG.comboSwapDelay, 0, 20)
+            attributeSwapping.addEntry(entryBuilder.startIntSlider(Text.literal("Axe to Original Delay"), TutorialMod.CONFIG.axeToOriginalDelay, 0, 20)
                     .setDefaultValue(1)
-                    .setTooltip(Text.literal("The delay in ticks before swapping to the mace in a combo."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.comboSwapDelay = newValue)
+                    .setTooltip(Text.literal("The delay in ticks before swapping back from the axe to the original item in a combo."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeToOriginalDelay = newValue)
                     .build());
-            attributeSwapping.addEntry(entryBuilder.startIntSlider(Text.literal("Post-Combo Axe Swap Delay"), TutorialMod.CONFIG.postComboAxeSwapDelay, 0, 20)
-                    .setDefaultValue(2)
-                    .setTooltip(Text.literal("The delay in ticks before swapping back to the original item after a mace combo."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.postComboAxeSwapDelay = newValue)
+            attributeSwapping.addEntry(entryBuilder.startIntSlider(Text.literal("Mace to Original Delay"), TutorialMod.CONFIG.maceToOriginalDelay, 0, 20)
+                    .setDefaultValue(1)
+                    .setTooltip(Text.literal("The delay in ticks before swapping back from the mace to the original item in a combo."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceToOriginalDelay = newValue)
                     .build());
             attributeSwapping.addEntry(entryBuilder.startIntSlider(Text.literal("Minimum Fall Distance for Combo"), TutorialMod.CONFIG.minFallDistance, 1, 5)
                     .setDefaultValue(3)

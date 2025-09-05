@@ -42,7 +42,7 @@ public class TutorialModClient implements ClientModInitializer {
     private static int clickCooldown = -1;
 
     // --- State: Combat Swap ---
-    private enum SwapAction { NONE, SWITCH_BACK, SWITCH_BACK_ATTACK_MACE }
+    private enum SwapAction { NONE, SWITCH_BACK, SWITCH_TO_ORIGINAL_THEN_MACE, SWITCH_BACK_FROM_MACE }
     private int swapCooldown = -1;
     private int originalHotbarSlot = -1;
     private SwapAction nextAction = SwapAction.NONE;
@@ -137,8 +137,8 @@ public class TutorialModClient implements ClientModInitializer {
                     targetEntity = target;
                     int maceSlot = findMaceInHotbar(player);
                     if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
-                        swapCooldown = TutorialMod.CONFIG.comboSwapDelay;
-                        nextAction = SwapAction.SWITCH_BACK_ATTACK_MACE;
+                        swapCooldown = TutorialMod.CONFIG.axeToOriginalDelay;
+                        nextAction = SwapAction.SWITCH_TO_ORIGINAL_THEN_MACE;
                     } else {
                         swapCooldown = TutorialMod.CONFIG.axeSwapDelay;
                         nextAction = SwapAction.SWITCH_BACK;
@@ -225,17 +225,20 @@ public class TutorialModClient implements ClientModInitializer {
                 case SWITCH_BACK:
                     inventory.setSelectedSlot(originalHotbarSlot);
                     break;
-                case SWITCH_BACK_ATTACK_MACE:
+                case SWITCH_TO_ORIGINAL_THEN_MACE:
                     inventory.setSelectedSlot(originalHotbarSlot);
                     if (client.interactionManager != null && targetEntity != null && targetEntity.isAlive()) {
                         client.interactionManager.attackEntity(client.player, targetEntity);
-                        int maceSlot = findMaceInHotbar(client.player);
-                        if (maceSlot != -1) {
-                            inventory.setSelectedSlot(maceSlot);
-                            swapCooldown = TutorialMod.CONFIG.postComboAxeSwapDelay;
-                            nextAction = SwapAction.SWITCH_BACK;
-                        }
                     }
+                    int maceSlot = findMaceInHotbar(client.player);
+                    if (maceSlot != -1) {
+                        inventory.setSelectedSlot(maceSlot);
+                        swapCooldown = TutorialMod.CONFIG.maceToOriginalDelay;
+                        nextAction = SwapAction.SWITCH_BACK_FROM_MACE;
+                    }
+                    break;
+                case SWITCH_BACK_FROM_MACE:
+                    inventory.setSelectedSlot(originalHotbarSlot);
                     break;
                 default: break;
             }

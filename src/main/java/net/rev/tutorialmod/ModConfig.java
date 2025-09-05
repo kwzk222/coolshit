@@ -18,8 +18,8 @@ public class ModConfig {
     // --- Attribute Swapping ---
     public int axeSwapDelay = 5;
     public int maceSwapDelay = 1;
-    public int comboSwapDelay = 1;
-    public int postComboAxeSwapDelay = 2;
+    public int axeToOriginalDelay = 1;
+    public int maceToOriginalDelay = 1;
 
     public boolean axeSwapEnabled = true;
     public boolean maceSwapEnabled = true;
