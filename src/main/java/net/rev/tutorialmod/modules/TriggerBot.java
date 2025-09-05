@@ -42,7 +42,7 @@ public class TriggerBot {
 
 
         // --- Pre-computation checks ---
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled || !TutorialMod.CONFIG.triggerBotToggledOn) {
             return;
         }
 

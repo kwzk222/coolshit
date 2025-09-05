@@ -2,6 +2,8 @@ package net.rev.tutorialmod;
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
+import com.terraformersmc.modmenu.api.ConfigScreenFactory;
+import com.terraformersmc.modmenu.api.ModMenuApi;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
@@ -153,6 +155,27 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("Adds a random delay (from 0 to this value) in ticks before attacking."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackDelay = newValue)
+                    .build());
+
+            // Hotkeys Category
+            ConfigCategory hotkeys = builder.getOrCreateCategory(Text.literal("Hotkeys"));
+
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey)
+                    .setDefaultValue("key.keyboard.m")
+                    .setTooltip(Text.literal("The hotkey to toggle the entire mod on or off. Use a translation key, e.g., 'key.keyboard.m'."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.masterToggleHotkey = newValue)
+                    .build());
+
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Teammate Hotkey"), TutorialMod.CONFIG.teammateHotkey)
+                    .setDefaultValue("key.keyboard.g")
+                    .setTooltip(Text.literal("The hotkey to add or remove a player from your teammates list. Use a translation key, e.g., 'key.keyboard.g'."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.teammateHotkey = newValue)
+                    .build());
+
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("TriggerBot Toggle Hotkey"), TutorialMod.CONFIG.triggerBotToggleHotkey)
+                    .setDefaultValue("key.keyboard.k")
+                    .setTooltip(Text.literal("The hotkey to toggle the TriggerBot on or off. Use a translation key, e.g., 'key.keyboard.k'."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotToggleHotkey = newValue)
                     .build());
 
             return builder.build();

@@ -2,10 +2,8 @@ package net.rev.tutorialmod;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
@@ -25,19 +23,19 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.TriggerBot;
-import org.lwjgl.glfw.GLFW;
 
 public class TutorialModClient implements ClientModInitializer {
 
     // --- Singleton Instance ---
     private static TutorialModClient instance;
 
-    // --- Keybindings ---
-    private static KeyBinding masterToggleKeybind;
-    private static KeyBinding teammateKeybind;
-
     // --- Modules & Features ---
     private TriggerBot triggerBot;
+
+    // --- Keybind States ---
+    private boolean masterToggleWasPressed = false;
+    private boolean teammateWasPressed = false;
+    private boolean triggerBotToggleWasPressed = false;
 
     private static int clickCooldown = -1;
 
@@ -70,10 +68,6 @@ public class TutorialModClient implements ClientModInitializer {
     public void onInitializeClient() {
         instance = this;
         triggerBot = new TriggerBot();
-
-        // Register Keybindings
-        masterToggleKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.master_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.tutorialmod"));
-        teammateKeybind = KeyBindingHelper.registerKeyBinding(new KeyBinding("key.tutorialmod.teammate_toggle", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.tutorialmod"));
 
         // Register Event Listeners
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
@@ -167,15 +161,44 @@ public class TutorialModClient implements ClientModInitializer {
      * This method is called from the main client tick loop.
      */
     private void handleKeybinds(MinecraftClient client) {
-        while (masterToggleKeybind.wasPressed()) {
-            TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
-            TutorialMod.CONFIG.save();
-            if (client.player != null) {
+        if (client.player == null) return;
+
+        // --- Master Toggle Hotkey ---
+        try {
+            boolean isMasterTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.masterToggleHotkey).getCode());
+            if (isMasterTogglePressed && !masterToggleWasPressed) {
+                TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
+                TutorialMod.CONFIG.save();
                 client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
             }
+            masterToggleWasPressed = isMasterTogglePressed;
+        } catch (IllegalArgumentException e) {
+            // This can happen if the key is not set or invalid.
         }
-        while (teammateKeybind.wasPressed()) {
-            handleTeammateKeybind(client);
+
+
+        // --- Teammate Hotkey ---
+        try {
+            boolean isTeammateKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.teammateHotkey).getCode());
+            if (isTeammateKeyPressed && !teammateWasPressed) {
+                handleTeammateKeybind(client);
+            }
+            teammateWasPressed = isTeammateKeyPressed;
+        } catch (IllegalArgumentException e) {
+            // This can happen if the key is not set or invalid.
+        }
+
+
+        // --- TriggerBot Toggle Hotkey ---
+        try {
+            boolean isTriggerBotTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.triggerBotToggleHotkey).getCode());
+            if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
+                TutorialMod.CONFIG.triggerBotToggledOn = !TutorialMod.CONFIG.triggerBotToggledOn;
+                client.player.sendMessage(Text.of("TriggerBot: " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF")), false);
+            }
+            triggerBotToggleWasPressed = isTriggerBotTogglePressed;
+        } catch (IllegalArgumentException e) {
+            // This can happen if the key is not set or invalid.
         }
     }
 

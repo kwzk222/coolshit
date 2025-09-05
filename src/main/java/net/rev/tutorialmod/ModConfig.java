@@ -47,6 +47,13 @@ public class ModConfig {
     public boolean triggerBotActiveInInventory = false;
     public double triggerBotMaxRange = 4.5;
     public int triggerBotAttackDelay = 0;
+    public transient boolean triggerBotToggledOn = true;
+
+    // --- Hotkeys ---
+    public String masterToggleHotkey = "key.keyboard.m";
+    public String teammateHotkey = "key.keyboard.g";
+    public String triggerBotToggleHotkey = "key.keyboard.k";
+
 
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
