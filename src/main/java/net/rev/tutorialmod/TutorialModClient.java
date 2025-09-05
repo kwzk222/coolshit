@@ -2,34 +2,31 @@ package net.rev.tutorialmod;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.slot.Slot;
-import net.rev.tutorialmod.event.AttackEntityCallback;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.AxeItem;
-import net.minecraft.util.ActionResult;
-import net.minecraft.entity.Entity;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.*;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.text.Text;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.block.BlockState;
-import net.minecraft.item.BlockItem;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.CrossbowItem;
 import net.minecraft.util.math.Vec3d;
-import org.lwjgl.glfw.GLFW;
-import net.minecraft.text.Text;
+import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoCobwebFeature;
 import net.rev.tutorialmod.modules.TriggerBot;
+import org.lwjgl.glfw.GLFW;
+import net.minecraft.block.BlockState;
+
 
 public class TutorialModClient implements ClientModInitializer {
 
@@ -67,9 +64,10 @@ public class TutorialModClient implements ClientModInitializer {
     private static KeyBinding teammateKeybind;
     private static KeyBinding placeCobwebKeybind;
 
-    public static int autoCobwebPlacementDelay = -1;
-    public static float originalYaw;
-    public static float originalPitch;
+    // New state for hold-to-use cobweb
+    private boolean isCobwebKeyHeld = false;
+    private static int clickCooldown = -1;
+
 
     @Override
     public void onInitializeClient() {
@@ -85,37 +83,59 @@ public class TutorialModClient implements ClientModInitializer {
 
     private void onClientTick(MinecraftClient client) {
         handleKeybinds(client);
+        handleCobwebKeyState(client); // New handler for hold-to-use
+
         if (triggerBot != null) {
             triggerBot.onTick(client);
         }
         if (!TutorialMod.CONFIG.masterEnabled) return;
-        handleAutoCobweb(client);
+
+        AutoCobwebFeature.onClientTick(client); // AutoCobweb logic is now always ticking
+        handlePlacementClick(client); // New handler for simulating clicks
+
         handleTotemSwap(client);
         handleCombatSwap(client);
         handlePlacementSequence(client);
         handleConfirmationCooldowns(client);
     }
 
-    private void handleAutoCobweb(MinecraftClient client) {
-        if (autoCobwebPlacementDelay > 0) {
-            autoCobwebPlacementDelay--;
-        } else if (autoCobwebPlacementDelay == 0) {
-            if (client.player != null) {
-                client.options.useKey.setPressed(true);
-                client.player.swingHand(Hand.MAIN_HAND);
-                autoCobwebPlacementDelay = -2; // Cooldown to release the key
-            }
-        } else if (autoCobwebPlacementDelay == -2) {
+    private void handlePlacementClick(MinecraftClient client) {
+        if (clickCooldown > 0) {
+            clickCooldown--;
+        } else if (clickCooldown == 0) {
             client.options.useKey.setPressed(false);
-            if (client.player != null) {
-                client.player.setYaw(originalYaw);
-                client.player.setPitch(originalPitch);
-            }
-            autoCobwebPlacementDelay = -1;
+            clickCooldown = -1;
         }
     }
 
-    // --- Tick Logic Handlers ---
+    public static void requestPlacement() {
+        if (clickCooldown == -1) { // Prevent requesting another click while one is in progress
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.player != null) {
+                client.options.useKey.setPressed(true);
+                client.player.swingHand(Hand.MAIN_HAND);
+                clickCooldown = 1; // Release the click on the next tick
+            }
+        }
+    }
+
+    private void handleCobwebKeyState(MinecraftClient client) {
+        if (placeCobwebKeybind.isPressed()) {
+            if (!isCobwebKeyHeld) {
+                // Key was just pressed
+                isCobwebKeyHeld = true;
+                if (client.player != null && client.player.getMainHandStack().getItem() == Items.COBWEB) {
+                    AutoCobwebFeature.onTriggerPressed(client);
+                }
+            }
+        } else {
+            if (isCobwebKeyHeld) {
+                // Key was just released
+                isCobwebKeyHeld = false;
+                AutoCobwebFeature.onTriggerReleased(client);
+            }
+        }
+    }
 
     private void handleKeybinds(MinecraftClient client) {
         while (masterToggleKeybind.wasPressed()) {
@@ -128,13 +148,10 @@ public class TutorialModClient implements ClientModInitializer {
         while (teammateKeybind.wasPressed()) {
             handleTeammateKeybind(client);
         }
-        while (placeCobwebKeybind.wasPressed()) {
-            if (client.player != null && client.player.getMainHandStack().getItem() == Items.COBWEB) {
-                AutoCobwebFeature.trigger();
-            }
-        }
+        // The old cobweb keybind logic is removed from here and handled by handleCobwebKeyState
     }
 
+    // ... The rest of the file remains the same ...
     private void handleTeammateKeybind(MinecraftClient client) {
         if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
             Entity target = ((net.minecraft.util.hit.EntityHitResult) client.crosshairTarget).getEntity();
@@ -261,15 +278,12 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    // --- Event Handlers ---
-
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
         if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
         if (target instanceof PlayerEntity) {
             PlayerEntity attackedPlayer = (PlayerEntity) target;
             boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
 
-            // Facing Check
             Vec3d selfPos = player.getPos();
             Vec3d targetPos = attackedPlayer.getPos();
             Vec3d targetLookVec = attackedPlayer.getRotationVector();
@@ -305,8 +319,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
         return ActionResult.PASS;
     }
-
-    // --- Helper Methods ---
 
     private boolean isArmored(PlayerEntity player) {
         if (!player.getEquippedStack(EquipmentSlot.HEAD).isEmpty()) return true;
