@@ -35,15 +35,21 @@ public class AutoTotem {
     public void init() {
         // Register event listeners
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> inventoryOpen.set(false));
-        ScreenEvents.AFTER_INIT.register(this::onScreenOpened);
+        ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+            if (screen instanceof HandledScreen) {
+                onScreenOpened(client, (HandledScreen<?>) screen);
+            }
+        });
 
         // Listen for totem pop server-side packet
-        ClientPlayNetworking.registerGlobalReceiver(EntityStatusS2CPacket.ID, this::onEntityStatus);
+        ClientPlayNetworking.registerGlobalReceiver(EntityStatusS2CPacket.TYPE, (packet, context) -> {
+            context.client().execute(() -> onEntityStatus(packet, context.player()));
+        });
 
         // Per-tick logic is handled by onTick() called from TutorialModClient
     }
 
-    private void onScreenOpened(MinecraftClient client, HandledScreen<?> screen, int scaledWidth, int scaledHeight) {
+    private void onScreenOpened(MinecraftClient client, HandledScreen<?> screen) {
         inventoryOpen.set(true);
         lastActionWasModSwap.set(false); // Reset on new screen
 
@@ -84,7 +90,7 @@ public class AutoTotem {
 
         // 1. Check if offhand needs a totem
         if (!offhandHasTotem(client.player)) {
-            Slot hoveredSlot = handledScreen.getSlotUnderMouse();
+            Slot hoveredSlot = handledScreen.getFocusedSlot();
             if (hoveredSlot != null && hoveredSlot.hasStack() && isTotem(hoveredSlot.getStack())) {
                 // If hovering over a totem, perform the swap immediately
                 performSwapToOffhand(client, handler, hoveredSlot.id);
@@ -113,8 +119,8 @@ public class AutoTotem {
         }
     }
 
-    private void onEntityStatus(EntityStatusS2CPacket packet, ClientPlayerEntity player, ClientPlayNetworking.Context context) {
-        if (packet.getStatus() == 35 && packet.getEntity(player.getWorld()) == player) {
+    private void onEntityStatus(EntityStatusS2CPacket packet, ClientPlayerEntity player) {
+        if (player != null && packet.getStatus() == 35 && packet.getEntity(player.getWorld()) == player) {
             // Totem popped, update cache immediately
             cachedOffhandHasTotem = false;
             attemptSwapHotbarSlotToMainHand();
