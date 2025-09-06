@@ -11,6 +11,9 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 public class ModMenuIntegration implements ModMenuApi {
 
     @Override
@@ -183,6 +186,33 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("Adds a random delay (from 0 to this value) in ticks before attacking."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackDelay = newValue)
+                    .build());
+
+            // Auto Totem Category
+            ConfigCategory autoTotem = builder.getOrCreateCategory(Text.literal("Auto Totem"));
+            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Auto Totem"), TutorialMod.CONFIG.autoTotemEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the Auto Totem feature."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnabled = newValue)
+                    .build());
+            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Auto Swap to Offhand"), TutorialMod.CONFIG.autoTotemEnableAutoMainToOffhand)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Automatically swap a totem from your main hand to your offhand if it's empty."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnableAutoMainToOffhand = newValue)
+                    .build());
+            autoTotem.addEntry(entryBuilder.startStrField(Text.literal("Hotbar Slots (comma-separated)"),
+                            TutorialMod.CONFIG.autoTotemHotbarSlots.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                    .setDefaultValue("0,1,2,3,4,5,6,7,8")
+                    .setTooltip(Text.literal("Prioritized hotbar slots (0-8) to fill with totems."))
+                    .setSaveConsumer(newValue -> {
+                        try {
+                            TutorialMod.CONFIG.autoTotemHotbarSlots = Arrays.stream(newValue.replace(" ", "").split(","))
+                                    .map(Integer::parseInt)
+                                    .collect(Collectors.toList());
+                        } catch (NumberFormatException e) {
+                            // Handle invalid input, maybe log an error or keep the old value
+                        }
+                    })
                     .build());
 
             // Hotkeys Category
