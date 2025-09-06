@@ -32,15 +32,43 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The main switch to enable or disable all features of the mod at once."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.masterEnabled = newValue)
                     .build());
-            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch"), TutorialMod.CONFIG.autoToolSwitchEnabled)
+
+            // Tool Switch Category
+            ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
+            toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch"), TutorialMod.CONFIG.autoToolSwitchEnabled)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Automatically switches to the correct tool when breaking a block."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchEnabled = newValue)
                     .build());
-            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Tool Durability Safety"), TutorialMod.CONFIG.toolDurabilitySafetyEnabled)
+            toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Tool Durability Safety"), TutorialMod.CONFIG.toolDurabilitySafetyEnabled)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Stops mining when the tool has 1 durability left."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.toolDurabilitySafetyEnabled = newValue)
+                    .build());
+            toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Switch Back to Original Item"), TutorialMod.CONFIG.autoToolSwitchBackEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Switches back to the original item after you stop mining."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackEnabled = newValue)
+                    .build());
+            toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Min Switch Back Delay (ticks)"), TutorialMod.CONFIG.autoToolSwitchBackMinDelay, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The minimum delay in ticks before switching back to the original item."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackMinDelay = newValue)
+                    .build());
+            toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Max Switch Back Delay (ticks)"), TutorialMod.CONFIG.autoToolSwitchBackMaxDelay, 0, 100)
+                    .setDefaultValue(5)
+                    .setTooltip(Text.literal("The maximum delay in ticks before switching back to the original item."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackMaxDelay = newValue)
+                    .build());
+            toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Min Mining Time (ticks)"), TutorialMod.CONFIG.autoToolSwitchMineMinDelay, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The minimum time in ticks you need to be mining a block before the tool switches."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchMineMinDelay = newValue)
+                    .build());
+            toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Max Mining Time (ticks)"), TutorialMod.CONFIG.autoToolSwitchMineMaxDelay, 0, 100)
+                    .setDefaultValue(2)
+                    .setTooltip(Text.literal("The maximum time in ticks you need to be mining a block before the tool switches."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchMineMaxDelay = newValue)
                     .build());
 
             // Attribute Swapping Category

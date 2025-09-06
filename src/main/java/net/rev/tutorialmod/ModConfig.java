@@ -33,8 +33,15 @@ public class ModConfig {
     // --- General ---
     public boolean masterEnabled = true;
     public int bowCooldown = 100;
+
+    // --- Auto Tool ---
     public boolean autoToolSwitchEnabled = true;
     public boolean toolDurabilitySafetyEnabled = true;
+    public boolean autoToolSwitchBackEnabled = true;
+    public int autoToolSwitchBackMinDelay = 0;
+    public int autoToolSwitchBackMaxDelay = 5;
+    public int autoToolSwitchMineMinDelay = 0;
+    public int autoToolSwitchMineMaxDelay = 2;
 
     // --- TriggerBot ---
     public boolean triggerBotEnabled = true;

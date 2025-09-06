@@ -95,6 +95,9 @@ public class TutorialModClient implements ClientModInitializer {
             triggerBot.onTick(client);
         }
 
+        // Handle AutoToolSwitch tick
+        TutorialMod.getAutoToolSwitch().onTick();
+
         // Master toggle check for all subsequent features.
         if (!TutorialMod.CONFIG.masterEnabled) return;
 
