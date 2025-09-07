@@ -17,6 +17,7 @@ import net.minecraft.screen.slot.Slot;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Identifier;
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.mixin.HandledScreenAccessor;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -41,12 +42,7 @@ public class AutoTotem {
             }
         });
 
-        // Listen for totem pop server-side packet
-        ClientPlayNetworking.registerGlobalReceiver(EntityStatusS2CPacket.PACKET_ID, (client, handler, buf, responseSender) -> {
-            // We must copy the buffer as the packet is processed on the client thread.
-            EntityStatusS2CPacket packet = new EntityStatusS2CPacket(buf.copy());
-            client.execute(() -> onEntityStatus(client, packet));
-        });
+        // Packet listening is now handled by a mixin.
 
         // Per-tick logic is handled by onTick() called from TutorialModClient
     }
@@ -92,7 +88,7 @@ public class AutoTotem {
 
         // 1. Check if offhand needs a totem
         if (!offhandHasTotem(client.player)) {
-            Slot hoveredSlot = handledScreen.focusedSlot;
+            Slot hoveredSlot = ((HandledScreenAccessor) handledScreen).getFocusedSlot();
             if (hoveredSlot != null && hoveredSlot.hasStack() && isTotem(hoveredSlot.getStack())) {
                 // If hovering over a totem, perform the swap immediately
                 performSwapToOffhand(client, handler, hoveredSlot.id);
@@ -121,12 +117,10 @@ public class AutoTotem {
         }
     }
 
-    private void onEntityStatus(MinecraftClient client, EntityStatusS2CPacket packet) {
-        if (client.player != null && packet.getStatus() == 35 && packet.getEntity(client.player.getWorld()) == client.player) {
-            // Totem popped, update cache immediately
-            cachedOffhandHasTotem = false;
-            attemptSwapHotbarSlotToMainHand();
-        }
+    public void onTotemPop() {
+        // This is called from the ClientPlayNetworkHandlerMixin when a totem pop is detected for our player.
+        cachedOffhandHasTotem = false;
+        attemptSwapHotbarSlotToMainHand();
     }
 
     private void updateCachedState(ClientPlayerEntity player) {

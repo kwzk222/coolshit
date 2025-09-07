@@ -9,6 +9,7 @@
 	"client": [
 		"ClientPlayerInteractionManagerMixin",
 		"ClientPlayNetworkHandlerMixin",
+		"HandledScreenAccessor",
 		"MinecraftClientMixin"
 	],
 	"injectors": {

@@ -30,9 +30,17 @@ public class TutorialModClient implements ClientModInitializer {
     // --- Singleton Instance ---
     private static TutorialModClient instance;
 
+    public static TutorialModClient getInstance() {
+        return instance;
+    }
+
     // --- Modules & Features ---
     private TriggerBot triggerBot;
     private AutoTotem autoTotem;
+
+    public AutoTotem getAutoTotem() {
+        return autoTotem;
+    }
 
     // --- Keybind States ---
     private boolean masterToggleWasPressed = false;
