@@ -1,12 +1,11 @@
 package net.rev.tutorialmod;
 
+import me.shedaniel.autoconfig.AutoConfig;
+import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.Identifier;
@@ -17,6 +16,11 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.CrossbowItem;
@@ -36,6 +40,8 @@ import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
+
+    private final Map<String, Boolean> wasMacroKeyPressed = new HashMap<>();
 
     // --- Singleton Instance ---
     private static TutorialModClient instance;
@@ -85,6 +91,8 @@ public class TutorialModClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        AutoConfig.register(ChatConfig.class, GsonConfigSerializer::new);
+
         instance = this;
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
@@ -99,7 +107,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Chat (public chat) modify event
         ClientSendMessageEvents.MODIFY_CHAT.register(message -> {
-            ModConfig cfg = TutorialMod.CONFIG;
+            ChatConfig cfg = AutoConfig.getConfigHolder(ChatConfig.class).getConfig();
             if (!cfg.replaceInChat) return message;
             if (message == null) return message;
 
@@ -116,7 +124,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Command modify event: modifies the command string (without leading '/')
         ClientSendMessageEvents.MODIFY_COMMAND.register(command -> {
-            ModConfig cfg = TutorialMod.CONFIG;
+            ChatConfig cfg = AutoConfig.getConfigHolder(ChatConfig.class).getConfig();
             if (!cfg.replaceInCommands) return command;
             if (command == null) return command;
 
@@ -136,6 +144,7 @@ public class TutorialModClient implements ClientModInitializer {
     private void onClientTick(MinecraftClient client) {
         // Handle keybinds first, as they might toggle features on/off.
         handleKeybinds(client);
+        handleChatMacros(client);
 
         // Handle TriggerBot separately, as it may have its own master toggle.
         if (triggerBot != null) {
@@ -609,8 +618,38 @@ public class TutorialModClient implements ClientModInitializer {
         return foundPlayer;
     }
 
-    // Helper to format coords according to config placeholders
-    private static String formatCoords(ModConfig cfg) {
+    private void handleChatMacros(MinecraftClient client) {
+        if (client.player == null) return;
+
+        ChatConfig cfg = AutoConfig.getConfigHolder(ChatConfig.class).getConfig();
+        List<ChatConfig.Macro> macros = new ArrayList<>(Arrays.asList(cfg.macro1, cfg.macro2, cfg.macro3, cfg.macro4, cfg.macro5));
+
+        for (ChatConfig.Macro macro : macros) {
+            if (macro.hotkey == null || macro.hotkey.equals("key.keyboard.unknown") || macro.message == null || macro.message.isEmpty()) {
+                continue;
+            }
+
+            boolean isPressed;
+            try {
+                isPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(macro.hotkey).getCode());
+            } catch (IllegalArgumentException e) {
+                continue; // Invalid key
+            }
+
+            boolean wasPressed = wasMacroKeyPressed.getOrDefault(macro.hotkey, false);
+
+            if (isPressed && !wasPressed) {
+                if (macro.message.startsWith("/")) {
+                    client.player.networkHandler.sendChatCommand(macro.message.substring(1));
+                } else {
+                    client.player.networkHandler.sendChatMessage(macro.message);
+                }
+            }
+            wasMacroKeyPressed.put(macro.hotkey, isPressed);
+        }
+    }
+
+    private static String formatCoords(ChatConfig cfg) {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         if (player == null || player.getWorld() == null) return cfg.trigger; // fallback
 
@@ -626,20 +665,21 @@ public class TutorialModClient implements ClientModInitializer {
         String sy = String.format("%.2f", y);
         String sz = String.format("%.2f", z);
 
-        // Dimension identifier (eg. "minecraft:overworld")
+        // Dimension identifier
         String dim = "";
         if (cfg.includeDimension) {
             try {
                 RegistryKey<World> key = player.getWorld().getRegistryKey();
-                Identifier id = key.getValue(); // Identifier of the world
+                Identifier id = key.getValue();
                 if (id != null) {
-                    dim = " " + id.getPath().replace("_", " ");
+                    String dimensionName = id.getPath().replace("the_", "");
+                    dim = " " + dimensionName;
                 }
             } catch (Exception ignored) {
             }
         }
 
-        // Facing (cardinal) - uses horizontal facing
+        // Facing (cardinal)
         String facing = "";
         if (cfg.includeFacing) {
             try {

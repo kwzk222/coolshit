@@ -75,16 +75,6 @@ public class ModConfig {
     public String toggleSprintHotkey = "key.keyboard.v";
     public boolean activeInInventory = false;
 
-    // --- Chat ---
-    public String trigger = "cc";
-    public boolean caseSensitive = false;
-    public boolean replaceInChat = true;
-    public boolean replaceInCommands = true;
-    public boolean includeDimension = true;
-    public boolean includeFacing = true;
-    public boolean useBlockCoords = true;
-    public String format = "{bx} {by} {bz}{dim}{facing}";
-
 
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
