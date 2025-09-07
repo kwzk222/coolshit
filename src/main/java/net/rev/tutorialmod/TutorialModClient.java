@@ -205,7 +205,14 @@ public class TutorialModClient implements ClientModInitializer {
             if (isToggleSneakPressed && !toggleSneakWasPressed) {
                 TutorialMod.CONFIG.isToggleSneakOn = !TutorialMod.CONFIG.isToggleSneakOn;
                 client.player.sendMessage(Text.of("Toggle Sneak: " + (TutorialMod.CONFIG.isToggleSneakOn ? "ON" : "OFF")), false);
-                if (!TutorialMod.CONFIG.isToggleSneakOn) {
+
+                if (TutorialMod.CONFIG.isToggleSneakOn) {
+                    if (TutorialMod.CONFIG.isToggleSprintOn) {
+                        TutorialMod.CONFIG.isToggleSprintOn = false;
+                        client.player.sendMessage(Text.of("Toggle Sprint: OFF"), false);
+                        client.options.sprintKey.setPressed(false);
+                    }
+                } else {
                     client.options.sneakKey.setPressed(false);
                 }
             }
@@ -219,7 +226,14 @@ public class TutorialModClient implements ClientModInitializer {
             if (isToggleSprintPressed && !toggleSprintWasPressed) {
                 TutorialMod.CONFIG.isToggleSprintOn = !TutorialMod.CONFIG.isToggleSprintOn;
                 client.player.sendMessage(Text.of("Toggle Sprint: " + (TutorialMod.CONFIG.isToggleSprintOn ? "ON" : "OFF")), false);
-                if (!TutorialMod.CONFIG.isToggleSprintOn) {
+
+                if (TutorialMod.CONFIG.isToggleSprintOn) {
+                    if (TutorialMod.CONFIG.isToggleSneakOn) {
+                        TutorialMod.CONFIG.isToggleSneakOn = false;
+                        client.player.sendMessage(Text.of("Toggle Sneak: OFF"), false);
+                        client.options.sneakKey.setPressed(false);
+                    }
+                } else {
                     client.options.sprintKey.setPressed(false);
                 }
             }
