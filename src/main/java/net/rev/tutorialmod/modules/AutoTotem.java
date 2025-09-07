@@ -34,6 +34,9 @@ public class AutoTotem {
     private final AtomicBoolean inventoryOpen = new AtomicBoolean(false);
     private final AtomicBoolean lastActionWasModSwap = new AtomicBoolean(false);
 
+    // --- Delayed Action State ---
+    private int totemSwapSlot = -1;
+
     public void init() {
         // Register event listeners
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> inventoryOpen.set(false));
@@ -67,6 +70,17 @@ public class AutoTotem {
     }
 
     public void onTick(MinecraftClient client) {
+        // --- Handle Delayed Swap ---
+        if (this.totemSwapSlot != -1) {
+            if (client.player != null && client.interactionManager != null) {
+                // The player's inventory screenhandler is always syncId 0.
+                // The hotbar slot ID is 36 + index. The swap button for offhand is 40.
+                client.interactionManager.clickSlot(0, 36 + this.totemSwapSlot, 40, SlotActionType.SWAP, client.player);
+            }
+            this.totemSwapSlot = -1; // Reset after attempt
+            return; // Don't process other logic this tick
+        }
+
         // --- Guard Checks ---
         if (client.player == null || !inventoryOpen.get() || !(client.currentScreen instanceof HandledScreen)) {
             return;
@@ -145,15 +159,12 @@ public class AutoTotem {
         // Find first totem in hotbar
         for (int i = 0; i < 9; i++) {
             if (isTotem(client.player.getInventory().getStack(i))) {
-                // If the totem is not already in the selected slot, switch to it
+                // If the totem is not already in the selected slot, switch to it for instant visual feedback
                 if (inventory.getSelectedSlot() != i) {
                     inventory.setSelectedSlot(i);
                 }
-
-                // Now that it's in the main hand, swap it to the offhand.
-                // The player's inventory screenhandler is always syncId 0.
-                // The hotbar slot ID is 36 + index. The swap button for offhand is 40.
-                client.interactionManager.clickSlot(0, 36 + i, 40, SlotActionType.SWAP, client.player);
+                // Schedule the swap to happen on the next tick
+                this.totemSwapSlot = i;
                 return; // Only handle one pop
             }
         }
