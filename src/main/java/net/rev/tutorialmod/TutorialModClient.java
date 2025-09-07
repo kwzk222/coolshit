@@ -1,8 +1,18 @@
 package net.rev.tutorialmod;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.block.BlockState;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
@@ -86,6 +96,41 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Register Commands
         new CommandManager().registerCommands();
+
+        // Chat (public chat) modify event
+        ClientSendMessageEvents.MODIFY_CHAT.register(message -> {
+            ModConfig cfg = TutorialMod.CONFIG;
+            if (!cfg.replaceInChat) return message;
+            if (message == null) return message;
+
+            String trigger = cfg.caseSensitive ? cfg.trigger : cfg.trigger.toLowerCase();
+            String check = cfg.caseSensitive ? message : message.toLowerCase();
+
+            // exact equality check for chat messages
+            if (check.equals(trigger)) {
+                return formatCoords(cfg);
+            }
+
+            return message;
+        });
+
+        // Command modify event: modifies the command string (without leading '/')
+        ClientSendMessageEvents.MODIFY_COMMAND.register(command -> {
+            ModConfig cfg = TutorialMod.CONFIG;
+            if (!cfg.replaceInCommands) return command;
+            if (command == null) return command;
+
+            // build regex that only replaces whole-word occurrences of the trigger
+            int flags = cfg.caseSensitive ? 0 : Pattern.CASE_INSENSITIVE;
+            Pattern p = Pattern.compile("\\b" + Pattern.quote(cfg.trigger) + "\\b", flags);
+            Matcher m = p.matcher(command);
+            if (m.find()) {
+                String coords = formatCoords(cfg);
+                // safe replace all (quote replacement in case coords contain $ or \)
+                return m.replaceAll(Matcher.quoteReplacement(coords));
+            }
+            return command;
+        });
     }
 
     private void onClientTick(MinecraftClient client) {
@@ -562,5 +607,54 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
         return foundPlayer;
+    }
+
+    // Helper to format coords according to config placeholders
+    private static String formatCoords(ModConfig cfg) {
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+        if (player == null || player.getWorld() == null) return cfg.trigger; // fallback
+
+        double x = player.getX();
+        double y = player.getY();
+        double z = player.getZ();
+
+        long bx = (long) Math.floor(x);
+        long by = (long) Math.floor(y);
+        long bz = (long) Math.floor(z);
+
+        String sx = String.format("%.2f", x);
+        String sy = String.format("%.2f", y);
+        String sz = String.format("%.2f", z);
+
+        // Dimension identifier (eg. "minecraft:overworld")
+        String dim = "";
+        if (cfg.includeDimension) {
+            try {
+                RegistryKey<World> key = player.getWorld().getRegistryKey();
+                Identifier id = key.getValue(); // Identifier of the world
+                if (id != null) {
+                    dim = " (" + id.toString() + ")";
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Facing (cardinal) - uses horizontal facing
+        String facing = "";
+        if (cfg.includeFacing) {
+            try {
+                Direction d = player.getHorizontalFacing();
+                if (d != null) facing = " " + d.toString().toLowerCase();
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Compose replacements
+        String out = cfg.format;
+        out = out.replace("{x}", sx).replace("{y}", sy).replace("{z}", sz);
+        out = out.replace("{bx}", Long.toString(bx)).replace("{by}", Long.toString(by)).replace("{bz}", Long.toString(bz));
+        out = out.replace("{dim}", dim);
+        out = out.replace("{facing}", facing);
+        return out;
     }
 }

@@ -26,6 +26,49 @@ public class ModMenuIntegration implements ModMenuApi {
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
+            // Chat Category
+            ConfigCategory chat = builder.getOrCreateCategory(Text.literal("Chat"));
+            chat.addEntry(entryBuilder.startStrField(Text.literal("Trigger Word"), TutorialMod.CONFIG.trigger)
+                    .setDefaultValue("cc")
+                    .setTooltip(Text.literal("The word to type to send coordinates."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.trigger = newValue)
+                    .build());
+            chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Case Sensitive"), TutorialMod.CONFIG.caseSensitive)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("If the trigger word should be case sensitive."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.caseSensitive = newValue)
+                    .build());
+            chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Replace in Chat"), TutorialMod.CONFIG.replaceInChat)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Replace the trigger word in chat messages."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.replaceInChat = newValue)
+                    .build());
+            chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Replace in Commands"), TutorialMod.CONFIG.replaceInCommands)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Replace the trigger word in commands."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.replaceInCommands = newValue)
+                    .build());
+            chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Dimension"), TutorialMod.CONFIG.includeDimension)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Include the dimension in the coordinates message."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.includeDimension = newValue)
+                    .build());
+            chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Facing"), TutorialMod.CONFIG.includeFacing)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Include the direction you are facing in the coordinates message."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.includeFacing = newValue)
+                    .build());
+            chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Use Block Coords"), TutorialMod.CONFIG.useBlockCoords)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Use integer block coordinates instead of decimals."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.useBlockCoords = newValue)
+                    .build());
+            chat.addEntry(entryBuilder.startStrField(Text.literal("Coordinate Format"), TutorialMod.CONFIG.format)
+                    .setDefaultValue("{bx} {by} {bz}{dim}{facing}")
+                    .setTooltip(Text.literal("The format of the coordinates message. Placeholders: {x}, {y}, {z}, {bx}, {by}, {bz}, {dim}, {facing}"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.format = newValue)
+                    .build());
+
             // Tool Switch Category
             ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch"), TutorialMod.CONFIG.autoToolSwitchEnabled)
