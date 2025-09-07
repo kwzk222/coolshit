@@ -47,6 +47,8 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean masterToggleWasPressed = false;
     private boolean teammateWasPressed = false;
     private boolean triggerBotToggleWasPressed = false;
+    private boolean toggleSneakWasPressed = false;
+    private boolean toggleSprintWasPressed = false;
 
     private static int clickCooldown = -1;
 
@@ -99,9 +101,16 @@ public class TutorialModClient implements ClientModInitializer {
         TutorialMod.getAutoToolSwitch().onTick();
 
         // Master toggle check for all subsequent features.
-        if (!TutorialMod.CONFIG.masterEnabled) return;
+        if (!TutorialMod.CONFIG.masterEnabled) {
+            // Still allow toggles to be turned off even if master is disabled
+            TutorialMod.CONFIG.isToggleSneakOn = false;
+            TutorialMod.CONFIG.isToggleSprintOn = false;
+            handleToggleKeys(client); // This will release the keys
+            return;
+        }
 
         // --- Feature Ticks ---
+        handleToggleKeys(client);
         if (TutorialMod.CONFIG.autoTotemEnabled) {
             autoTotem.onTick(client);
         }
@@ -186,6 +195,28 @@ public class TutorialModClient implements ClientModInitializer {
                 client.player.sendMessage(Text.of("TriggerBot: " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF")), false);
             }
             triggerBotToggleWasPressed = isTriggerBotTogglePressed;
+        } catch (IllegalArgumentException e) {
+        }
+
+        // --- Toggle Sneak Hotkey ---
+        try {
+            boolean isToggleSneakPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleSneakHotkey).getCode());
+            if (isToggleSneakPressed && !toggleSneakWasPressed) {
+                TutorialMod.CONFIG.isToggleSneakOn = !TutorialMod.CONFIG.isToggleSneakOn;
+                client.player.sendMessage(Text.of("Toggle Sneak: " + (TutorialMod.CONFIG.isToggleSneakOn ? "ON" : "OFF")), false);
+            }
+            toggleSneakWasPressed = isToggleSneakPressed;
+        } catch (IllegalArgumentException e) {
+        }
+
+        // --- Toggle Sprint Hotkey ---
+        try {
+            boolean isToggleSprintPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleSprintHotkey).getCode());
+            if (isToggleSprintPressed && !toggleSprintWasPressed) {
+                TutorialMod.CONFIG.isToggleSprintOn = !TutorialMod.CONFIG.isToggleSprintOn;
+                client.player.sendMessage(Text.of("Toggle Sprint: " + (TutorialMod.CONFIG.isToggleSprintOn ? "ON" : "OFF")), false);
+            }
+            toggleSprintWasPressed = isToggleSprintPressed;
         } catch (IllegalArgumentException e) {
         }
     }
@@ -457,5 +488,29 @@ public class TutorialModClient implements ClientModInitializer {
             if (player.getInventory().getStack(i).getItem() == Items.FLINT_AND_STEEL) return i;
         }
         return -1;
+    }
+
+    private void handleToggleKeys(MinecraftClient client) {
+        // --- Handle Toggle Sneak ---
+        if (TutorialMod.CONFIG.isToggleSneakOn) {
+            // If the user presses the vanilla sneak key, turn off the toggle
+            if (client.options.sneakKey.wasPressed()) {
+                TutorialMod.CONFIG.isToggleSneakOn = false;
+                client.player.sendMessage(Text.of("Toggle Sneak: OFF"), false);
+            } else {
+                client.options.sneakKey.setPressed(true);
+            }
+        }
+
+        // --- Handle Toggle Sprint ---
+        if (TutorialMod.CONFIG.isToggleSprintOn) {
+            // If the user presses the vanilla sprint key, turn off the toggle
+            if (client.options.sprintKey.wasPressed()) {
+                TutorialMod.CONFIG.isToggleSprintOn = false;
+                client.player.sendMessage(Text.of("Toggle Sprint: OFF"), false);
+            } else {
+                client.options.sprintKey.setPressed(true);
+            }
+        }
     }
 }

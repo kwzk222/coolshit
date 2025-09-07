@@ -231,6 +231,18 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotToggleHotkey = newValue)
                     .build());
 
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Toggle Sneak Hotkey"), TutorialMod.CONFIG.toggleSneakHotkey)
+                    .setDefaultValue("key.keyboard.c")
+                    .setTooltip(Text.literal("The hotkey to toggle sneaking on or off."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleSneakHotkey = newValue)
+                    .build());
+
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Toggle Sprint Hotkey"), TutorialMod.CONFIG.toggleSprintHotkey)
+                    .setDefaultValue("key.keyboard.v")
+                    .setTooltip(Text.literal("The hotkey to toggle sprinting on or off."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleSprintHotkey = newValue)
+                    .build());
+
             return builder.build();
         };
     }
