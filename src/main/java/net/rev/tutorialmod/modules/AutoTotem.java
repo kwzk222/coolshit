@@ -27,62 +27,39 @@ public class AutoTotem {
     // --- Runtime cached state ---
     private volatile boolean cachedOffhandHasTotem = false;
     private final Set<Integer> cachedHotbarSlotsWithTotems = Collections.synchronizedSet(new LinkedHashSet<>());
-    private final AtomicBoolean inventoryOpen = new AtomicBoolean(false);
     private final AtomicBoolean lastActionWasModSwap = new AtomicBoolean(false);
 
     // --- Delayed Action State ---
     private int totemSwapSlot = -1;
 
     public void init() {
-        // Register event listeners
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> inventoryOpen.set(false));
-        ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
-            if (screen instanceof HandledScreen) {
-                onScreenOpened(client, (HandledScreen<?>) screen);
-            }
-        });
-
-        // Packet listening is now handled by a mixin.
-    }
-
-    private void onScreenOpened(MinecraftClient client, HandledScreen<?> screen) {
-        inventoryOpen.set(true);
-        lastActionWasModSwap.set(false); // Reset on new screen
-
-        if (client.player != null) {
-            updateCachedState(client.player);
-        }
-
-        ScreenEvents.remove(screen).register(closedScreen -> {
-            inventoryOpen.set(false);
-            if (client.player != null) {
-                updateCachedState(client.player);
-            }
-        });
+        // All event listeners have been removed for a more robust tick-based check.
     }
 
     public void onTick(MinecraftClient client) {
-        // --- Handle Delayed Swap ---
         if (this.totemSwapSlot != -1) {
             if (client.player != null && client.interactionManager != null) {
                 client.interactionManager.clickSlot(0, 36 + this.totemSwapSlot, 40, SlotActionType.SWAP, client.player);
             }
-            this.totemSwapSlot = -1; // Reset after attempt
-            return; // Don't process other logic this tick
+            this.totemSwapSlot = -1;
+            return;
         }
 
-        // --- Guard Checks ---
-        if (client.player == null || !inventoryOpen.get() || !(client.currentScreen instanceof HandledScreen)) {
+        if (client.player == null) return;
+        if (!TutorialMod.CONFIG.autoTotemEnabled) return;
+
+        // The hover-swap feature should only run when an inventory screen is open.
+        // Checking the currentScreen directly is more robust than using open/close events.
+        if (!(client.currentScreen instanceof HandledScreen)) {
             return;
         }
         if (TutorialMod.CONFIG.autoTotemSurvivalOnly && client.player.isCreative()) {
             return;
         }
         if (lastActionWasModSwap.getAndSet(false)) {
-            return; // Wait one tick after our own action to prevent loops
+            return;
         }
 
-        // --- Core Logic ---
         HandledScreen<?> handledScreen = (HandledScreen<?>) client.currentScreen;
         Slot hoveredSlot = ((HandledScreenAccessor) handledScreen).getFocusedSlot();
 
@@ -98,14 +75,12 @@ public class AutoTotem {
         Collections.sort(TutorialMod.CONFIG.autoTotemHotbarSlots);
         for (int hotbarSlotIndex : TutorialMod.CONFIG.autoTotemHotbarSlots) {
             if (hotbarSlotIndex < 0 || hotbarSlotIndex > 8) continue;
-
             if (!hotbarHasTotemAtIndex(client.player, hotbarSlotIndex)) {
                 performMoveToHotbar(client, handledScreen.getScreenHandler(), hoveredSlot.id, 36 + hotbarSlotIndex);
                 return;
             }
         }
     }
-
 
     private void updateCachedState(ClientPlayerEntity player) {
         cachedOffhandHasTotem = offhandHasTotem(player);

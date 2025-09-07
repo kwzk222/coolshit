@@ -23,18 +23,17 @@ public class ClientPlayNetworkHandlerMixin {
     @Inject(method = "onEntityStatus", at = @At("HEAD"))
     private void onEntityStatus(EntityStatusS2CPacket packet, CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
-        // Check if the packet is a totem pop for the current player
-        if (client.player != null && packet.getStatus() == 35 && packet.getEntity(client.player.getWorld()) == client.player) {
-            // Check if the feature and this specific sub-feature are enabled
-            if (TutorialMod.CONFIG.autoTotemEnabled && TutorialMod.CONFIG.autoTotemRefillOnPop) {
-                // Check for survival mode setting
-                if (TutorialMod.CONFIG.autoTotemSurvivalOnly && client.player.isCreative()) {
-                    return;
-                }
-                // Safely get the module and call the handler
-                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getAutoTotem() != null) {
-                    TutorialModClient.getInstance().getAutoTotem().handleTotemPop();
-                }
+        if (client.player == null) return;
+
+        if (packet.getStatus() == 35 && packet.getEntity(client.player.getWorld()) == client.player) {
+            if (!TutorialMod.CONFIG.autoTotemEnabled || !TutorialMod.CONFIG.autoTotemRefillOnPop) {
+                return;
+            }
+            if (TutorialMod.CONFIG.autoTotemSurvivalOnly && client.player.isCreative()) {
+                return;
+            }
+            if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getAutoTotem() != null) {
+                TutorialModClient.getInstance().getAutoTotem().handleTotemPop();
             }
         }
     }

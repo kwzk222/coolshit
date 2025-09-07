@@ -100,17 +100,14 @@ public class TutorialModClient implements ClientModInitializer {
         // Handle AutoToolSwitch tick
         TutorialMod.getAutoToolSwitch().onTick();
 
+        // --- Toggles ---
+        // This is handled here to ensure toggles can be turned off even if the master switch is disabled.
+        handleToggleKeys(client);
+
         // Master toggle check for all subsequent features.
-        if (!TutorialMod.CONFIG.masterEnabled) {
-            // Still allow toggles to be turned off even if master is disabled
-            TutorialMod.CONFIG.isToggleSneakOn = false;
-            TutorialMod.CONFIG.isToggleSprintOn = false;
-            handleToggleKeys(client); // This will release the keys
-            return;
-        }
+        if (!TutorialMod.CONFIG.masterEnabled) return;
 
         // --- Feature Ticks ---
-        handleToggleKeys(client);
         if (TutorialMod.CONFIG.autoTotemEnabled) {
             autoTotem.onTick(client);
         }
@@ -491,6 +488,12 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handleToggleKeys(MinecraftClient client) {
+        // If master switch is off, ensure all toggles are disabled.
+        if (!TutorialMod.CONFIG.masterEnabled) {
+            TutorialMod.CONFIG.isToggleSneakOn = false;
+            TutorialMod.CONFIG.isToggleSprintOn = false;
+        }
+
         // --- Handle Toggle Sneak ---
         if (TutorialMod.CONFIG.isToggleSneakOn) {
             // If the user presses the vanilla sneak key, turn off the toggle
