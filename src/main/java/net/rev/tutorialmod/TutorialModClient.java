@@ -662,26 +662,22 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Dimension identifier
         String dim = "";
-        if (cfg.includeDimension) {
-            try {
-                RegistryKey<World> key = player.getWorld().getRegistryKey();
-                Identifier id = key.getValue();
-                if (id != null) {
-                    String dimensionName = id.getPath().replace("the_", "");
-                    dim = " " + dimensionName;
-                }
-            } catch (Exception ignored) {
+        try {
+            RegistryKey<World> key = player.getWorld().getRegistryKey();
+            Identifier id = key.getValue();
+            if (id != null) {
+                String dimensionName = id.getPath().replace("the_", "");
+                dim = " " + dimensionName;
             }
+        } catch (Exception ignored) {
         }
 
         // Facing (cardinal)
         String facing = "";
-        if (cfg.includeFacing) {
-            try {
-                Direction d = player.getHorizontalFacing();
-                if (d != null) facing = " " + d.toString().toLowerCase();
-            } catch (Exception ignored) {
-            }
+        try {
+            Direction d = player.getHorizontalFacing();
+            if (d != null) facing = " " + d.toString().toLowerCase();
+        } catch (Exception ignored) {
         }
 
         // Compose replacements

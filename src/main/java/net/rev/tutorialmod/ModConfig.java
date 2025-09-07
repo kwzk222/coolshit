@@ -80,10 +80,7 @@ public class ModConfig {
     public boolean caseSensitive = false;
     public boolean replaceInChat = true;
     public boolean replaceInCommands = true;
-    public boolean includeDimension = true;
-    public boolean includeFacing = true;
-    public boolean useBlockCoords = true;
-    public String format = "{bx} {by} {bz}{dim}{facing}";
+    public String format = "{bx} {by} {bz} {dim} {facing}";
 
     public Macro macro1 = new Macro();
     public Macro macro2 = new Macro();
