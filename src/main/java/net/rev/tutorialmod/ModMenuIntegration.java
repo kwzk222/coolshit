@@ -11,9 +11,6 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
 public class ModMenuIntegration implements ModMenuApi {
 
     @Override
@@ -27,14 +24,6 @@ public class ModMenuIntegration implements ModMenuApi {
             builder.setSavingRunnable(TutorialMod.CONFIG::save);
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
-
-            // General Category for master switch
-            ConfigCategory general = builder.getOrCreateCategory(Text.literal("General"));
-            general.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Switch"), TutorialMod.CONFIG.masterEnabled)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("The main switch to enable or disable all features of the mod at once."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.masterEnabled = newValue)
-                    .build());
 
             // Tool Switch Category
             ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
@@ -186,38 +175,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("Adds a random delay (from 0 to this value) in ticks before attacking."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackDelay = newValue)
-                    .build());
-
-            // Auto Totem Category
-            ConfigCategory autoTotem = builder.getOrCreateCategory(Text.literal("Auto Totem"));
-            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Auto Totem"), TutorialMod.CONFIG.autoTotemEnabled)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("Enable or disable the Auto Totem feature."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnabled = newValue)
-                    .build());
-            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Survival Mode Only"), TutorialMod.CONFIG.autoTotemSurvivalOnly)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("If enabled, Auto Totem will only function in Survival mode."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemSurvivalOnly = newValue)
-                    .build());
-            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Refill on Totem Pop"), TutorialMod.CONFIG.autoTotemRefillOnPop)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("Automatically switch to a totem in your hotbar and move it to your offhand when a totem pops."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemRefillOnPop = newValue)
-                    .build());
-            autoTotem.addEntry(entryBuilder.startStrField(Text.literal("Totem Slots (1-9, comma-separated)"),
-                            TutorialMod.CONFIG.autoTotemHotbarSlots.stream().map(s -> String.valueOf(s + 1)).collect(Collectors.joining(",")))
-                    .setDefaultValue("1,2,3,4,5,6,7,8,9")
-                    .setTooltip(Text.literal("The hotbar slots that are designated for holding totems."))
-                    .setSaveConsumer(newValue -> {
-                        try {
-                            TutorialMod.CONFIG.autoTotemHotbarSlots = Arrays.stream(newValue.replace(" ", "").split(","))
-                                    .map(s -> Integer.parseInt(s) - 1)
-                                    .collect(Collectors.toList());
-                        } catch (NumberFormatException e) {
-                            // Handle invalid input, maybe log an error or keep the old value
-                        }
-                    })
                     .build());
 
             // Hotkeys Category

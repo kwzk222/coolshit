@@ -22,7 +22,6 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
-import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -30,17 +29,8 @@ public class TutorialModClient implements ClientModInitializer {
     // --- Singleton Instance ---
     private static TutorialModClient instance;
 
-    public static TutorialModClient getInstance() {
-        return instance;
-    }
-
     // --- Modules & Features ---
     private TriggerBot triggerBot;
-    private AutoTotem autoTotem;
-
-    public AutoTotem getAutoTotem() {
-        return autoTotem;
-    }
 
     // --- Keybind States ---
     private boolean masterToggleWasPressed = false;
@@ -78,8 +68,6 @@ public class TutorialModClient implements ClientModInitializer {
     public void onInitializeClient() {
         instance = this;
         triggerBot = new TriggerBot();
-        autoTotem = new AutoTotem();
-        autoTotem.init();
 
         // Register Event Listeners
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
@@ -114,9 +102,6 @@ public class TutorialModClient implements ClientModInitializer {
         if (!TutorialMod.CONFIG.masterEnabled) return;
 
         // --- Feature Ticks ---
-        if (TutorialMod.CONFIG.autoTotemEnabled) {
-            autoTotem.onTick(client);
-        }
         handlePlacementClick(client);          // Handles the brief mouse click simulation
         handleCombatSwap(client);              // Handles axe/mace swapping during combat
         handlePlacementSequence(client);       // Handles the TNT Minecart -> Lava/Fire -> Crossbow sequence
