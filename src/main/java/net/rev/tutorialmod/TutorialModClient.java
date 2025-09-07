@@ -2,8 +2,6 @@ package net.rev.tutorialmod;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
-import net.fabricmc.fabric.api.client.message.v1.MessageCancelledException;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
@@ -88,29 +86,6 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Register Commands
         new CommandManager().registerCommands();
-
-        ClientSendMessageEvents.CHAT.register(message -> {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player == null) return;
-
-            String trigger = TutorialMod.CONFIG.triggerWord;
-            String template = TutorialMod.CONFIG.coordinateFormat;
-
-            if (message.equalsIgnoreCase(trigger)) {
-                var pos = client.player.getBlockPos();
-                String coords = template
-                        .replace("{x}", String.valueOf(pos.getX()))
-                        .replace("{y}", String.valueOf(pos.getY()))
-                        .replace("{z}", String.valueOf(pos.getZ()));
-
-                if (coords.equalsIgnoreCase(trigger)) {
-                    return;
-                }
-
-                client.player.networkHandler.sendChatMessage(coords);
-                throw new MessageCancelledException();
-            }
-        });
     }
 
     private void onClientTick(MinecraftClient client) {

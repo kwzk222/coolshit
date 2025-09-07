@@ -248,19 +248,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.activeInInventory = newValue)
                     .build());
 
-            // Chat Category
-            ConfigCategory chat = builder.getOrCreateCategory(Text.literal("Chat"));
-            chat.addEntry(entryBuilder.startStrField(Text.literal("Trigger Word"), TutorialMod.CONFIG.triggerWord)
-                    .setDefaultValue("cc")
-                    .setTooltip(Text.literal("The word that will be replaced by your coordinates in chat."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerWord = newValue)
-                    .build());
-            chat.addEntry(entryBuilder.startStrField(Text.literal("Coordinate Format"), TutorialMod.CONFIG.coordinateFormat)
-                    .setDefaultValue("X: {x}, Y: {y}, Z: {z}")
-                    .setTooltip(Text.literal("The format of the coordinate message. Use {x}, {y}, and {z} as placeholders."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.coordinateFormat = newValue)
-                    .build());
-
             return builder.build();
         };
     }

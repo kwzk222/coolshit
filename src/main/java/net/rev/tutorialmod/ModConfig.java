@@ -75,10 +75,6 @@ public class ModConfig {
     public String toggleSprintHotkey = "key.keyboard.v";
     public boolean activeInInventory = false;
 
-    // --- Chat ---
-    public String triggerWord = "cc";
-    public String coordinateFormat = "X: {x}, Y: {y}, Z: {z}";
-
 
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
