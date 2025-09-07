@@ -75,6 +75,28 @@ public class ModConfig {
     public String toggleSprintHotkey = "key.keyboard.v";
     public boolean activeInInventory = false;
 
+    // --- Chat ---
+    public String trigger = "cc";
+    public boolean caseSensitive = false;
+    public boolean replaceInChat = true;
+    public boolean replaceInCommands = true;
+    public boolean includeDimension = true;
+    public boolean includeFacing = true;
+    public boolean useBlockCoords = true;
+    public String format = "{bx} {by} {bz}{dim}{facing}";
+
+    public Macro macro1 = new Macro();
+    public Macro macro2 = new Macro();
+    public Macro macro3 = new Macro();
+    public Macro macro4 = new Macro();
+    public Macro macro5 = new Macro();
+
+    public static class Macro {
+        public String name = "New Macro";
+        public String hotkey = "key.keyboard.unknown";
+        public String message = "";
+    }
+
 
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;

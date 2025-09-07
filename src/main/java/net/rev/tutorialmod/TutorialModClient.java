@@ -1,7 +1,5 @@
 package net.rev.tutorialmod;
 
-import me.shedaniel.autoconfig.AutoConfig;
-import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
@@ -10,17 +8,17 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.CrossbowItem;
@@ -91,8 +89,6 @@ public class TutorialModClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        AutoConfig.register(ChatConfig.class, GsonConfigSerializer::new);
-
         instance = this;
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
@@ -107,7 +103,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Chat (public chat) modify event
         ClientSendMessageEvents.MODIFY_CHAT.register(message -> {
-            ChatConfig cfg = AutoConfig.getConfigHolder(ChatConfig.class).getConfig();
+            ModConfig cfg = TutorialMod.CONFIG;
             if (!cfg.replaceInChat) return message;
             if (message == null) return message;
 
@@ -124,7 +120,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Command modify event: modifies the command string (without leading '/')
         ClientSendMessageEvents.MODIFY_COMMAND.register(command -> {
-            ChatConfig cfg = AutoConfig.getConfigHolder(ChatConfig.class).getConfig();
+            ModConfig cfg = TutorialMod.CONFIG;
             if (!cfg.replaceInCommands) return command;
             if (command == null) return command;
 
@@ -621,10 +617,9 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleChatMacros(MinecraftClient client) {
         if (client.player == null) return;
 
-        ChatConfig cfg = AutoConfig.getConfigHolder(ChatConfig.class).getConfig();
-        List<ChatConfig.Macro> macros = new ArrayList<>(Arrays.asList(cfg.macro1, cfg.macro2, cfg.macro3, cfg.macro4, cfg.macro5));
+        List<ModConfig.Macro> macros = new ArrayList<>(Arrays.asList(TutorialMod.CONFIG.macro1, TutorialMod.CONFIG.macro2, TutorialMod.CONFIG.macro3, TutorialMod.CONFIG.macro4, TutorialMod.CONFIG.macro5));
 
-        for (ChatConfig.Macro macro : macros) {
+        for (ModConfig.Macro macro : macros) {
             if (macro.hotkey == null || macro.hotkey.equals("key.keyboard.unknown") || macro.message == null || macro.message.isEmpty()) {
                 continue;
             }
@@ -649,7 +644,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private static String formatCoords(ChatConfig cfg) {
+    private static String formatCoords(ModConfig cfg) {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         if (player == null || player.getWorld() == null) return cfg.trigger; // fallback
 
