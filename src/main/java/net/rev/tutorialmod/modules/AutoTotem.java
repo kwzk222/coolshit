@@ -18,6 +18,7 @@ import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Identifier;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.mixin.HandledScreenAccessor;
+import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -139,12 +140,14 @@ public class AutoTotem {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.interactionManager == null) return;
 
+        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+
         // Find first totem in hotbar
         for (int i = 0; i < 9; i++) {
             if (isTotem(client.player.getInventory().getStack(i))) {
                 // If the totem is not already in the selected slot, switch to it
-                if (client.player.getInventory().selectedSlot != i) {
-                    client.player.getInventory().selectedSlot = i;
+                if (inventory.getSelectedSlot() != i) {
+                    inventory.setSelectedSlot(i);
                 }
 
                 // Now that it's in the main hand, swap it to the offhand.
