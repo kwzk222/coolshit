@@ -135,6 +135,27 @@ public class AutoTotem {
         lastActionWasModSwap.set(true);
     }
 
+    public void handleTotemPop() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null || client.interactionManager == null) return;
+
+        // Find first totem in hotbar
+        for (int i = 0; i < 9; i++) {
+            if (isTotem(client.player.getInventory().getStack(i))) {
+                // If the totem is not already in the selected slot, switch to it
+                if (client.player.getInventory().selectedSlot != i) {
+                    client.player.getInventory().selectedSlot = i;
+                }
+
+                // Now that it's in the main hand, swap it to the offhand.
+                // The player's inventory screenhandler is always syncId 0.
+                // The hotbar slot ID is 36 + index. The swap button for offhand is 40.
+                client.interactionManager.clickSlot(0, 36 + i, 40, SlotActionType.SWAP, client.player);
+                return; // Only handle one pop
+            }
+        }
+    }
+
     // --- Helper Methods ---
 
     private boolean isTotem(ItemStack stack) {

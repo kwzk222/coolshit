@@ -200,14 +200,19 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, Auto Totem will only function in Survival mode."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemSurvivalOnly = newValue)
                     .build());
-            autoTotem.addEntry(entryBuilder.startStrField(Text.literal("Totem Slots (0-8, comma-separated)"),
-                            TutorialMod.CONFIG.autoTotemHotbarSlots.stream().map(String::valueOf).collect(Collectors.joining(",")))
-                    .setDefaultValue("0,1,2,3,4,5,6,7,8")
+            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Refill on Totem Pop"), TutorialMod.CONFIG.autoTotemRefillOnPop)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Automatically switch to a totem in your hotbar and move it to your offhand when a totem pops."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemRefillOnPop = newValue)
+                    .build());
+            autoTotem.addEntry(entryBuilder.startStrField(Text.literal("Totem Slots (1-9, comma-separated)"),
+                            TutorialMod.CONFIG.autoTotemHotbarSlots.stream().map(s -> String.valueOf(s + 1)).collect(Collectors.joining(",")))
+                    .setDefaultValue("1,2,3,4,5,6,7,8,9")
                     .setTooltip(Text.literal("The hotbar slots that are designated for holding totems."))
                     .setSaveConsumer(newValue -> {
                         try {
                             TutorialMod.CONFIG.autoTotemHotbarSlots = Arrays.stream(newValue.replace(" ", "").split(","))
-                                    .map(Integer::parseInt)
+                                    .map(s -> Integer.parseInt(s) - 1)
                                     .collect(Collectors.toList());
                         } catch (NumberFormatException e) {
                             // Handle invalid input, maybe log an error or keep the old value

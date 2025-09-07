@@ -47,6 +47,7 @@ public class ModConfig {
     // --- Auto Totem ---
     public boolean autoTotemEnabled = true;
     public boolean autoTotemSurvivalOnly = true;
+    public boolean autoTotemRefillOnPop = true;
     public List<Integer> autoTotemHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
 
     // --- TriggerBot ---
