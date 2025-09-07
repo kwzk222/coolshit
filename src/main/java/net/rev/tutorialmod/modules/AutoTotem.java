@@ -42,8 +42,10 @@ public class AutoTotem {
         });
 
         // Listen for totem pop server-side packet
-        ClientPlayNetworking.registerGlobalReceiver(EntityStatusS2CPacket.TYPE, (packet, context) -> {
-            context.client().execute(() -> onEntityStatus(packet, context.player()));
+        ClientPlayNetworking.registerGlobalReceiver(EntityStatusS2CPacket.PACKET_ID, (client, handler, buf, responseSender) -> {
+            // We must copy the buffer as the packet is processed on the client thread.
+            EntityStatusS2CPacket packet = new EntityStatusS2CPacket(buf.copy());
+            client.execute(() -> onEntityStatus(client, packet));
         });
 
         // Per-tick logic is handled by onTick() called from TutorialModClient
@@ -90,7 +92,7 @@ public class AutoTotem {
 
         // 1. Check if offhand needs a totem
         if (!offhandHasTotem(client.player)) {
-            Slot hoveredSlot = handledScreen.getFocusedSlot();
+            Slot hoveredSlot = handledScreen.focusedSlot;
             if (hoveredSlot != null && hoveredSlot.hasStack() && isTotem(hoveredSlot.getStack())) {
                 // If hovering over a totem, perform the swap immediately
                 performSwapToOffhand(client, handler, hoveredSlot.id);
@@ -119,8 +121,8 @@ public class AutoTotem {
         }
     }
 
-    private void onEntityStatus(EntityStatusS2CPacket packet, ClientPlayerEntity player) {
-        if (player != null && packet.getStatus() == 35 && packet.getEntity(player.getWorld()) == player) {
+    private void onEntityStatus(MinecraftClient client, EntityStatusS2CPacket packet) {
+        if (client.player != null && packet.getStatus() == 35 && packet.getEntity(client.player.getWorld()) == client.player) {
             // Totem popped, update cache immediately
             cachedOffhandHasTotem = false;
             attemptSwapHotbarSlotToMainHand();
