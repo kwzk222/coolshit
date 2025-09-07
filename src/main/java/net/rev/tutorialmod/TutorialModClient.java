@@ -2,7 +2,8 @@ package net.rev.tutorialmod;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.message.v1.ClientChatCallback;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
+import net.fabricmc.fabric.api.client.message.v1.MessageCancelledException;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
@@ -88,9 +89,9 @@ public class TutorialModClient implements ClientModInitializer {
         // Register Commands
         new CommandManager().registerCommands();
 
-        ClientChatCallback.EVENT.register((message, signed) -> {
+        ClientSendMessageEvents.CHAT.register(message -> {
             MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player == null) return false;
+            if (client.player == null) return;
 
             String trigger = TutorialMod.CONFIG.triggerWord;
             String template = TutorialMod.CONFIG.coordinateFormat;
@@ -103,14 +104,12 @@ public class TutorialModClient implements ClientModInitializer {
                         .replace("{z}", String.valueOf(pos.getZ()));
 
                 if (coords.equalsIgnoreCase(trigger)) {
-                    return false;
+                    return;
                 }
 
                 client.player.networkHandler.sendChatMessage(coords);
-                return true;
+                throw new MessageCancelledException();
             }
-
-            return false;
         });
     }
 
