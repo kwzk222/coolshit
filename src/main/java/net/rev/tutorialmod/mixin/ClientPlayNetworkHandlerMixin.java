@@ -19,13 +19,4 @@ public class ClientPlayNetworkHandlerMixin {
         TutorialModClient.confirmFirePlacement(packet.getPos(), packet.getState());
     }
 
-    @Inject(method = "onEntityStatus", at = @At("HEAD"))
-    private void onEntityStatus(EntityStatusS2CPacket packet, CallbackInfo ci) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player != null && packet.getStatus() == 35 && packet.getEntity(client.player.getWorld()) == client.player) {
-            if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getAutoTotem() != null) {
-                TutorialModClient.getInstance().getAutoTotem().onTotemPop();
-            }
-        }
-    }
 }

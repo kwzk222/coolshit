@@ -195,15 +195,15 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Enable or disable the Auto Totem feature."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnabled = newValue)
                     .build());
-            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Auto Swap to Offhand"), TutorialMod.CONFIG.autoTotemEnableAutoMainToOffhand)
+            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Survival Mode Only"), TutorialMod.CONFIG.autoTotemSurvivalOnly)
                     .setDefaultValue(true)
-                    .setTooltip(Text.literal("Automatically swap a totem from your main hand to your offhand if it's empty."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnableAutoMainToOffhand = newValue)
+                    .setTooltip(Text.literal("If enabled, Auto Totem will only function in Survival mode."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemSurvivalOnly = newValue)
                     .build());
-            autoTotem.addEntry(entryBuilder.startStrField(Text.literal("Hotbar Slots (comma-separated)"),
+            autoTotem.addEntry(entryBuilder.startStrField(Text.literal("Totem Slots (0-8, comma-separated)"),
                             TutorialMod.CONFIG.autoTotemHotbarSlots.stream().map(String::valueOf).collect(Collectors.joining(",")))
                     .setDefaultValue("0,1,2,3,4,5,6,7,8")
-                    .setTooltip(Text.literal("Prioritized hotbar slots (0-8) to fill with totems."))
+                    .setTooltip(Text.literal("The hotbar slots that are designated for holding totems."))
                     .setSaveConsumer(newValue -> {
                         try {
                             TutorialMod.CONFIG.autoTotemHotbarSlots = Arrays.stream(newValue.replace(" ", "").split(","))

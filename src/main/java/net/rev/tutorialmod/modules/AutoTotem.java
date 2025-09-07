@@ -66,62 +66,46 @@ public class AutoTotem {
     }
 
     public void onTick(MinecraftClient client) {
-        if (client.player == null || !inventoryOpen.get()) {
-            return; // Only run logic when inventory is open
+        // --- Guard Checks ---
+        if (client.player == null || !inventoryOpen.get() || !(client.currentScreen instanceof HandledScreen)) {
+            return;
         }
-
-        // If the last action was our own swap, wait a tick to prevent loops
+        if (TutorialMod.CONFIG.autoTotemSurvivalOnly && client.player.isCreative()) {
+            return;
+        }
         if (lastActionWasModSwap.getAndSet(false)) {
-            return;
+            return; // Wait one tick after our own action to prevent loops
         }
 
-        // Main logic: check for totem needs and opportunities
-        checkAndPerformSwaps(client);
-    }
-
-    private void checkAndPerformSwaps(MinecraftClient client) {
-        if (client.player == null || !(client.currentScreen instanceof HandledScreen)) {
-            return;
-        }
+        // --- Core Logic ---
         HandledScreen<?> handledScreen = (HandledScreen<?>) client.currentScreen;
-        ScreenHandler handler = handledScreen.getScreenHandler();
+        Slot hoveredSlot = ((HandledScreenAccessor) handledScreen).getFocusedSlot();
 
-        // 1. Check if offhand needs a totem
+        // Action is only triggered by hovering over a totem
+        if (hoveredSlot == null || !hoveredSlot.hasStack() || !isTotem(hoveredSlot.getStack())) {
+            return;
+        }
+
+        // Find the first empty destination slot
+        // 1. Check offhand
         if (!offhandHasTotem(client.player)) {
-            Slot hoveredSlot = ((HandledScreenAccessor) handledScreen).getFocusedSlot();
-            if (hoveredSlot != null && hoveredSlot.hasStack() && isTotem(hoveredSlot.getStack())) {
-                // If hovering over a totem, perform the swap immediately
-                performSwapToOffhand(client, handler, hoveredSlot.id);
+            performSwapToOffhand(client, handledScreen.getScreenHandler(), hoveredSlot.id);
+            return;
+        }
+
+        // 2. Check configured totem slots
+        Collections.sort(TutorialMod.CONFIG.autoTotemHotbarSlots);
+        for (int hotbarSlotIndex : TutorialMod.CONFIG.autoTotemHotbarSlots) {
+            if (hotbarSlotIndex < 0 || hotbarSlotIndex > 8) continue; // Ignore invalid slots
+
+            if (!hotbarHasTotemAtIndex(client.player, hotbarSlotIndex)) {
+                // Hotbar slot ID in screen handler is 36 + index
+                performMoveToHotbar(client, handledScreen.getScreenHandler(), hoveredSlot.id, 36 + hotbarSlotIndex);
                 return; // Action taken, end tick
             }
         }
-
-        // 2. If offhand is full, try to fill hotbar slots
-        if (offhandHasTotem(client.player)) {
-            fillHotbarFromInventory(client, handler);
-        }
     }
 
-    private void fillHotbarFromInventory(MinecraftClient client, ScreenHandler handler) {
-        for (int hotbarSlotIndex : TutorialMod.CONFIG.autoTotemHotbarSlots) {
-            if (!hotbarHasTotemAtIndex(client.player, hotbarSlotIndex)) {
-                // Find first available totem in main inventory
-                for (int i = 9; i < 36; i++) { // Main inventory slots
-                    Slot slot = handler.getSlot(i);
-                    if (slot != null && slot.hasStack() && isTotem(slot.getStack())) {
-                        quickMoveSlot(client, handler, slot.id);
-                        return; // One action per tick
-                    }
-                }
-            }
-        }
-    }
-
-    public void onTotemPop() {
-        // This is called from the ClientPlayNetworkHandlerMixin when a totem pop is detected for our player.
-        cachedOffhandHasTotem = false;
-        attemptSwapHotbarSlotToMainHand();
-    }
 
     private void updateCachedState(ClientPlayerEntity player) {
         cachedOffhandHasTotem = offhandHasTotem(player);
@@ -142,32 +126,13 @@ public class AutoTotem {
         lastActionWasModSwap.set(true);
     }
 
-    private void quickMoveSlot(MinecraftClient client, ScreenHandler handler, int slotId) {
+    private void performMoveToHotbar(MinecraftClient client, ScreenHandler handler, int sourceSlotId, int targetSlotId) {
         if (client.interactionManager == null) return;
-        // For shift-clicking, the action is QUICK_MOVE and button is 0.
-        client.interactionManager.clickSlot(handler.syncId, slotId, 0, SlotActionType.QUICK_MOVE, client.player);
+        // Pickup from source
+        client.interactionManager.clickSlot(handler.syncId, sourceSlotId, 0, SlotActionType.PICKUP, client.player);
+        // Place in target
+        client.interactionManager.clickSlot(handler.syncId, targetSlotId, 0, SlotActionType.PICKUP, client.player);
         lastActionWasModSwap.set(true);
-    }
-
-    private void attemptSwapHotbarSlotToMainHand() {
-        if (!TutorialMod.CONFIG.autoTotemEnableAutoMainToOffhand) return;
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.interactionManager == null) return;
-
-        for (int hotbarSlot : TutorialMod.CONFIG.autoTotemHotbarSlots) {
-            if (cachedHotbarSlotsWithTotems.contains(hotbarSlot)) {
-                // Player inventory screen handler syncId is 0. Hotbar slots 0-8 are indices 36-44.
-                int slotId = 36 + hotbarSlot;
-                client.interactionManager.clickSlot(0, slotId, 40, SlotActionType.SWAP, client.player);
-
-                // Update cache immediately
-                cachedHotbarSlotsWithTotems.remove(hotbarSlot);
-                cachedOffhandHasTotem = true;
-                lastActionWasModSwap.set(true);
-                return; // Only swap one totem
-            }
-        }
     }
 
     // --- Helper Methods ---
