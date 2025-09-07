@@ -9,6 +9,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class ModConfig {
@@ -42,6 +43,12 @@ public class ModConfig {
     public int autoToolSwitchBackMaxDelay = 5;
     public int autoToolSwitchMineMinDelay = 0;
     public int autoToolSwitchMineMaxDelay = 2;
+
+    // --- Auto Totem ---
+    public boolean autoTotemEnabled = true;
+    public boolean autoTotemSurvivalOnly = true;
+    public boolean autoTotemRefillOnPop = true;
+    public List<Integer> autoTotemHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
 
     // --- TriggerBot ---
     public boolean triggerBotEnabled = true;

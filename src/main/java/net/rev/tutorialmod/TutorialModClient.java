@@ -22,6 +22,7 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
+import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -29,8 +30,18 @@ public class TutorialModClient implements ClientModInitializer {
     // --- Singleton Instance ---
     private static TutorialModClient instance;
 
+    public static TutorialModClient getInstance() {
+        return instance;
+    }
+
     // --- Modules & Features ---
     private TriggerBot triggerBot;
+    private AutoTotem autoTotem;
+
+    public AutoTotem getAutoTotem() {
+        return autoTotem;
+    }
+
 
     // --- Keybind States ---
     private boolean masterToggleWasPressed = false;
@@ -60,14 +71,12 @@ public class TutorialModClient implements ClientModInitializer {
     public static int awaitingRailConfirmationCooldown = -1;
 
 
-    //================================================================================
-    // INITIALIZATION
-    //================================================================================
-
     @Override
     public void onInitializeClient() {
         instance = this;
         triggerBot = new TriggerBot();
+        autoTotem = new AutoTotem();
+        autoTotem.init();
 
         // Register Event Listeners
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
@@ -77,15 +86,6 @@ public class TutorialModClient implements ClientModInitializer {
         new CommandManager().registerCommands();
     }
 
-
-    //================================================================================
-    // EVENT HANDLERS (TICK & ATTACK)
-    //================================================================================
-
-    /**
-     * The main client tick loop where all continuous logic is handled.
-     * This method is called at the end of every client tick.
-     */
     private void onClientTick(MinecraftClient client) {
         // Handle keybinds first, as they might toggle features on/off.
         handleKeybinds(client);
@@ -102,16 +102,15 @@ public class TutorialModClient implements ClientModInitializer {
         if (!TutorialMod.CONFIG.masterEnabled) return;
 
         // --- Feature Ticks ---
-        handlePlacementClick(client);          // Handles the brief mouse click simulation
-        handleCombatSwap(client);              // Handles axe/mace swapping during combat
-        handlePlacementSequence(client);       // Handles the TNT Minecart -> Lava/Fire -> Crossbow sequence
-        handleConfirmationCooldowns(client);   // Handles timed confirmations for placements
+        if (TutorialMod.CONFIG.autoTotemEnabled) {
+            autoTotem.onTick(client);
+        }
+        handlePlacementClick(client);
+        handleCombatSwap(client);
+        handlePlacementSequence(client);
+        handleConfirmationCooldowns(client);
     }
 
-    /**
-     * Intercepts entity attacks to trigger combat swaps (e.g., axe for shields).
-     * This method is called when the player attacks an entity.
-     */
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
         if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
         if (target instanceof PlayerEntity) {
@@ -154,19 +153,9 @@ public class TutorialModClient implements ClientModInitializer {
         return ActionResult.PASS;
     }
 
-
-    //================================================================================
-    // TICK LOGIC HANDLERS (Called from onClientTick)
-    //================================================================================
-
-    /**
-     * Handles one-shot keybinds like the master toggle and teammate management.
-     * This method is called from the main client tick loop.
-     */
     private void handleKeybinds(MinecraftClient client) {
         if (client.player == null) return;
 
-        // --- Master Toggle Hotkey ---
         try {
             boolean isMasterTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.masterToggleHotkey).getCode());
             if (isMasterTogglePressed && !masterToggleWasPressed) {
@@ -180,7 +169,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
 
-        // --- Teammate Hotkey ---
         try {
             boolean isTeammateKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.teammateHotkey).getCode());
             if (isTeammateKeyPressed && !teammateWasPressed) {
@@ -188,11 +176,9 @@ public class TutorialModClient implements ClientModInitializer {
             }
             teammateWasPressed = isTeammateKeyPressed;
         } catch (IllegalArgumentException e) {
-            // This can happen if the key is not set or invalid.
         }
 
 
-        // --- TriggerBot Toggle Hotkey ---
         try {
             boolean isTriggerBotTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.triggerBotToggleHotkey).getCode());
             if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
@@ -201,13 +187,9 @@ public class TutorialModClient implements ClientModInitializer {
             }
             triggerBotToggleWasPressed = isTriggerBotTogglePressed;
         } catch (IllegalArgumentException e) {
-            // This can happen if the key is not set or invalid.
         }
     }
 
-    /**
-     * Manages the brief cooldown for simulated mouse clicks to ensure they are released.
-     */
     private void handlePlacementClick(MinecraftClient client) {
         if (clickCooldown > 0) {
             clickCooldown--;
@@ -217,11 +199,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    /**
-     * Handles the teammate keybind.
-     * This method is called when the teammate keybind is pressed.
-     * It adds or removes the player the user is looking at from the teammates list.
-     */
     private void handleTeammateKeybind(MinecraftClient client) {
         if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
             Entity target = ((net.minecraft.util.hit.EntityHitResult) client.crosshairTarget).getEntity();
@@ -329,18 +306,13 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-
-    //================================================================================
-    // PUBLIC STATIC METHODS (for inter-class communication)
-    //================================================================================
-
     public static void requestPlacement() {
-        if (clickCooldown == -1) { // Prevent requesting another click while one is in progress
+        if (clickCooldown == -1) {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player != null) {
                 client.options.useKey.setPressed(true);
                 client.player.swingHand(Hand.MAIN_HAND);
-                clickCooldown = 1; // Release the click on the next tick
+                clickCooldown = 1;
             }
         }
     }
@@ -379,11 +351,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-
-    //================================================================================
-    // PRIVATE HELPERS
-    //================================================================================
-
     public void startRailPlacement(BlockPos pos) {
         if (placementCooldown != -1) return;
         MinecraftClient client = MinecraftClient.getInstance();
@@ -404,7 +371,7 @@ public class TutorialModClient implements ClientModInitializer {
                     this.utilitySlot = lavaSlot;
                     this.crossbowSlot = crossSlot;
                     inventory.setSelectedSlot(lavaSlot);
-                    this.actionTimeout = 60; // 3 seconds
+                    this.actionTimeout = 60;
                     this.placementCooldown = 1;
                     this.nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
                     return;
@@ -414,7 +381,7 @@ public class TutorialModClient implements ClientModInitializer {
                     this.utilitySlot = flintSlot;
                     this.crossbowSlot = crossSlot;
                     inventory.setSelectedSlot(flintSlot);
-                    this.actionTimeout = 60; // 3 seconds
+                    this.actionTimeout = 60;
                     this.placementCooldown = 1;
                     this.nextPlacementAction = PlacementAction.AWAITING_FIRE_PLACEMENT;
                     return;

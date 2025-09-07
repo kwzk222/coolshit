@@ -2,14 +2,15 @@ package net.rev.tutorialmod;
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
-import com.terraformersmc.modmenu.api.ConfigScreenFactory;
-import com.terraformersmc.modmenu.api.ModMenuApi;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class ModMenuIntegration implements ModMenuApi {
 
@@ -122,6 +123,38 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(100)
                     .setTooltip(Text.literal("The cooldown in ticks after shooting a bow before the Bow Sequence can trigger."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue)
+                    .build());
+
+            // Auto Totem Category
+            ConfigCategory autoTotem = builder.getOrCreateCategory(Text.literal("Auto Totem"));
+            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Auto Totem"), TutorialMod.CONFIG.autoTotemEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable the Auto Totem feature."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnabled = newValue)
+                    .build());
+            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Survival Mode Only"), TutorialMod.CONFIG.autoTotemSurvivalOnly)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("If enabled, Auto Totem will only function in Survival mode."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemSurvivalOnly = newValue)
+                    .build());
+            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Refill on Totem Pop"), TutorialMod.CONFIG.autoTotemRefillOnPop)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Automatically switch to a totem in your hotbar and move it to your offhand when a totem pops."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemRefillOnPop = newValue)
+                    .build());
+            autoTotem.addEntry(entryBuilder.startStrField(Text.literal("Totem Slots (1-9, comma-separated)"),
+                            TutorialMod.CONFIG.autoTotemHotbarSlots.stream().map(s -> String.valueOf(s + 1)).collect(Collectors.joining(",")))
+                    .setDefaultValue("1,2,3,4,5,6,7,8,9")
+                    .setTooltip(Text.literal("The hotbar slots that are designated for holding totems."))
+                    .setSaveConsumer(newValue -> {
+                        try {
+                            TutorialMod.CONFIG.autoTotemHotbarSlots = Arrays.stream(newValue.replace(" ", "").split(","))
+                                    .map(s -> Integer.parseInt(s) - 1)
+                                    .collect(Collectors.toList());
+                        } catch (NumberFormatException e) {
+                            // Handle invalid input, maybe log an error or keep the old value
+                        }
+                    })
                     .build());
 
             // TriggerBot Category
