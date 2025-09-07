@@ -162,6 +162,10 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleKeybinds(MinecraftClient client) {
         if (client.player == null) return;
 
+        if (!TutorialMod.CONFIG.activeInInventory && client.currentScreen != null) {
+            return;
+        }
+
         try {
             boolean isMasterTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.masterToggleHotkey).getCode());
             if (isMasterTogglePressed && !masterToggleWasPressed) {
@@ -201,6 +205,9 @@ public class TutorialModClient implements ClientModInitializer {
             if (isToggleSneakPressed && !toggleSneakWasPressed) {
                 TutorialMod.CONFIG.isToggleSneakOn = !TutorialMod.CONFIG.isToggleSneakOn;
                 client.player.sendMessage(Text.of("Toggle Sneak: " + (TutorialMod.CONFIG.isToggleSneakOn ? "ON" : "OFF")), false);
+                if (!TutorialMod.CONFIG.isToggleSneakOn) {
+                    client.options.sneakKey.setPressed(false);
+                }
             }
             toggleSneakWasPressed = isToggleSneakPressed;
         } catch (IllegalArgumentException e) {
@@ -212,6 +219,9 @@ public class TutorialModClient implements ClientModInitializer {
             if (isToggleSprintPressed && !toggleSprintWasPressed) {
                 TutorialMod.CONFIG.isToggleSprintOn = !TutorialMod.CONFIG.isToggleSprintOn;
                 client.player.sendMessage(Text.of("Toggle Sprint: " + (TutorialMod.CONFIG.isToggleSprintOn ? "ON" : "OFF")), false);
+                if (!TutorialMod.CONFIG.isToggleSprintOn) {
+                    client.options.sprintKey.setPressed(false);
+                }
             }
             toggleSprintWasPressed = isToggleSprintPressed;
         } catch (IllegalArgumentException e) {
@@ -228,17 +238,15 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handleTeammateKeybind(MinecraftClient client) {
-        if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
-            Entity target = ((net.minecraft.util.hit.EntityHitResult) client.crosshairTarget).getEntity();
-            if (target instanceof PlayerEntity) {
-                String name = target.getName().getString();
-                if (TutorialMod.CONFIG.teamManager.isTeammate(name)) {
-                    TutorialMod.CONFIG.teamManager.removeTeammate(name);
-                    client.player.sendMessage(Text.of("Removed " + name + " from your teammates list."), false);
-                } else {
-                    TutorialMod.CONFIG.teamManager.addTeammate(name);
-                    client.player.sendMessage(Text.of("Added " + name + " to your teammates list."), false);
-                }
+        PlayerEntity target = getPlayerLookingAt(client, 9.0);
+        if (target != null) {
+            String name = target.getName().getString();
+            if (TutorialMod.CONFIG.teamManager.isTeammate(name)) {
+                TutorialMod.CONFIG.teamManager.removeTeammate(name);
+                client.player.sendMessage(Text.of("Removed " + name + " from your team."), false);
+            } else {
+                TutorialMod.CONFIG.teamManager.addTeammate(name);
+                client.player.sendMessage(Text.of("Added " + name + " to your team."), false);
             }
         }
     }
@@ -488,32 +496,57 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handleToggleKeys(MinecraftClient client) {
+        if (client.player == null) return;
         // If master switch is off, ensure all toggles are disabled.
         if (!TutorialMod.CONFIG.masterEnabled) {
-            TutorialMod.CONFIG.isToggleSneakOn = false;
-            TutorialMod.CONFIG.isToggleSprintOn = false;
+            if (TutorialMod.CONFIG.isToggleSneakOn) {
+                TutorialMod.CONFIG.isToggleSneakOn = false;
+                client.options.sneakKey.setPressed(false);
+            }
+            if (TutorialMod.CONFIG.isToggleSprintOn) {
+                TutorialMod.CONFIG.isToggleSprintOn = false;
+                client.options.sprintKey.setPressed(false);
+            }
+            return;
         }
 
         // --- Handle Toggle Sneak ---
         if (TutorialMod.CONFIG.isToggleSneakOn) {
-            // If the user presses the vanilla sneak key, turn off the toggle
-            if (client.options.sneakKey.wasPressed()) {
-                TutorialMod.CONFIG.isToggleSneakOn = false;
-                client.player.sendMessage(Text.of("Toggle Sneak: OFF"), false);
-            } else {
-                client.options.sneakKey.setPressed(true);
-            }
+            client.options.sneakKey.setPressed(true);
         }
 
         // --- Handle Toggle Sprint ---
         if (TutorialMod.CONFIG.isToggleSprintOn) {
-            // If the user presses the vanilla sprint key, turn off the toggle
-            if (client.options.sprintKey.wasPressed()) {
-                TutorialMod.CONFIG.isToggleSprintOn = false;
-                client.player.sendMessage(Text.of("Toggle Sprint: OFF"), false);
-            } else {
-                client.options.sprintKey.setPressed(true);
+            client.options.sprintKey.setPressed(true);
+        }
+    }
+    private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {
+        PlayerEntity foundPlayer = null;
+        double maxDot = -1.0; // cos(180)
+
+        if (client.world == null || client.player == null) {
+            return null;
+        }
+
+        Vec3d cameraPos = client.player.getEyePos();
+        Vec3d lookVec = client.player.getRotationVector();
+
+        for (PlayerEntity player : client.world.getPlayers()) {
+            if (player == client.player) continue;
+
+            double distance = client.player.distanceTo(player);
+            if (distance > maxDistance) continue;
+
+            Vec3d directionToPlayer = player.getEyePos().subtract(cameraPos).normalize();
+            double dot = lookVec.dotProduct(directionToPlayer);
+
+            // A larger dot product means a smaller angle.
+            // We'll use a threshold of 0.99, which is about 8 degrees.
+            if (dot > 0.99 && dot > maxDot) {
+                maxDot = dot;
+                foundPlayer = player;
             }
         }
+        return foundPlayer;
     }
 }
