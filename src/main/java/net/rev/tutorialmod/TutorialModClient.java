@@ -633,7 +633,7 @@ public class TutorialModClient implements ClientModInitializer {
                 RegistryKey<World> key = player.getWorld().getRegistryKey();
                 Identifier id = key.getValue(); // Identifier of the world
                 if (id != null) {
-                    dim = " (" + id.toString() + ")";
+                    dim = " " + id.getPath().replace("_", " ");
                 }
             } catch (Exception ignored) {
             }
