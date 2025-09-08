@@ -1,9 +1,12 @@
 package net.rev.tutorialmod.modules;
 
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.TutorialModClient;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 public class CoordsOverlay {
 
@@ -26,33 +29,43 @@ public class CoordsOverlay {
 
     // This method must be called on the EDT
     private void buildOrRebuildFrame() {
-        if (overlayFrame != null) {
-            overlayFrame.dispose();
+        try {
+            if (overlayFrame != null) {
+                overlayFrame.dispose();
+            }
+
+            overlayFrame = new JFrame("Coords Overlay");
+
+            // Configure based on ModConfig
+            overlayFrame.setUndecorated(TutorialMod.CONFIG.overlayUndecorated);
+            overlayFrame.setAlwaysOnTop(true);
+            overlayFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            overlayFrame.setFocusableWindowState(false);
+            overlayFrame.setType(Window.Type.UTILITY);
+
+            if (TutorialMod.CONFIG.overlayTransparent) {
+                overlayFrame.setBackground(new Color(0, 0, 0, 0));
+            }
+
+            coordsLabel = new JLabel(lastText, SwingConstants.CENTER);
+            coordsLabel.setFont(new Font("Consolas", Font.BOLD, 18));
+            coordsLabel.setForeground(Color.WHITE);
+            overlayFrame.add(coordsLabel);
+
+            overlayFrame.setSize(300, 50);
+            overlayFrame.setLocationRelativeTo(null);
+
+            // Set visibility based on the current config
+            overlayFrame.setVisible(TutorialMod.CONFIG.showCoordsOverlay);
+        } catch (Throwable t) {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            t.printStackTrace(pw);
+            String stackTrace = sw.toString();
+
+            TutorialModClient.showChatMessage("Failed to create overlay: " + t.getMessage());
+            TutorialModClient.showChatMessage(stackTrace);
         }
-
-        overlayFrame = new JFrame("Coords Overlay");
-
-        // Configure based on ModConfig
-        overlayFrame.setUndecorated(TutorialMod.CONFIG.overlayUndecorated);
-        overlayFrame.setAlwaysOnTop(true);
-        overlayFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        overlayFrame.setFocusableWindowState(false);
-        overlayFrame.setType(Window.Type.UTILITY);
-
-        if (TutorialMod.CONFIG.overlayTransparent) {
-            overlayFrame.setBackground(new Color(0, 0, 0, 0));
-        }
-
-        coordsLabel = new JLabel(lastText, SwingConstants.CENTER);
-        coordsLabel.setFont(new Font("Consolas", Font.BOLD, 18));
-        coordsLabel.setForeground(Color.WHITE);
-        overlayFrame.add(coordsLabel);
-
-        overlayFrame.setSize(300, 50);
-        overlayFrame.setLocationRelativeTo(null);
-
-        // Set visibility based on the current config
-        overlayFrame.setVisible(TutorialMod.CONFIG.showCoordsOverlay);
     }
 
     public void create() {
