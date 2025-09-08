@@ -94,6 +94,11 @@ public class ModConfig {
         public String message = "";
     }
 
+    // --- Coords Overlay ---
+    public boolean showCoordsOverlay = false;
+    public boolean overlayTransparent = true;
+    public boolean overlayUndecorated = true;
+
 
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;

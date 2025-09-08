@@ -35,6 +35,7 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
+import net.rev.tutorialmod.modules.CoordsOverlay;
 import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -135,6 +136,8 @@ public class TutorialModClient implements ClientModInitializer {
             }
             return command;
         });
+
+        CoordsOverlay.getInstance().create();
     }
 
     private void onClientTick(MinecraftClient client) {
@@ -145,6 +148,12 @@ public class TutorialModClient implements ClientModInitializer {
         // Handle TriggerBot separately, as it may have its own master toggle.
         if (triggerBot != null) {
             triggerBot.onTick(client);
+        }
+
+        // Update Coords Overlay
+        if (TutorialMod.CONFIG.showCoordsOverlay && client.player != null) {
+            String coords = formatCoords(TutorialMod.CONFIG);
+            CoordsOverlay.getInstance().update(coords);
         }
 
         // Handle AutoToolSwitch tick

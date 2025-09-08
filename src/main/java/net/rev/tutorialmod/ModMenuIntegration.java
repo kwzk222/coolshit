@@ -263,6 +263,33 @@ public class ModMenuIntegration implements ModMenuApi {
                 chat.addEntry(macroCategory.build());
             }
 
+            // Coords Overlay Category
+            ConfigCategory coordsOverlay = builder.getOrCreateCategory(Text.literal("Coords Overlay"));
+            coordsOverlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Coords Overlay"), TutorialMod.CONFIG.showCoordsOverlay)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Shows a separate window with your coordinates."))
+                    .setSaveConsumer(newValue -> {
+                        TutorialMod.CONFIG.showCoordsOverlay = newValue;
+                        net.rev.tutorialmod.modules.CoordsOverlay.getInstance().toggle(newValue);
+                    })
+                    .build());
+            coordsOverlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Transparent Background"), TutorialMod.CONFIG.overlayTransparent)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Makes the overlay background transparent."))
+                    .setSaveConsumer(newValue -> {
+                        TutorialMod.CONFIG.overlayTransparent = newValue;
+                        net.rev.tutorialmod.modules.CoordsOverlay.getInstance().restyle();
+                    })
+                    .build());
+            coordsOverlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Undecorated Window"), TutorialMod.CONFIG.overlayUndecorated)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Removes the title bar and border from the overlay window."))
+                    .setSaveConsumer(newValue -> {
+                        TutorialMod.CONFIG.overlayUndecorated = newValue;
+                        net.rev.tutorialmod.modules.CoordsOverlay.getInstance().restyle();
+                    })
+                    .build());
+
             hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey)
                     .setDefaultValue("key.keyboard.m")
                     .setTooltip(Text.literal("The hotkey to toggle the entire mod on or off. Use a translation key, e.g., 'key.keyboard.m'."))
