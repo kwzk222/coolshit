@@ -307,6 +307,12 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to toggle sprinting on or off."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleSprintHotkey = newValue)
                     .build());
+
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Toggle Overlay Hotkey"), TutorialMod.CONFIG.toggleOverlayHotkey)
+                    .setDefaultValue("key.keyboard.h")
+                    .setTooltip(Text.literal("The hotkey to toggle the coordinate overlay on or off."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleOverlayHotkey = newValue)
+                    .build());
             hotkeys.addEntry(entryBuilder.startBooleanToggle(Text.literal("Active in Inventory"), TutorialMod.CONFIG.activeInInventory)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Whether the hotkeys should be active while you are in an inventory screen."))

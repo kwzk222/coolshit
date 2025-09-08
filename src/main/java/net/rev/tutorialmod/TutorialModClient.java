@@ -69,6 +69,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean triggerBotToggleWasPressed = false;
     private boolean toggleSneakWasPressed = false;
     private boolean toggleSprintWasPressed = false;
+    private boolean overlayToggleWasPressed = false;
 
     private static int clickCooldown = -1;
 
@@ -305,6 +306,24 @@ public class TutorialModClient implements ClientModInitializer {
             }
             toggleSprintWasPressed = isToggleSprintPressed;
         } catch (IllegalArgumentException e) {
+        }
+
+        // --- Toggle Overlay Hotkey ---
+        try {
+            boolean isToggleOverlayPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleOverlayHotkey).getCode());
+            if (isToggleOverlayPressed && !overlayToggleWasPressed) {
+                TutorialMod.CONFIG.showCoordsOverlay = !TutorialMod.CONFIG.showCoordsOverlay;
+                TutorialMod.CONFIG.save();
+                client.player.sendMessage(Text.of("Coords Overlay: " + (TutorialMod.CONFIG.showCoordsOverlay ? "ON" : "OFF")), false);
+                if (TutorialMod.CONFIG.showCoordsOverlay) {
+                    getOverlayManager().start();
+                } else {
+                    getOverlayManager().stop();
+                }
+            }
+            overlayToggleWasPressed = isToggleOverlayPressed;
+        } catch (IllegalArgumentException e) {
+            // Invalid key
         }
     }
 
@@ -707,9 +726,23 @@ public class TutorialModClient implements ClientModInitializer {
 
     private String formatCoordsForOverlay(MinecraftClient client) {
         if (client.player == null) return "";
-        double x = client.player.getX();
-        double y = client.player.getY();
-        double z = client.player.getZ();
-        return String.format("%.1f, %.1f, %.1f", x, y, z);
+
+        // Get block coordinates
+        long bx = (long) Math.floor(client.player.getX());
+        long by = (long) Math.floor(client.player.getY());
+        long bz = (long) Math.floor(client.player.getZ());
+        String coords = String.format("%d, %d, %d", bx, by, bz);
+
+        // Get facing direction
+        String facing = "";
+        try {
+            Direction d = client.player.getHorizontalFacing();
+            if (d != null) {
+                // Capitalize first letter
+                facing = d.toString().substring(0, 1).toUpperCase() + d.toString().substring(1).toLowerCase();
+            }
+        } catch (Exception ignored) {}
+
+        return coords + "|" + facing;
     }
 }

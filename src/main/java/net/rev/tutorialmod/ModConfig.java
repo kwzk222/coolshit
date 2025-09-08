@@ -73,6 +73,7 @@ public class ModConfig {
     public String triggerBotToggleHotkey = "key.keyboard.k";
     public String toggleSneakHotkey = "key.keyboard.c";
     public String toggleSprintHotkey = "key.keyboard.v";
+    public String toggleOverlayHotkey = "key.keyboard.h";
     public boolean activeInInventory = false;
 
     // --- Chat ---

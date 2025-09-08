@@ -79,6 +79,10 @@ public class OverlayApp {
                     saveWindowBounds();
                 }
             });
+
+            // Add resizing
+            ComponentResizer cr = new ComponentResizer();
+            cr.registerComponent(panel);
         });
 
         // Socket listener thread
@@ -91,8 +95,14 @@ public class OverlayApp {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    final String coords = line;
-                    SwingUtilities.invokeLater(() -> coordsLabel.setText("Coords: " + coords));
+                    final String[] parts = line.split("\\|");
+                    if (parts.length == 2) {
+                        final String coords = parts[0];
+                        final String facing = parts[1];
+                        SwingUtilities.invokeLater(() -> {
+                            coordsLabel.setText("<html><div style='text-align: center;'>Coords: " + coords + "<br>Facing: " + facing + "</div></html>");
+                        });
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
