@@ -698,13 +698,4 @@ public class TutorialModClient implements ClientModInitializer {
         return out;
     }
 
-    public static void showChatMessage(String message) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client != null && client.player != null) {
-            // Split message into lines to avoid chat length limit
-            for (String line : message.split("\n")) {
-                client.player.sendMessage(Text.of("§c[Overlay Error]§r " + line), false);
-            }
-        }
-    }
 }

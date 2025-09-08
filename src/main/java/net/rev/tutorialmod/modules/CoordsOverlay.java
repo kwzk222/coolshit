@@ -1,14 +1,10 @@
 package net.rev.tutorialmod.modules;
 
+import net.minecraft.client.MinecraftClient;
 import net.rev.tutorialmod.TutorialMod;
-import net.rev.tutorialmod.TutorialModClient;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 
 public class CoordsOverlay {
 
@@ -31,60 +27,50 @@ public class CoordsOverlay {
 
     // This method must be called on the EDT
     private void buildOrRebuildFrame() {
-        try {
-            if (overlayFrame != null) {
-                overlayFrame.dispose();
-            }
+        // As per user's instruction, force AWT to be headful
+        System.setProperty("java.awt.headless", "false");
 
-            overlayFrame = new JFrame("Coords Overlay");
-
-            // Configure based on ModConfig
-            overlayFrame.setUndecorated(TutorialMod.CONFIG.overlayUndecorated);
-            overlayFrame.setAlwaysOnTop(true);
-            overlayFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            overlayFrame.setFocusableWindowState(false);
-            overlayFrame.setType(Window.Type.UTILITY);
-
-            if (TutorialMod.CONFIG.overlayTransparent) {
-                overlayFrame.setBackground(new Color(0, 0, 0, 0));
-            }
-
-            coordsLabel = new JLabel(lastText, SwingConstants.CENTER);
-            coordsLabel.setFont(new Font("Consolas", Font.BOLD, 18));
-            coordsLabel.setForeground(Color.WHITE);
-            overlayFrame.add(coordsLabel);
-
-            overlayFrame.setSize(300, 50);
-            overlayFrame.setLocationRelativeTo(null);
-
-            // Set visibility based on the current config
-            overlayFrame.setVisible(TutorialMod.CONFIG.showCoordsOverlay);
-        } catch (Throwable t) {
-            TutorialModClient.showChatMessage("Failed to create overlay: " + t.getMessage());
-            TutorialModClient.showChatMessage("A full error log is being saved to the config folder.");
-
-            try {
-                File errorLogFile = new File(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().toFile(), "tutorialmod_overlay_error.log");
-                try (PrintWriter fileWriter = new PrintWriter(new FileWriter(errorLogFile))) {
-                    fileWriter.println("Error occurred on: " + new java.util.Date());
-                    t.printStackTrace(fileWriter);
-                }
-                TutorialModClient.showChatMessage("Error log saved to: " + errorLogFile.getAbsolutePath());
-            } catch (Exception e) {
-                TutorialModClient.showChatMessage("Critical: Could not write error log file: " + e.getMessage());
-                e.printStackTrace();
-            }
+        if (overlayFrame != null) {
+            overlayFrame.dispose();
         }
+
+        overlayFrame = new JFrame("Coords Overlay");
+
+        // Configure based on ModConfig
+        overlayFrame.setUndecorated(TutorialMod.CONFIG.overlayUndecorated);
+        overlayFrame.setAlwaysOnTop(true);
+        overlayFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        overlayFrame.setFocusableWindowState(false);
+        overlayFrame.setType(Window.Type.UTILITY);
+
+        if (TutorialMod.CONFIG.overlayTransparent) {
+            overlayFrame.setBackground(new Color(0, 0, 0, 0));
+        }
+
+        coordsLabel = new JLabel(lastText, SwingConstants.CENTER);
+        coordsLabel.setFont(new Font("Consolas", Font.BOLD, 18));
+        coordsLabel.setForeground(Color.WHITE);
+        overlayFrame.add(coordsLabel);
+
+        overlayFrame.setSize(300, 50);
+        overlayFrame.setLocationRelativeTo(null);
+
+        // Set visibility based on the current config
+        overlayFrame.setVisible(TutorialMod.CONFIG.showCoordsOverlay);
     }
 
     public void create() {
         // Initial creation
-        SwingUtilities.invokeLater(this::buildOrRebuildFrame);
+        MinecraftClient.getInstance().execute(() -> {
+            SwingUtilities.invokeLater(this::buildOrRebuildFrame);
+        });
     }
 
     public void restyle() {
         // Re-create with new styles
-        SwingUtilities.invokeLater(this::buildOrRebuildFrame);
+        MinecraftClient.getInstance().execute(() -> {
+            SwingUtilities.invokeLater(this::buildOrRebuildFrame);
+        });
     }
 
     public void update(String text) {
