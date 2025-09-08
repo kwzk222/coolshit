@@ -270,23 +270,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Shows a separate window with your coordinates."))
                     .setSaveConsumer(newValue -> {
                         TutorialMod.CONFIG.showCoordsOverlay = newValue;
-                        net.rev.tutorialmod.modules.CoordsOverlay.getInstance().toggle(newValue);
-                    })
-                    .build());
-            coordsOverlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Transparent Background"), TutorialMod.CONFIG.overlayTransparent)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("Makes the overlay background transparent."))
-                    .setSaveConsumer(newValue -> {
-                        TutorialMod.CONFIG.overlayTransparent = newValue;
-                        net.rev.tutorialmod.modules.CoordsOverlay.getInstance().restyle();
-                    })
-                    .build());
-            coordsOverlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Undecorated Window"), TutorialMod.CONFIG.overlayUndecorated)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("Removes the title bar and border from the overlay window."))
-                    .setSaveConsumer(newValue -> {
-                        TutorialMod.CONFIG.overlayUndecorated = newValue;
-                        net.rev.tutorialmod.modules.CoordsOverlay.getInstance().restyle();
+                        if (newValue) {
+                            TutorialModClient.getOverlayManager().start();
+                        } else {
+                            TutorialModClient.getOverlayManager().stop();
+                        }
                     })
                     .build());
 

@@ -35,7 +35,7 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
-import net.rev.tutorialmod.modules.CoordsOverlay;
+import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -52,9 +52,14 @@ public class TutorialModClient implements ClientModInitializer {
     // --- Modules & Features ---
     private TriggerBot triggerBot;
     private AutoTotem autoTotem;
+    private static OverlayManager overlayManager;
 
     public AutoTotem getAutoTotem() {
         return autoTotem;
+    }
+
+    public static OverlayManager getOverlayManager() {
+        return overlayManager;
     }
 
 
@@ -93,7 +98,11 @@ public class TutorialModClient implements ClientModInitializer {
         instance = this;
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
+        overlayManager = new OverlayManager();
         autoTotem.init();
+
+        // Add shutdown hook to stop overlay process
+        Runtime.getRuntime().addShutdownHook(new Thread(overlayManager::stop));
 
         // Register Event Listeners
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
@@ -137,7 +146,6 @@ public class TutorialModClient implements ClientModInitializer {
             return command;
         });
 
-        CoordsOverlay.getInstance().create();
     }
 
     private void onClientTick(MinecraftClient client) {
@@ -151,9 +159,8 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         // Update Coords Overlay
-        if (TutorialMod.CONFIG.showCoordsOverlay && client.player != null) {
-            String coords = formatCoords(TutorialMod.CONFIG);
-            CoordsOverlay.getInstance().update(coords);
+        if (TutorialMod.CONFIG.showCoordsOverlay && overlayManager.isRunning() && client.player != null) {
+            overlayManager.update(formatCoordsForOverlay(client));
         }
 
         // Handle AutoToolSwitch tick
@@ -698,4 +705,11 @@ public class TutorialModClient implements ClientModInitializer {
         return out;
     }
 
+    private String formatCoordsForOverlay(MinecraftClient client) {
+        if (client.player == null) return "";
+        double x = client.player.getX();
+        double y = client.player.getY();
+        double z = client.player.getZ();
+        return String.format("%.1f, %.1f, %.1f", x, y, z);
+    }
 }

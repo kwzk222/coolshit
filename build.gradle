@@ -50,12 +50,36 @@ dependencies {
 	implementation("com.google.code.gson:gson:${project.gson_version}")
 }
 
+sourceSets {
+    overlay {
+        java {
+            srcDirs = ['src/main/java/overlay']
+        }
+        resources {
+            srcDirs = []
+        }
+    }
+}
+
+task overlayJar(type: Jar) {
+    archiveFileName = 'overlay.jar'
+    from sourceSets.overlay.output
+    manifest {
+        attributes 'Main-Class': 'overlay.OverlayApp'
+    }
+}
+
 processResources {
 	inputs.property "version", project.version
 
 	filesMatching("fabric.mod.json") {
 		expand "version": inputs.properties.version
 	}
+
+    from(tasks.overlayJar.outputs) {
+        into '/'
+    }
+    dependsOn 'overlayJar'
 }
 
 tasks.withType(JavaCompile).configureEach {

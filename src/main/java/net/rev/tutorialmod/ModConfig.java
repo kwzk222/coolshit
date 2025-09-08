@@ -96,8 +96,6 @@ public class ModConfig {
 
     // --- Coords Overlay ---
     public boolean showCoordsOverlay = false;
-    public boolean overlayTransparent = true;
-    public boolean overlayUndecorated = true;
 
 
     public List<String> teammates = new ArrayList<>();
