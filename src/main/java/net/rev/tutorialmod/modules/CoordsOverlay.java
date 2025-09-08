@@ -24,47 +24,45 @@ public class CoordsOverlay {
         return INSTANCE;
     }
 
-    private void buildFrame() {
-        SwingUtilities.invokeLater(() -> {
-            overlayFrame = new JFrame("Coords Overlay");
+    // This method must be called on the EDT
+    private void buildOrRebuildFrame() {
+        if (overlayFrame != null) {
+            overlayFrame.dispose();
+        }
 
-            // Configure based on ModConfig
-            overlayFrame.setUndecorated(TutorialMod.CONFIG.overlayUndecorated);
-            overlayFrame.setAlwaysOnTop(true);
-            overlayFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            overlayFrame.setFocusableWindowState(false);
-            overlayFrame.setType(Window.Type.UTILITY);
+        overlayFrame = new JFrame("Coords Overlay");
 
-            if (TutorialMod.CONFIG.overlayTransparent) {
-                overlayFrame.setBackground(new Color(0, 0, 0, 0));
-            }
+        // Configure based on ModConfig
+        overlayFrame.setUndecorated(TutorialMod.CONFIG.overlayUndecorated);
+        overlayFrame.setAlwaysOnTop(true);
+        overlayFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        overlayFrame.setFocusableWindowState(false);
+        overlayFrame.setType(Window.Type.UTILITY);
 
-            coordsLabel = new JLabel(lastText, SwingConstants.CENTER);
-            coordsLabel.setFont(new Font("Consolas", Font.BOLD, 18));
-            coordsLabel.setForeground(Color.WHITE);
-            overlayFrame.add(coordsLabel);
+        if (TutorialMod.CONFIG.overlayTransparent) {
+            overlayFrame.setBackground(new Color(0, 0, 0, 0));
+        }
 
-            overlayFrame.setSize(300, 50);
-            overlayFrame.setLocationRelativeTo(null);
+        coordsLabel = new JLabel(lastText, SwingConstants.CENTER);
+        coordsLabel.setFont(new Font("Consolas", Font.BOLD, 18));
+        coordsLabel.setForeground(Color.WHITE);
+        overlayFrame.add(coordsLabel);
 
-            overlayFrame.setVisible(TutorialMod.CONFIG.showCoordsOverlay);
-        });
+        overlayFrame.setSize(300, 50);
+        overlayFrame.setLocationRelativeTo(null);
+
+        // Set visibility based on the current config
+        overlayFrame.setVisible(TutorialMod.CONFIG.showCoordsOverlay);
     }
 
     public void create() {
-        if (overlayFrame == null) {
-            buildFrame();
-        }
+        // Initial creation
+        SwingUtilities.invokeLater(this::buildOrRebuildFrame);
     }
 
     public void restyle() {
-        if (overlayFrame != null) {
-            SwingUtilities.invokeLater(() -> {
-                overlayFrame.dispose();
-                overlayFrame = null; // Important to nullify
-                buildFrame();
-            });
-        }
+        // Re-create with new styles
+        SwingUtilities.invokeLater(this::buildOrRebuildFrame);
     }
 
     public void update(String text) {
@@ -77,6 +75,9 @@ public class CoordsOverlay {
     public void show() {
         if (overlayFrame != null) {
             SwingUtilities.invokeLater(() -> overlayFrame.setVisible(true));
+        } else {
+            // If frame doesn't exist, create it. It will become visible based on config.
+            create();
         }
     }
 
@@ -87,10 +88,7 @@ public class CoordsOverlay {
     }
 
     public void toggle(boolean show) {
-        if (overlayFrame == null) {
-            create();
-        }
-
+        // The config is already set by the menu, so we just need to apply the visibility.
         if (show) {
             show();
         } else {
