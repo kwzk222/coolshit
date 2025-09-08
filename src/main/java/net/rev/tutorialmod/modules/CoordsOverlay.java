@@ -5,6 +5,8 @@ import net.rev.tutorialmod.TutorialModClient;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
@@ -58,13 +60,20 @@ public class CoordsOverlay {
             // Set visibility based on the current config
             overlayFrame.setVisible(TutorialMod.CONFIG.showCoordsOverlay);
         } catch (Throwable t) {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            t.printStackTrace(pw);
-            String stackTrace = sw.toString();
-
             TutorialModClient.showChatMessage("Failed to create overlay: " + t.getMessage());
-            TutorialModClient.showChatMessage(stackTrace);
+            TutorialModClient.showChatMessage("A full error log is being saved to the config folder.");
+
+            try {
+                File errorLogFile = new File(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().toFile(), "tutorialmod_overlay_error.log");
+                try (PrintWriter fileWriter = new PrintWriter(new FileWriter(errorLogFile))) {
+                    fileWriter.println("Error occurred on: " + new java.util.Date());
+                    t.printStackTrace(fileWriter);
+                }
+                TutorialModClient.showChatMessage("Error log saved to: " + errorLogFile.getAbsolutePath());
+            } catch (Exception e) {
+                TutorialModClient.showChatMessage("Critical: Could not write error log file: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
 
