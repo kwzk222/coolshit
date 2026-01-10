@@ -59,8 +59,6 @@ public class ModConfig {
     public boolean triggerBotExcludeVillagers = true;
     public boolean triggerBotIncludeCrystals = true;
     public boolean triggerBotActiveInInventory = false;
-    public double triggerBotMaxRange = 4.5;
-    public int triggerBotAttackDelay = 0;
     public transient boolean triggerBotToggledOn = true;
 
     // --- Toggles ---
@@ -71,6 +69,7 @@ public class ModConfig {
     public String masterToggleHotkey = "key.keyboard.m";
     public String teammateHotkey = "key.keyboard.g";
     public String triggerBotToggleHotkey = "key.keyboard.k";
+    public String triggerBotHotkey = "key.keyboard.0";
     public String toggleSneakHotkey = "key.keyboard.c";
     public String toggleSprintHotkey = "key.keyboard.v";
     public String toggleOverlayHotkey = "key.keyboard.h";

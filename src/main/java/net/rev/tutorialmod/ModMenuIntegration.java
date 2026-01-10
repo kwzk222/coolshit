@@ -199,16 +199,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Whether the TriggerBot should be active while you are in an inventory screen."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotActiveInInventory = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range (x100)"), (long) (TutorialMod.CONFIG.triggerBotMaxRange * 100), 100L, 700L)
-                    .setDefaultValue((long) (4.5 * 100))
-                    .setTooltip(Text.literal("The maximum distance at which the TriggerBot will activate."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMaxRange = newValue / 100.0)
-                    .build());
-            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Max Attack Delay (ticks)"), TutorialMod.CONFIG.triggerBotAttackDelay, 0, 20)
-                    .setDefaultValue(0)
-                    .setTooltip(Text.literal("Adds a random delay (from 0 to this value) in ticks before attacking."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackDelay = newValue)
-                    .build());
 
             // Hotkeys Category
             ConfigCategory hotkeys = builder.getOrCreateCategory(Text.literal("Hotkeys"));
@@ -294,6 +284,12 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue("key.keyboard.k")
                     .setTooltip(Text.literal("The hotkey to toggle the TriggerBot on or off. Use a translation key, e.g., 'key.keyboard.k'."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotToggleHotkey = newValue)
+                    .build());
+
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("TriggerBot Hotkey"), TutorialMod.CONFIG.triggerBotHotkey)
+                    .setDefaultValue("key.keyboard.0")
+                    .setTooltip(Text.literal("The hotkey to hold to activate the TriggerBot. Use a translation key, e.g., 'key.keyboard.0'."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotHotkey = newValue)
                     .build());
 
             hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Toggle Sneak Hotkey"), TutorialMod.CONFIG.toggleSneakHotkey)

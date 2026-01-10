@@ -1,5 +1,7 @@
 package net.rev.tutorialmod;
 
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +13,10 @@ public class TeamManager {
     }
 
     public void addTeammate(String name) {
+        if (MinecraftClient.getInstance().player != null && MinecraftClient.getInstance().player.getName().getString().equalsIgnoreCase(name)) {
+            MinecraftClient.getInstance().player.sendMessage(Text.of("§cYou can't add yourself to your own teammates list."), false);
+            return;
+        }
         if (!teammates.contains(name)) {
             teammates.add(name);
             TutorialMod.CONFIG.save();

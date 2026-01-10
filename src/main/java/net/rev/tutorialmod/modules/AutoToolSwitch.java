@@ -23,6 +23,7 @@ public class AutoToolSwitch {
     private int miningDelayTicks = -1;
     private int switchBackDelayTicks = -1;
     private int bestSlotToSwitch = -1;
+    private BlockPos currentMiningPos = null;
 
     public void onTick() {
         if (mc.player == null) {
@@ -46,14 +47,18 @@ public class AutoToolSwitch {
     }
 
     public void onBlockBreak(BlockPos pos) {
-        if (!TutorialMod.CONFIG.autoToolSwitchEnabled || mc.player == null || mc.world == null || mc.getNetworkHandler() == null || isMining) {
+        if (!TutorialMod.CONFIG.autoToolSwitchEnabled || mc.player == null || mc.world == null || mc.getNetworkHandler() == null || (isMining && pos.equals(currentMiningPos))) {
             return;
         }
 
-        originalSlot = ((PlayerInventoryMixin) mc.player.getInventory()).getSelectedSlot();
-        bestSlotToSwitch = findBestTool(pos);
+        if (!isMining) {
+            originalSlot = ((PlayerInventoryMixin) mc.player.getInventory()).getSelectedSlot();
+        }
 
-        if (bestSlotToSwitch != -1) {
+        bestSlotToSwitch = findBestTool(pos);
+        currentMiningPos = pos;
+
+        if (bestSlotToSwitch != -1 && bestSlotToSwitch != ((PlayerInventoryMixin) mc.player.getInventory()).getSelectedSlot()) {
             int minDelay = TutorialMod.CONFIG.autoToolSwitchMineMinDelay;
             int maxDelay = TutorialMod.CONFIG.autoToolSwitchMineMaxDelay;
             miningDelayTicks = minDelay + (maxDelay > minDelay ? random.nextInt(maxDelay - minDelay + 1) : 0);
@@ -88,7 +93,7 @@ public class AutoToolSwitch {
             if (TutorialMod.CONFIG.toolDurabilitySafetyEnabled) {
                 ItemStack bestTool = mc.player.getInventory().getStack(bestSlotToSwitch);
                 if (bestTool.isDamageable() && bestTool.getDamage() >= bestTool.getMaxDamage() - 1) {
-                    mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.ABORT_DESTROY_BLOCK, mc.player.getBlockPos(), Direction.UP));
+                    mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.ABORT_DESTROY_BLOCK, currentMiningPos, Direction.UP));
                     reset();
                     return;
                 }
@@ -96,6 +101,7 @@ public class AutoToolSwitch {
             ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(bestSlotToSwitch);
             isMining = true;
             miningDelayTicks = -1;
+            mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, currentMiningPos, Direction.UP));
         }
     }
 

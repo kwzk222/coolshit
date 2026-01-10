@@ -27,6 +27,16 @@ public class CommandManager {
                     }
                     return 1;
                 }));
+        dispatcher.register(literal("tv")
+                .executes(context -> {
+                    TeamManager teamManager = TutorialMod.CONFIG.teamManager;
+                    if (teamManager.getTeammates().isEmpty()) {
+                        context.getSource().sendFeedback(Text.of("You have no teammates on your list."));
+                    } else {
+                        context.getSource().sendFeedback(Text.of("Teammates: " + String.join(", ", teamManager.getTeammates())));
+                    }
+                    return 1;
+                }));
 
         dispatcher.register(literal("ta")
                 .then(argument("name", StringArgumentType.word())

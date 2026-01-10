@@ -1,6 +1,7 @@
 package net.rev.tutorialmod.modules;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.entity.Entity;
@@ -46,6 +47,23 @@ public class TriggerBot {
             return;
         }
 
+        // Hotkey Check
+        try {
+            String hotkey = TutorialMod.CONFIG.triggerBotHotkey;
+            if (hotkey != null && !hotkey.equals("key.keyboard.unknown")) {
+                long windowHandle = client.getWindow().getHandle();
+                int keyCode = InputUtil.fromTranslationKey(hotkey).getCode();
+                if (!InputUtil.isKeyPressed(windowHandle, keyCode)) {
+                    // Hotkey is set and not pressed, so we do nothing.
+                    targetToAttack = null;
+                    attackDelayTicks = 0;
+                    return;
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            // Invalid key configured, just ignore and continue as if no hotkey was set.
+        }
+
         // Check if a GUI is open
         if (client.currentScreen != null && !TutorialMod.CONFIG.triggerBotActiveInInventory) {
             return;
@@ -62,14 +80,12 @@ public class TriggerBot {
             if (TargetFilters.isValidTarget(target)) {
                 // Range Check
                 double distance = client.player.distanceTo(target);
-                double maxRange = TutorialMod.CONFIG.triggerBotMaxRange;
 
-                if (distance <= maxRange) {
+                if (distance <= 4.5) {
                     // Cooldown Check
                     if (client.player.getAttackCooldownProgress(0.5f) == 1.0f) {
                         // Initiate attack sequence
-                        int maxDelay = TutorialMod.CONFIG.triggerBotAttackDelay;
-                        this.attackDelayTicks = (maxDelay > 0) ? random.nextInt(maxDelay + 1) : 0;
+                        this.attackDelayTicks = 0;
                         this.targetToAttack = target;
 
                         // If delay is 0, attack immediately
@@ -97,7 +113,7 @@ public class TriggerBot {
         double distance = client.player.distanceTo(target);
         // We don't re-randomize range here, just check against the absolute max.
         // This prevents the target from becoming invalid just due to a new random roll.
-        if (distance > TutorialMod.CONFIG.triggerBotMaxRange) {
+        if (distance > 4.5) {
             return false;
         }
         // Make sure we are still looking at the target

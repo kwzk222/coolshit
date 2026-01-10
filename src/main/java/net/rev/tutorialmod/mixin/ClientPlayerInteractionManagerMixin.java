@@ -42,8 +42,8 @@ public class ClientPlayerInteractionManagerMixin {
         }
     }
 
-    @Inject(method = "attackBlock", at = @At("HEAD"))
-    private void onAttackBlock(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
+    @Inject(method = "updateBlockBreakingProgress", at = @At("HEAD"))
+    private void onUpdateBlockBreakingProgress(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
         TutorialMod.getAutoToolSwitch().onBlockBreak(pos);
     }
 }
