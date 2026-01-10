@@ -14,6 +14,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
+import net.rev.tutorialmod.modules.MinecartTech;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -37,7 +38,7 @@ public class ClientPlayerInteractionManagerMixin {
         if (TutorialMod.CONFIG.tntMinecartPlacementEnabled && cir.getReturnValue().isAccepted()) {
             ItemStack stack = player.getStackInHand(hand);
             if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof RailBlock) {
-                TutorialModClient.setAwaitingRailConfirmation();
+                MinecartTech.setAwaitingRailConfirmation();
             }
         }
     }

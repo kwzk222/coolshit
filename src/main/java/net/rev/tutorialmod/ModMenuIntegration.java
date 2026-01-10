@@ -19,7 +19,7 @@ public class ModMenuIntegration implements ModMenuApi {
         return parent -> {
             ConfigBuilder builder = ConfigBuilder.create()
                     .setParentScreen(parent)
-                    .setTitle(Text.literal("Tutorial Mod Config"))
+                    .setTitle(Text.literal("float"))
                     .setDefaultBackgroundTexture(Identifier.ofVanilla("textures/gui/options_background.png"));
 
             builder.setSavingRunnable(TutorialMod.CONFIG::save);
