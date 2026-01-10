@@ -52,6 +52,9 @@ public class ModConfig {
     public List<Integer> autoTotemHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
 
     // --- TriggerBot ---
+    public int triggerBotMinDelay = 0;
+    public int triggerBotMaxDelay = 0;
+    public boolean attackOnCrit = false;
     public boolean triggerBotEnabled = true;
     public boolean triggerBotIncludePlayers = true;
     public boolean triggerBotExcludeTeammates = true;

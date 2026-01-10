@@ -45,8 +45,9 @@ public class CommandManager {
                                 builder))
                         .executes(context -> {
                             String name = StringArgumentType.getString(context, "name");
-                            TutorialMod.CONFIG.teamManager.addTeammate(name);
-                            context.getSource().sendFeedback(Text.of("Added " + name + " to your teammates list."));
+                            if (TutorialMod.CONFIG.teamManager.addTeammate(name)) {
+                                context.getSource().sendFeedback(Text.of("Added " + name + " to your teammates list."));
+                            }
                             return 1;
                         })));
 

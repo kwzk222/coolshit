@@ -78,6 +78,11 @@ public class TriggerBot {
 
             // --- Target Validation ---
             if (TargetFilters.isValidTarget(target)) {
+                if (TutorialMod.CONFIG.attackOnCrit) {
+                    if (client.player.getVelocity().y > 0) {
+                        return;
+                    }
+                }
                 // Range Check
                 double distance = client.player.distanceTo(target);
 
@@ -85,7 +90,9 @@ public class TriggerBot {
                     // Cooldown Check
                     if (client.player.getAttackCooldownProgress(0.5f) == 1.0f) {
                         // Initiate attack sequence
-                        this.attackDelayTicks = 0;
+                        int minDelay = TutorialMod.CONFIG.triggerBotMinDelay;
+                        int maxDelay = TutorialMod.CONFIG.triggerBotMaxDelay;
+                        this.attackDelayTicks = minDelay + (maxDelay > minDelay ? random.nextInt(maxDelay - minDelay + 1) : 0);
                         this.targetToAttack = target;
 
                         // If delay is 0, attack immediately

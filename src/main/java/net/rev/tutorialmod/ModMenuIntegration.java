@@ -204,6 +204,21 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Whether the TriggerBot should be active while you are in an inventory screen."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotActiveInInventory = newValue)
                     .build());
+            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Min Delay (ticks)"), TutorialMod.CONFIG.triggerBotMinDelay, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The minimum delay in ticks before attacking."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMinDelay = newValue)
+                    .build());
+            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Max Delay (ticks)"), TutorialMod.CONFIG.triggerBotMaxDelay, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The maximum delay in ticks before attacking."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMaxDelay = newValue)
+                    .build());
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit"), TutorialMod.CONFIG.attackOnCrit)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Only attack when the player is on the ground or falling."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue)
+                    .build());
 
             // Hotkeys Category
             ConfigCategory hotkeys = builder.getOrCreateCategory(Text.literal("Hotkeys"));
