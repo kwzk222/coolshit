@@ -199,6 +199,9 @@ public class TutorialModClient implements ClientModInitializer {
             boolean hasArmor = isArmored(attackedPlayer);
             PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
             if (isShielding && isFacing && TutorialMod.CONFIG.axeSwapEnabled) {
+                if (TutorialMod.CONFIG.axeSwapFailChance > 0 && new java.util.Random().nextInt(100) < TutorialMod.CONFIG.axeSwapFailChance) {
+                    return ActionResult.PASS;
+                }
                 int axeSlot = findAxeInHotbar(player);
                 if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
                     originalHotbarSlot = inventory.getSelectedSlot();
@@ -344,8 +347,9 @@ public class TutorialModClient implements ClientModInitializer {
                 TutorialMod.CONFIG.teamManager.removeTeammate(name);
                 client.player.sendMessage(Text.of("Removed " + name + " from your team."), false);
             } else {
-                TutorialMod.CONFIG.teamManager.addTeammate(name);
-                client.player.sendMessage(Text.of("Added " + name + " to your team."), false);
+                if (TutorialMod.CONFIG.teamManager.addTeammate(name)) {
+                    client.player.sendMessage(Text.of("Added " + name + " to your team."), false);
+                }
             }
         }
     }

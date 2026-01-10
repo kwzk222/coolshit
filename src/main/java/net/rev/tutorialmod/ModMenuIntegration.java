@@ -66,6 +66,11 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // Attribute Swapping Category
             ConfigCategory attributeSwapping = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
+            attributeSwapping.addEntry(entryBuilder.startIntSlider(Text.literal("Axe Swap Fail Chance (%)"), TutorialMod.CONFIG.axeSwapFailChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The chance (in %) for the regular axe swap to fail."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapFailChance = newValue)
+                    .build());
             attributeSwapping.addEntry(entryBuilder.startBooleanToggle(Text.literal("Axe Swap Enabled"), TutorialMod.CONFIG.axeSwapEnabled)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Enable or disable the automatic axe swapping feature."))

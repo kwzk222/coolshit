@@ -12,15 +12,17 @@ public class TeamManager {
         this.teammates = teammates;
     }
 
-    public void addTeammate(String name) {
+    public boolean addTeammate(String name) {
         if (MinecraftClient.getInstance().player != null && MinecraftClient.getInstance().player.getName().getString().equalsIgnoreCase(name)) {
             MinecraftClient.getInstance().player.sendMessage(Text.of("§cYou can't add yourself to your own teammates list."), false);
-            return;
+            return false;
         }
         if (!teammates.contains(name)) {
             teammates.add(name);
             TutorialMod.CONFIG.save();
+            return true;
         }
+        return false;
     }
 
     public void removeTeammate(String name) {
