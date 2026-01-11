@@ -19,16 +19,16 @@ public class ModMenuIntegration implements ModMenuApi {
         return parent -> {
             ConfigBuilder builder = ConfigBuilder.create()
                     .setParentScreen(parent)
-                    .setTitle(Text.literal("Tutorial Mod Config"))
+                    .setTitle(Text.literal("Attribute Swapping"))
                     .setDefaultBackgroundTexture(Identifier.ofVanilla("textures/gui/options_background.png"));
 
             builder.setSavingRunnable(TutorialMod.CONFIG::save);
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
-            // Attribute Swapping Category
-            ConfigCategory attributeSwapping = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
-            attributeSwapping.addEntry(entryBuilder.startIntSlider(Text.literal("AutoStun Fail Chance (%)"), TutorialMod.CONFIG.axeSwapFailChance, 0, 100)
+            // AutoStun Category
+            ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("AutoStun"));
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("AutoStun Fail Chance (%)"), TutorialMod.CONFIG.axeSwapFailChance, 0, 100)
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("The chance (in %) for the regular axe swap to fail."))
                     .setSaveConsumer(newValue -> {
@@ -36,7 +36,7 @@ public class ModMenuIntegration implements ModMenuApi {
                         TutorialMod.CONFIG.save();
                     })
                     .build());
-            attributeSwapping.addEntry(entryBuilder.startBooleanToggle(Text.literal("AutoStun Enabled"), TutorialMod.CONFIG.axeSwapEnabled)
+            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("AutoStun Enabled"), TutorialMod.CONFIG.axeSwapEnabled)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Enable or disable the automatic axe swapping feature."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapEnabled = newValue)
@@ -131,7 +131,7 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Replace the trigger word in commands."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.replaceInCommands = newValue)
                     .build());
-            chat.addEntry(entryBuilder.startLongTextField(Text.literal("Coordinate Format"), TutorialMod.CONFIG.format)
+            chat.addEntry(entryBuilder.startStrField(Text.literal("Coordinate Format"), TutorialMod.CONFIG.format)
                     .setDefaultValue("{bx} {by} {bz} {dim} {facing}")
                     .setTooltip(Text.literal("Format for coordinates. Placeholders:\n" +
                             "{x}, {y}, {z}: Precise coordinates (e.g., 123.45)\n" +

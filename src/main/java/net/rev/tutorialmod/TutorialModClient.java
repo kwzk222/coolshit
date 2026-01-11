@@ -786,10 +786,11 @@ public class TutorialModClient implements ClientModInitializer {
         String result = coords + "|" + facing;
         if (TutorialMod.CONFIG.showEntityCount && client.world != null) {
             int entityCount = 0;
+            for (Entity ignored : client.world.getEntities()) {
+                entityCount++;
+            }
             int totalEntities = 0;
-            if (client.world.getChunkManager() != null && client.world.getChunkManager().getLightingProvider() != null) {
-                 // A simple way to get a rough entity count. This is not the same as F3 but is a good approximation.
-                entityCount = (int) client.world.getEntities().count();
+            if (client.world.getChunkManager() != null) {
                 totalEntities = client.world.getChunkManager().getLoadedChunkCount() * 100; // approximation
             }
             result += " E: " + entityCount + "/" + totalEntities;
