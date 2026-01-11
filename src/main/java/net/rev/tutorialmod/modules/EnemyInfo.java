@@ -70,16 +70,21 @@ public class EnemyInfo {
         return sb.toString();
     }
 
+    private static final EquipmentSlot[] ARMOR_SLOTS = {
+            EquipmentSlot.HEAD,
+            EquipmentSlot.CHEST,
+            EquipmentSlot.LEGS,
+            EquipmentSlot.FEET
+    };
+
     private String getArmorDurability(PlayerEntity player) {
         float lowestDurability = 1.0f;
-        for (EquipmentSlot slot : EquipmentSlot.values()) {
-            if (slot.getType() == EquipmentSlot.Type.ARMOR) {
-                ItemStack armorPiece = player.getEquippedStack(slot);
-                if (!armorPiece.isEmpty()) {
-                    float durability = (float) (armorPiece.getMaxDamage() - armorPiece.getDamage()) / armorPiece.getMaxDamage();
-                    if (durability < lowestDurability) {
-                        lowestDurability = durability;
-                    }
+        for (EquipmentSlot slot : ARMOR_SLOTS) {
+            ItemStack armorPiece = player.getEquippedStack(slot);
+            if (!armorPiece.isEmpty()) {
+                float durability = (float) (armorPiece.getMaxDamage() - armorPiece.getDamage()) / armorPiece.getMaxDamage();
+                if (durability < lowestDurability) {
+                    lowestDurability = durability;
                 }
             }
         }
