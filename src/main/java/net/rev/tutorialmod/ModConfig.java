@@ -80,6 +80,7 @@ public class ModConfig {
     public boolean activeInInventory = false;
 
     // --- Chat ---
+    public boolean disableModChatUpdates = false;
     public String trigger = "cc";
     public boolean caseSensitive = false;
     public boolean replaceInChat = true;
@@ -100,6 +101,8 @@ public class ModConfig {
 
     // --- Coords Overlay ---
     public boolean showCoordsOverlay = false;
+    public boolean showAccurateCoordinates = false;
+    public boolean showEntityCount = false;
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;

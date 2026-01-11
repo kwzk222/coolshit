@@ -261,7 +261,9 @@ public class TutorialModClient implements ClientModInitializer {
             if (isMasterTogglePressed && !masterToggleWasPressed) {
                 TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
                 TutorialMod.CONFIG.save();
-                client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
+                }
             }
             masterToggleWasPressed = isMasterTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -283,7 +285,9 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isTriggerBotTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.triggerBotToggleHotkey).getCode());
             if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
                 TutorialMod.CONFIG.triggerBotToggledOn = !TutorialMod.CONFIG.triggerBotToggledOn;
-                client.player.sendMessage(Text.of("TriggerBot: " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF")), false);
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    client.player.sendMessage(Text.of("TriggerBot: " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF")), false);
+                }
             }
             triggerBotToggleWasPressed = isTriggerBotTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -294,12 +298,16 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isToggleSneakPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleSneakHotkey).getCode());
             if (isToggleSneakPressed && !toggleSneakWasPressed) {
                 TutorialMod.CONFIG.isToggleSneakOn = !TutorialMod.CONFIG.isToggleSneakOn;
-                client.player.sendMessage(Text.of("Toggle Sneak: " + (TutorialMod.CONFIG.isToggleSneakOn ? "ON" : "OFF")), false);
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    client.player.sendMessage(Text.of("Toggle Sneak: " + (TutorialMod.CONFIG.isToggleSneakOn ? "ON" : "OFF")), false);
+                }
 
                 if (TutorialMod.CONFIG.isToggleSneakOn) {
                     if (TutorialMod.CONFIG.isToggleSprintOn) {
                         TutorialMod.CONFIG.isToggleSprintOn = false;
-                        client.player.sendMessage(Text.of("Toggle Sprint: OFF"), false);
+                        if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                            client.player.sendMessage(Text.of("Toggle Sprint: OFF"), false);
+                        }
                         client.options.sprintKey.setPressed(false);
                     }
                 } else {
@@ -315,12 +323,16 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isToggleSprintPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleSprintHotkey).getCode());
             if (isToggleSprintPressed && !toggleSprintWasPressed) {
                 TutorialMod.CONFIG.isToggleSprintOn = !TutorialMod.CONFIG.isToggleSprintOn;
-                client.player.sendMessage(Text.of("Toggle Sprint: " + (TutorialMod.CONFIG.isToggleSprintOn ? "ON" : "OFF")), false);
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    client.player.sendMessage(Text.of("Toggle Sprint: " + (TutorialMod.CONFIG.isToggleSprintOn ? "ON" : "OFF")), false);
+                }
 
                 if (TutorialMod.CONFIG.isToggleSprintOn) {
                     if (TutorialMod.CONFIG.isToggleSneakOn) {
                         TutorialMod.CONFIG.isToggleSneakOn = false;
-                        client.player.sendMessage(Text.of("Toggle Sneak: OFF"), false);
+                        if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                            client.player.sendMessage(Text.of("Toggle Sneak: OFF"), false);
+                        }
                         client.options.sneakKey.setPressed(false);
                     }
                 } else {
@@ -365,10 +377,14 @@ public class TutorialModClient implements ClientModInitializer {
             String name = target.getName().getString();
             if (TutorialMod.CONFIG.teamManager.isTeammate(name)) {
                 TutorialMod.CONFIG.teamManager.removeTeammate(name);
-                client.player.sendMessage(Text.of("Removed " + name + " from your team."), false);
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    client.player.sendMessage(Text.of("Removed " + name + " from your team."), false);
+                }
             } else {
                 if (TutorialMod.CONFIG.teamManager.addTeammate(name)) {
-                    client.player.sendMessage(Text.of("Added " + name + " to your team."), false);
+                    if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                        client.player.sendMessage(Text.of("Added " + name + " to your team."), false);
+                    }
                 }
             }
         }
@@ -749,15 +765,15 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public String formatCoordsForOverlay(MinecraftClient client) {
-        if (client.player == null) return "";
+        if (client.player == null || client.world == null) return "";
 
-        // Get block coordinates
-        long bx = (long) Math.floor(client.player.getX());
-        long by = (long) Math.floor(client.player.getY());
-        long bz = (long) Math.floor(client.player.getZ());
-        String coords = String.format("%d, %d, %d", bx, by, bz);
+        String coords;
+        if (TutorialMod.CONFIG.showAccurateCoordinates) {
+            coords = String.format("%.3f, %.3f, %.3f", client.player.getX(), client.player.getY(), client.player.getZ());
+        } else {
+            coords = String.format("%d, %d, %d", (int) Math.floor(client.player.getX()), (int) Math.floor(client.player.getY()), (int) Math.floor(client.player.getZ()));
+        }
 
-        // Get facing direction
         String facing = "";
         try {
             Direction d = client.player.getHorizontalFacing();
@@ -767,6 +783,18 @@ public class TutorialModClient implements ClientModInitializer {
             }
         } catch (Exception ignored) {}
 
-        return coords + "|" + facing;
+        String result = coords + "|" + facing;
+        if (TutorialMod.CONFIG.showEntityCount && client.world != null) {
+            int entityCount = 0;
+            int totalEntities = 0;
+            if (client.world.getChunkManager() != null && client.world.getChunkManager().getLightingProvider() != null) {
+                 // A simple way to get a rough entity count. This is not the same as F3 but is a good approximation.
+                entityCount = (int) client.world.getEntities().count();
+                totalEntities = client.world.getChunkManager().getLoadedChunkCount() * 100; // approximation
+            }
+            result += " E: " + entityCount + "/" + totalEntities;
+        }
+
+        return result;
     }
 }

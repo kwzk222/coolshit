@@ -26,14 +26,17 @@ public class ModMenuIntegration implements ModMenuApi {
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
-            // AutoStun Category
-            ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("AutoStun"));
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("AutoStun Fail Chance (%)"), TutorialMod.CONFIG.axeSwapFailChance, 0, 100)
+            // Attribute Swapping Category
+            ConfigCategory attributeSwapping = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
+            attributeSwapping.addEntry(entryBuilder.startIntSlider(Text.literal("AutoStun Fail Chance (%)"), TutorialMod.CONFIG.axeSwapFailChance, 0, 100)
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("The chance (in %) for the regular axe swap to fail."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapFailChance = newValue)
+                    .setSaveConsumer(newValue -> {
+                        TutorialMod.CONFIG.axeSwapFailChance = newValue;
+                        TutorialMod.CONFIG.save();
+                    })
                     .build());
-            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("AutoStun Enabled"), TutorialMod.CONFIG.axeSwapEnabled)
+            attributeSwapping.addEntry(entryBuilder.startBooleanToggle(Text.literal("AutoStun Enabled"), TutorialMod.CONFIG.axeSwapEnabled)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Enable or disable the automatic axe swapping feature."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapEnabled = newValue)
@@ -103,6 +106,11 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // Chat Category
             ConfigCategory chat = builder.getOrCreateCategory(Text.literal("Chat"));
+            chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Disable Mod Chat Updates"), TutorialMod.CONFIG.disableModChatUpdates)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Disables all chat messages from the mod (e.g., 'TriggerBot ON')."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.disableModChatUpdates = newValue)
+                    .build());
             chat.addEntry(entryBuilder.startStrField(Text.literal("Coordinate Trigger"), TutorialMod.CONFIG.trigger)
                     .setDefaultValue("cc")
                     .setTooltip(Text.literal("The word to type to send coordinates."))
@@ -123,9 +131,13 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Replace the trigger word in commands."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.replaceInCommands = newValue)
                     .build());
-            chat.addEntry(entryBuilder.startStrField(Text.literal("Coordinate Format"), TutorialMod.CONFIG.format)
+            chat.addEntry(entryBuilder.startLongTextField(Text.literal("Coordinate Format"), TutorialMod.CONFIG.format)
                     .setDefaultValue("{bx} {by} {bz} {dim} {facing}")
-                    .setTooltip(Text.literal("The format of the coordinates message. Placeholders: {x}, {y}, {z}, {bx}, {by}, {bz}, {dim}, {facing}"))
+                    .setTooltip(Text.literal("Format for coordinates. Placeholders:\n" +
+                            "{x}, {y}, {z}: Precise coordinates (e.g., 123.45)\n" +
+                            "{bx}, {by}, {bz}: Block coordinates (e.g., 123)\n" +
+                            "{dim}: Dimension (e.g., overworld)\n" +
+                            "{facing}: Cardinal direction (e.g., north)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.format = newValue)
                     .build());
 
@@ -231,6 +243,16 @@ public class ModMenuIntegration implements ModMenuApi {
                         }
                     })
                     .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Accurate Coordinates"), TutorialMod.CONFIG.showAccurateCoordinates)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Show coordinates with 3 decimal places."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showAccurateCoordinates = newValue)
+                    .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Entity Count"), TutorialMod.CONFIG.showEntityCount)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Show the entity count in the overlay."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showEntityCount = newValue)
+                    .build());
 
             // Enemy Info SubCategory
             me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder enemyInfoSubCategory = entryBuilder.startSubCategory(Text.literal("Enemy Info"));
@@ -252,7 +274,10 @@ public class ModMenuIntegration implements ModMenuApi {
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Double Enemy Info Range"), TutorialMod.CONFIG.doubleEnemyInfoRange)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Doubles the range at which enemy info is displayed."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.doubleEnemyInfoRange = newValue)
+                    .setSaveConsumer(newValue -> {
+                        TutorialMod.CONFIG.doubleEnemyInfoRange = newValue;
+                        TutorialMod.CONFIG.save();
+                    })
                     .build());
             overlay.addEntry(enemyInfoSubCategory.build());
 
