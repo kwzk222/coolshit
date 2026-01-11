@@ -57,7 +57,7 @@ public class EnemyInfo {
         // Line 3: Potion Effects
         String effects = player.getStatusEffects().stream()
                 .map(effect -> {
-                    Text effectName = effect.getEffectType().getName();
+                    Text effectName = effect.getEffectType().value().getName();
                     int amplifier = effect.getAmplifier();
                     return effectName.getString() + (amplifier > 0 ? " " + (amplifier + 1) : "");
                 })
@@ -71,7 +71,7 @@ public class EnemyInfo {
 
     private String getArmorDurability(PlayerEntity player) {
         float lowestDurability = 1.0f;
-        for (ItemStack armorPiece : player.getArmorItems()) {
+        for (ItemStack armorPiece : player.getInventory().armor) {
             if (!armorPiece.isEmpty()) {
                 float durability = (float) (armorPiece.getMaxDamage() - armorPiece.getDamage()) / armorPiece.getMaxDamage();
                 if (durability < lowestDurability) {
