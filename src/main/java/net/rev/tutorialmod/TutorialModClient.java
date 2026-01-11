@@ -35,6 +35,7 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
+import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.TriggerBot;
 
@@ -52,6 +53,7 @@ public class TutorialModClient implements ClientModInitializer {
     // --- Modules & Features ---
     private TriggerBot triggerBot;
     private AutoTotem autoTotem;
+    private EnemyInfo enemyInfo;
     private static OverlayManager overlayManager;
 
     public AutoTotem getAutoTotem() {
@@ -62,6 +64,10 @@ public class TutorialModClient implements ClientModInitializer {
         return overlayManager;
     }
 
+    public EnemyInfo getEnemyInfo() {
+        return enemyInfo;
+    }
+
 
     // --- Keybind States ---
     private boolean masterToggleWasPressed = false;
@@ -70,6 +76,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean toggleSneakWasPressed = false;
     private boolean toggleSprintWasPressed = false;
     private boolean overlayToggleWasPressed = false;
+    private boolean enemyInfoToggleWasPressed = false;
 
     private static int clickCooldown = -1;
 
@@ -99,6 +106,7 @@ public class TutorialModClient implements ClientModInitializer {
         instance = this;
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
+        enemyInfo = new EnemyInfo();
         overlayManager = new OverlayManager();
         autoTotem.init();
 
@@ -159,10 +167,23 @@ public class TutorialModClient implements ClientModInitializer {
             triggerBot.onTick(client);
         }
 
-        // Update Coords Overlay
-        if (TutorialMod.CONFIG.showCoordsOverlay && overlayManager.isRunning() && client.player != null) {
-            overlayManager.update(formatCoordsForOverlay(client));
+        // Handle Enemy Info Ticks
+        if (TutorialMod.CONFIG.showEnemyInfo) {
+            enemyInfo.onTick(client);
         }
+
+        // --- Centralized Overlay Logic ---
+        if (overlayManager.isRunning() && client.player != null) {
+            String enemyInfoString = TutorialMod.CONFIG.showEnemyInfo ? enemyInfo.getFormattedEnemyInfo() : null;
+            if (enemyInfoString != null) {
+                overlayManager.update(enemyInfoString);
+            } else if (TutorialMod.CONFIG.showCoordsOverlay) {
+                overlayManager.update(formatCoordsForOverlay(client));
+            } else {
+                overlayManager.update(""); // Clear overlay
+            }
+        }
+
 
         // Handle AutoToolSwitch tick
         TutorialMod.getAutoToolSwitch().onTick();
@@ -325,6 +346,19 @@ public class TutorialModClient implements ClientModInitializer {
                 }
             }
             overlayToggleWasPressed = isToggleOverlayPressed;
+        } catch (IllegalArgumentException e) {
+            // Invalid key
+        }
+
+        // --- Toggle Enemy Info Hotkey ---
+        try {
+            boolean isToggleEnemyInfoPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleEnemyInfoHotkey).getCode());
+            if (isToggleEnemyInfoPressed && !enemyInfoToggleWasPressed) {
+                TutorialMod.CONFIG.showEnemyInfo = !TutorialMod.CONFIG.showEnemyInfo;
+                TutorialMod.CONFIG.save();
+                client.player.sendMessage(Text.of("Enemy Info: " + (TutorialMod.CONFIG.showEnemyInfo ? "ON" : "OFF")), false);
+            }
+            enemyInfoToggleWasPressed = isToggleEnemyInfoPressed;
         } catch (IllegalArgumentException e) {
             // Invalid key
         }
@@ -728,7 +762,7 @@ public class TutorialModClient implements ClientModInitializer {
         return out;
     }
 
-    private String formatCoordsForOverlay(MinecraftClient client) {
+    public String formatCoordsForOverlay(MinecraftClient client) {
         if (client.player == null) return "";
 
         // Get block coordinates

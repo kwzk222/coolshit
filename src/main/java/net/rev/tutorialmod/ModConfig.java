@@ -101,6 +101,10 @@ public class ModConfig {
     // --- Coords Overlay ---
     public boolean showCoordsOverlay = false;
 
+    // --- Enemy Info ---
+    public boolean showEnemyInfo = true;
+    public String toggleEnemyInfoHotkey = "key.keyboard.i";
+
 
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;

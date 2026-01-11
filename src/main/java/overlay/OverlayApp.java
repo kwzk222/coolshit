@@ -10,7 +10,7 @@ import java.net.Socket;
 import java.util.Properties;
 
 public class OverlayApp {
-    private static JLabel coordsLabel;
+    private static JLabel infoLabel;
     private static Point initialClick;
     private static JFrame frame;
     private static final File CONFIG_FILE = new File("overlay.properties");
@@ -36,11 +36,11 @@ public class OverlayApp {
             panel.setOpaque(false);
             panel.setLayout(new BorderLayout());
 
-            coordsLabel = new JLabel("Waiting for data...", SwingConstants.CENTER);
-            coordsLabel.setFont(new Font("Consolas", Font.BOLD, 20));
-            coordsLabel.setForeground(Color.WHITE);
+            infoLabel = new JLabel("Waiting for data...", SwingConstants.CENTER);
+            infoLabel.setFont(new Font("Consolas", Font.BOLD, 20));
+            infoLabel.setForeground(Color.WHITE);
 
-            panel.add(coordsLabel, BorderLayout.CENTER);
+            panel.add(infoLabel, BorderLayout.CENTER);
             frame.setContentPane(panel);
 
             // Load saved window position + size
@@ -95,12 +95,19 @@ public class OverlayApp {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    final String[] parts = line.split("\\|");
-                    if (parts.length == 2) {
-                        final String coords = parts[0];
-                        final String facing = parts[1];
+                    if (line.contains("|")) {
+                        final String[] parts = line.split("\\|");
+                        if (parts.length == 2) {
+                            final String coords = parts[0];
+                            final String facing = parts[1];
+                            SwingUtilities.invokeLater(() -> {
+                                infoLabel.setText("<html><div style='text-align: center;'>Coords: " + coords + "<br>Facing: " + facing + "</div></html>");
+                            });
+                        }
+                    } else {
+                        final String enemyInfo = line.replace("\\n", "<br>");
                         SwingUtilities.invokeLater(() -> {
-                            coordsLabel.setText("<html><div style='text-align: center;'>Coords: " + coords + "<br>Facing: " + facing + "</div></html>");
+                            infoLabel.setText("<html><div style='text-align: center;'>" + enemyInfo + "</div></html>");
                         });
                     }
                 }
