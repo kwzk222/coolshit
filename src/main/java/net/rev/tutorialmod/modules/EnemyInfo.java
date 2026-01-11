@@ -1,6 +1,7 @@
 package net.rev.tutorialmod.modules;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
@@ -71,11 +72,14 @@ public class EnemyInfo {
 
     private String getArmorDurability(PlayerEntity player) {
         float lowestDurability = 1.0f;
-        for (ItemStack armorPiece : player.getInventory().armor) {
-            if (!armorPiece.isEmpty()) {
-                float durability = (float) (armorPiece.getMaxDamage() - armorPiece.getDamage()) / armorPiece.getMaxDamage();
-                if (durability < lowestDurability) {
-                    lowestDurability = durability;
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            if (slot.getType() == EquipmentSlot.Type.ARMOR) {
+                ItemStack armorPiece = player.getEquippedStack(slot);
+                if (!armorPiece.isEmpty()) {
+                    float durability = (float) (armorPiece.getMaxDamage() - armorPiece.getDamage()) / armorPiece.getMaxDamage();
+                    if (durability < lowestDurability) {
+                        lowestDurability = durability;
+                    }
                 }
             }
         }
