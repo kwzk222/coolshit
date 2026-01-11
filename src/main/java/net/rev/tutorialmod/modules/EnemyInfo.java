@@ -1,12 +1,18 @@
 package net.rev.tutorialmod.modules;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class EnemyInfo {
@@ -120,9 +126,31 @@ public class EnemyInfo {
     }
 
     private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {
-        if (client.targetedEntity instanceof PlayerEntity && client.player.distanceTo(client.targetedEntity) <= maxDistance) {
-            return (PlayerEntity) client.targetedEntity;
+        Entity camera = client.getCameraEntity();
+        if (camera == null || client.world == null) {
+            return null;
         }
+
+        Vec3d cameraPos = camera.getEyePos();
+        Vec3d lookVec = camera.getRotationVector();
+        Vec3d endVec = cameraPos.add(lookVec.multiply(maxDistance));
+        Box searchBox = camera.getBoundingBox().stretch(lookVec.multiply(maxDistance)).expand(1.0, 1.0, 1.0);
+
+        Predicate<Entity> filter = e -> !e.isSpectator() && e.isAlive() && e instanceof PlayerEntity && e != client.player;
+
+        EntityHitResult hitResult = ProjectileUtil.raycast(
+                camera,
+                cameraPos,
+                endVec,
+                searchBox,
+                filter,
+                maxDistance * maxDistance
+        );
+
+        if (hitResult != null && hitResult.getEntity() instanceof PlayerEntity) {
+            return (PlayerEntity) hitResult.getEntity();
+        }
+
         return null;
     }
 }

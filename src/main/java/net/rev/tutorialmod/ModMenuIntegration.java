@@ -239,11 +239,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Shows information about the player you are looking at."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.showEnemyInfo = newValue)
                     .build());
-            enemyInfoSubCategory.add(entryBuilder.startStrField(Text.literal("Toggle Enemy Info Hotkey"), TutorialMod.CONFIG.toggleEnemyInfoHotkey)
-                    .setDefaultValue("key.keyboard.i")
-                    .setTooltip(Text.literal("The hotkey to toggle the enemy info overlay."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleEnemyInfoHotkey = newValue)
-                    .build());
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show HP Decimals"), TutorialMod.CONFIG.showHpDecimals)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Show one decimal place for enemy HP."))
@@ -306,36 +301,41 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Enable or disable the Trigger Bot feature."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotEnabled = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.triggerBotIncludePlayers)
+
+            // Trigger Bot Filters SubCategory
+            me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder triggerBotFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
+            triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.triggerBotIncludePlayers)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Attack players."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludePlayers = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Exclude Teammates"), TutorialMod.CONFIG.triggerBotExcludeTeammates)
+            triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Exclude Teammates"), TutorialMod.CONFIG.triggerBotExcludeTeammates)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Avoid attacking teammates."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotExcludeTeammates = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Hostiles"), TutorialMod.CONFIG.triggerBotIncludeHostiles)
+            triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Hostiles"), TutorialMod.CONFIG.triggerBotIncludeHostiles)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Attack hostile mobs."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludeHostiles = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Passives"), TutorialMod.CONFIG.triggerBotIncludePassives)
+            triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Passives"), TutorialMod.CONFIG.triggerBotIncludePassives)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Attack passive mobs."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludePassives = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Exclude Villagers"), TutorialMod.CONFIG.triggerBotExcludeVillagers)
+            triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Exclude Villagers"), TutorialMod.CONFIG.triggerBotExcludeVillagers)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Avoid attacking villagers even if passives are included."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotExcludeVillagers = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Include Crystals"), TutorialMod.CONFIG.triggerBotIncludeCrystals)
+            triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Crystals"), TutorialMod.CONFIG.triggerBotIncludeCrystals)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Attack end crystals."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludeCrystals = newValue)
                     .build());
+            triggerBot.addEntry(triggerBotFilters.build());
+
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Active in Inventory"), TutorialMod.CONFIG.triggerBotActiveInInventory)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Whether the Trigger Bot should be active while you are in an inventory screen."))

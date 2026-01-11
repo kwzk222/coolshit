@@ -39,6 +39,7 @@ public class OverlayApp {
             infoLabel = new JLabel("Waiting for data...", SwingConstants.LEFT);
             infoLabel.setFont(new Font("Consolas", Font.BOLD, 20));
             infoLabel.setForeground(Color.WHITE);
+            infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10)); // Add padding
 
             panel.add(infoLabel, BorderLayout.CENTER);
             frame.setContentPane(panel);

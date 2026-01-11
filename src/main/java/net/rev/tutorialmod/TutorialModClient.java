@@ -76,7 +76,6 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean toggleSneakWasPressed = false;
     private boolean toggleSprintWasPressed = false;
     private boolean overlayToggleWasPressed = false;
-    private boolean enemyInfoToggleWasPressed = false;
 
     private static int clickCooldown = -1;
 
@@ -346,19 +345,6 @@ public class TutorialModClient implements ClientModInitializer {
                 }
             }
             overlayToggleWasPressed = isToggleOverlayPressed;
-        } catch (IllegalArgumentException e) {
-            // Invalid key
-        }
-
-        // --- Toggle Enemy Info Hotkey ---
-        try {
-            boolean isToggleEnemyInfoPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleEnemyInfoHotkey).getCode());
-            if (isToggleEnemyInfoPressed && !enemyInfoToggleWasPressed) {
-                TutorialMod.CONFIG.showEnemyInfo = !TutorialMod.CONFIG.showEnemyInfo;
-                TutorialMod.CONFIG.save();
-                client.player.sendMessage(Text.of("Enemy Info: " + (TutorialMod.CONFIG.showEnemyInfo ? "ON" : "OFF")), false);
-            }
-            enemyInfoToggleWasPressed = isToggleEnemyInfoPressed;
         } catch (IllegalArgumentException e) {
             // Invalid key
         }
