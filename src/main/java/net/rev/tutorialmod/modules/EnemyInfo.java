@@ -29,7 +29,8 @@ public class EnemyInfo {
             return;
         }
 
-        PlayerEntity target = getPlayerLookingAt(client, 50.0);
+        double maxDistance = TutorialMod.CONFIG.doubleEnemyInfoRange ? 100.0 : 50.0;
+        PlayerEntity target = getPlayerLookingAt(client, maxDistance);
         if (target != null) {
             lastEnemyInfo = formatEnemyInfo(target);
         } else {
@@ -50,10 +51,12 @@ public class EnemyInfo {
         sb.append(username).append(isTeammate ? " T" : " E").append("\\n");
 
         // Line 2: Health and Armor Durability
-        int health = (int) Math.ceil(player.getHealth());
-        sb.append(health).append("HP ");
+        if (TutorialMod.CONFIG.showHpDecimals) {
+            sb.append(String.format("%.1f", player.getHealth())).append("HP ");
+        } else {
+            sb.append((int) Math.ceil(player.getHealth())).append("HP ");
+        }
         sb.append(getArmorDurability(player));
-        sb.append("\\n");
 
         // Line 3: Potion Effects
         String effects = player.getStatusEffects().stream()
@@ -64,7 +67,7 @@ public class EnemyInfo {
                 })
                 .collect(Collectors.joining(", "));
         if (!effects.isEmpty()) {
-            sb.append(effects);
+            sb.append("\\n").append(effects);
         }
 
         return sb.toString();
@@ -79,25 +82,41 @@ public class EnemyInfo {
 
     private String getArmorDurability(PlayerEntity player) {
         float lowestDurability = 1.0f;
+        EquipmentSlot lowestSlot = null;
         for (EquipmentSlot slot : ARMOR_SLOTS) {
             ItemStack armorPiece = player.getEquippedStack(slot);
             if (!armorPiece.isEmpty()) {
                 float durability = (float) (armorPiece.getMaxDamage() - armorPiece.getDamage()) / armorPiece.getMaxDamage();
                 if (durability < lowestDurability) {
                     lowestDurability = durability;
+                    lowestSlot = slot;
                 }
             }
         }
 
+        String durabilityString;
         if (lowestDurability >= 0.75f) {
-            return "High";
+            durabilityString = "High";
         } else if (lowestDurability >= 0.40f) {
-            return "Medium";
+            durabilityString = "Medium";
         } else if (lowestDurability >= 0.15f) {
-            return "Low";
+            durabilityString = "Low";
         } else {
-            return "Really Low";
+            durabilityString = "Really Low";
         }
+
+        if (TutorialMod.CONFIG.showLowestArmorPiece && lowestSlot != null) {
+            char initial = ' ';
+            switch (lowestSlot) {
+                case HEAD: initial = 'H'; break;
+                case CHEST: initial = 'C'; break;
+                case LEGS: initial = 'L'; break;
+                case FEET: initial = 'B'; break;
+            }
+            return durabilityString + " " + initial;
+        }
+
+        return durabilityString;
     }
 
     private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {

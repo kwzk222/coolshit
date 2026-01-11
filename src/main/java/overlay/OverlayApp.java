@@ -36,7 +36,7 @@ public class OverlayApp {
             panel.setOpaque(false);
             panel.setLayout(new BorderLayout());
 
-            infoLabel = new JLabel("Waiting for data...", SwingConstants.CENTER);
+            infoLabel = new JLabel("Waiting for data...", SwingConstants.LEFT);
             infoLabel.setFont(new Font("Consolas", Font.BOLD, 20));
             infoLabel.setForeground(Color.WHITE);
 
@@ -101,13 +101,13 @@ public class OverlayApp {
                             final String coords = parts[0];
                             final String facing = parts[1];
                             SwingUtilities.invokeLater(() -> {
-                                infoLabel.setText("<html><div style='text-align: center;'>Coords: " + coords + "<br>Facing: " + facing + "</div></html>");
+                                infoLabel.setText("<html><div style='text-align: left;'>Coords: " + coords + "<br>Facing: " + facing + "</div></html>");
                             });
                         }
                     } else {
                         final String enemyInfo = line.replace("\\n", "<br>");
                         SwingUtilities.invokeLater(() -> {
-                            infoLabel.setText("<html><div style='text-align: center;'>" + enemyInfo + "</div></html>");
+                            infoLabel.setText("<html><div style='text-align: left;'>" + enemyInfo + "</div></html>");
                         });
                     }
                 }

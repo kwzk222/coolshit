@@ -104,6 +104,9 @@ public class ModConfig {
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;
     public String toggleEnemyInfoHotkey = "key.keyboard.i";
+    public boolean showHpDecimals = false;
+    public boolean showLowestArmorPiece = false;
+    public boolean doubleEnemyInfoRange = false;
 
 
     public List<String> teammates = new ArrayList<>();

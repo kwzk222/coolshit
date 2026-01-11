@@ -219,18 +219,47 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // Overlay Category
             ConfigCategory overlay = builder.getOrCreateCategory(Text.literal("Overlay"));
-            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Overlay"), TutorialMod.CONFIG.showCoordsOverlay)
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Coords Overlay"), TutorialMod.CONFIG.showCoordsOverlay)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Shows a separate window with your coordinates."))
                     .setSaveConsumer(newValue -> {
                         TutorialMod.CONFIG.showCoordsOverlay = newValue;
                         if (newValue) {
                             TutorialModClient.getOverlayManager().start();
-                        } else {
+                        } else if (!TutorialMod.CONFIG.showEnemyInfo) {
                             TutorialModClient.getOverlayManager().stop();
                         }
                     })
                     .build());
+
+            // Enemy Info SubCategory
+            me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder enemyInfoSubCategory = entryBuilder.startSubCategory(Text.literal("Enemy Info"));
+            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show Enemy Info"), TutorialMod.CONFIG.showEnemyInfo)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Shows information about the player you are looking at."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showEnemyInfo = newValue)
+                    .build());
+            enemyInfoSubCategory.add(entryBuilder.startStrField(Text.literal("Toggle Enemy Info Hotkey"), TutorialMod.CONFIG.toggleEnemyInfoHotkey)
+                    .setDefaultValue("key.keyboard.i")
+                    .setTooltip(Text.literal("The hotkey to toggle the enemy info overlay."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleEnemyInfoHotkey = newValue)
+                    .build());
+            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show HP Decimals"), TutorialMod.CONFIG.showHpDecimals)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Show one decimal place for enemy HP."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showHpDecimals = newValue)
+                    .build());
+            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show Lowest Armor Piece"), TutorialMod.CONFIG.showLowestArmorPiece)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Show which armor piece has the lowest durability (H, C, L, B)."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showLowestArmorPiece = newValue)
+                    .build());
+            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Double Enemy Info Range"), TutorialMod.CONFIG.doubleEnemyInfoRange)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Doubles the range at which enemy info is displayed."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.doubleEnemyInfoRange = newValue)
+                    .build());
+            overlay.addEntry(enemyInfoSubCategory.build());
 
             // Tool Switch Category
             ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
