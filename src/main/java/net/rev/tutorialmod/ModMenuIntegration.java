@@ -382,12 +382,17 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue)
                     .build());
 
-            // Clutch Module Category
-            ConfigCategory clutchModule = builder.getOrCreateCategory(Text.literal("Clutch Module"));
-            clutchModule.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Clutch Module"), TutorialMod.CONFIG.clutchModuleEnabled)
+            // Movement Category
+            ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
+            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Clutch Module"), TutorialMod.CONFIG.clutchModuleEnabled)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Enable or disable the Clutch Module feature."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchModuleEnabled = newValue)
+                    .build());
+            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Minimum Fall Distance"), (long) (TutorialMod.CONFIG.minFallDistanceClutch * 10), 0, 100)
+                    .setDefaultValue(40)
+                    .setTooltip(Text.literal("The minimum fall distance to activate the clutch."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.minFallDistanceClutch = newValue / 10.0f)
                     .build());
 
             return builder.build();

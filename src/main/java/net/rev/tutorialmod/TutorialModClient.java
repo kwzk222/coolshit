@@ -112,9 +112,7 @@ public class TutorialModClient implements ClientModInitializer {
         overlayManager = new OverlayManager();
         autoTotem.init();
 
-        if (TutorialMod.CONFIG.clutchModuleEnabled) {
-            clutchModule.register();
-        }
+        clutchModule.register();
 
         // Add shutdown hook to stop overlay process
         Runtime.getRuntime().addShutdownHook(new Thread(overlayManager::stop));

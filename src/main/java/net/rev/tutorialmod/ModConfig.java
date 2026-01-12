@@ -110,8 +110,9 @@ public class ModConfig {
     public boolean showLowestArmorPiece = false;
     public boolean doubleEnemyInfoRange = false;
 
-    // --- Clutch Module ---
+    // --- Movement ---
     public boolean clutchModuleEnabled = false;
+    public float minFallDistanceClutch = 4.0F;
 
 
     public List<String> teammates = new ArrayList<>();

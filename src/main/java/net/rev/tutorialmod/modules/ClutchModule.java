@@ -11,14 +11,15 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
+import net.rev.tutorialmod.TutorialMod;
 
 import java.util.List;
 
 public class ClutchModule {
-    private static final float MIN_FALL = 4.0F;
     private static final List<Block> CLUTCH_PRIORITY = List.of(
             Blocks.SLIME_BLOCK,
             Blocks.COBWEB,
@@ -29,30 +30,39 @@ public class ClutchModule {
 
     public void register() {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            ClientPlayerEntity player = client.player;
-            if (player == null || player.isOnGround()) {
+            if (client.player == null || !TutorialMod.CONFIG.clutchModuleEnabled) return;
+
+            if (client.player.isOnGround() || client.player.getAbilities().flying) {
                 clutchTriggered = false;
                 return;
             }
 
-            if (player.fallDistance < MIN_FALL || clutchTriggered) return;
+            double fallDistance = client.player.fallDistance;
+            if (fallDistance < TutorialMod.CONFIG.minFallDistanceClutch || clutchTriggered) return;
 
-            if (!isLandingUnsafe(player)) return;
+            if (!(client.crosshairTarget instanceof BlockHitResult hit)) return;
 
-            int slot = findBestClutchSlot(player.getInventory());
+            if (!isLandingUnsafe(client.player)) return;
+
+            int slot = findBestClutchSlot(client.player.getInventory());
             if (slot == -1) return;
 
-            if (!(client.crosshairTarget instanceof BlockHitResult)) return;
+            BlockPos placePos = hit.getBlockPos().offset(hit.getSide());
+            if (!client.world.getBlockState(placePos).isAir()) return;
 
-            clutchTriggered = true;
+            ((net.rev.tutorialmod.mixin.PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(slot);
 
-            ((net.rev.tutorialmod.mixin.PlayerInventoryMixin) player.getInventory()).setSelectedSlot(slot);
+            if (client.interactionManager == null) return;
 
-            client.interactionManager.interactBlock(
-                    player,
+            ActionResult result = client.interactionManager.interactBlock(
+                    client.player,
                     Hand.MAIN_HAND,
-                    (BlockHitResult) client.crosshairTarget
+                    hit
             );
+
+            if (result.isAccepted()) {
+                clutchTriggered = true;
+            }
         });
     }
 
