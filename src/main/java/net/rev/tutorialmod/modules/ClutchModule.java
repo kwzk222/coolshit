@@ -8,13 +8,8 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
-import net.minecraft.world.World;
 import net.rev.tutorialmod.TutorialMod;
 
 import java.util.List;
@@ -37,16 +32,10 @@ public class ClutchModule {
                 return;
             }
 
-            double fallDistance = client.player.fallDistance;
-            if (fallDistance < TutorialMod.CONFIG.minFallDistanceClutch || clutchTriggered) return;
-
-            if (!isLandingSoon(client.player)) return;
+            if (client.player.fallDistance < TutorialMod.CONFIG.minFallDistanceClutch || clutchTriggered) return;
 
             if (!(client.crosshairTarget instanceof BlockHitResult hit)) return;
 
-            if (!isLandingUnsafe(client.player)) return;
-
-            // Refined Placement Validation
             BlockPos supportPos = hit.getBlockPos();
             if (!client.player.getWorld().getBlockState(supportPos).isSideSolidFullSquare(client.player.getWorld(), supportPos, hit.getSide())) return;
 
@@ -56,44 +45,15 @@ public class ClutchModule {
             int slot = findBestClutchSlot(client.player.getInventory());
             if (slot == -1) return;
 
+            clutchTriggered = true;
             ((net.rev.tutorialmod.mixin.PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(slot);
 
-            // Simulate a right-click
             client.options.useKey.setPressed(true);
-            client.execute(() -> client.options.useKey.setPressed(false));
-
-            clutchTriggered = true;
+            client.execute(() -> {
+                client.options.useKey.setPressed(true);
+                client.execute(() -> client.options.useKey.setPressed(false));
+            });
         });
-    }
-
-    private boolean isLandingSoon(ClientPlayerEntity player) {
-        Vec3d vel = player.getVelocity();
-        if (vel.y >= 0) return false;
-
-        double ticksToImpact = player.getY() / -vel.y;
-        return ticksToImpact < 6; // ~0.3s
-    }
-
-    private boolean isLandingUnsafe(ClientPlayerEntity player) {
-        World world = player.getWorld();
-        Vec3d start = player.getPos();
-        Vec3d end = start.add(0, -8.0, 0);
-
-        BlockHitResult groundHit = world.raycast(new RaycastContext(
-                start,
-                end,
-                RaycastContext.ShapeType.COLLIDER,
-                RaycastContext.FluidHandling.NONE,
-                player
-        ));
-
-        BlockPos landingPos = groundHit.getBlockPos();
-        BlockState landingState = world.getBlockState(landingPos);
-
-        return landingState.isAir() ||
-                landingState.isOf(Blocks.LAVA) ||
-                landingState.isOf(Blocks.CACTUS) ||
-                landingState.isOf(Blocks.MAGMA_BLOCK);
     }
 
     private int findBestClutchSlot(PlayerInventory inv) {
