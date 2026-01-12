@@ -35,6 +35,7 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
+import net.rev.tutorialmod.modules.ClutchModule;
 import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.TriggerBot;
@@ -54,6 +55,7 @@ public class TutorialModClient implements ClientModInitializer {
     private TriggerBot triggerBot;
     private AutoTotem autoTotem;
     private EnemyInfo enemyInfo;
+    private ClutchModule clutchModule;
     private static OverlayManager overlayManager;
 
     public AutoTotem getAutoTotem() {
@@ -106,8 +108,13 @@ public class TutorialModClient implements ClientModInitializer {
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
         enemyInfo = new EnemyInfo();
+        clutchModule = new ClutchModule();
         overlayManager = new OverlayManager();
         autoTotem.init();
+
+        if (TutorialMod.CONFIG.clutchModuleEnabled) {
+            clutchModule.register();
+        }
 
         // Add shutdown hook to stop overlay process
         Runtime.getRuntime().addShutdownHook(new Thread(overlayManager::stop));

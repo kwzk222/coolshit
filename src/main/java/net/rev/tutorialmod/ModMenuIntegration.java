@@ -382,6 +382,14 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue)
                     .build());
 
+            // Clutch Module Category
+            ConfigCategory clutchModule = builder.getOrCreateCategory(Text.literal("Clutch Module"));
+            clutchModule.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Clutch Module"), TutorialMod.CONFIG.clutchModuleEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Enable or disable the Clutch Module feature."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchModuleEnabled = newValue)
+                    .build());
+
             return builder.build();
         };
     }

@@ -110,6 +110,9 @@ public class ModConfig {
     public boolean showLowestArmorPiece = false;
     public boolean doubleEnemyInfoRange = false;
 
+    // --- Clutch Module ---
+    public boolean clutchModuleEnabled = false;
+
 
     public List<String> teammates = new ArrayList<>();
     public transient TeamManager teamManager;
