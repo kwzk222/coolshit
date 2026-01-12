@@ -16,9 +16,11 @@ public class InventoryScreenMixin {
     private void onInit(CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.interactionManager != null && client.interactionManager.getCurrentGameMode() == GameMode.SURVIVAL) {
-            long handle = client.getWindow().getHandle();
-            // Simulate a TAB key press
-            client.keyboard.onKey(handle, GLFW.GLFW_KEY_TAB, 0, GLFW.GLFW_PRESS, 0);
+            // Schedule the TAB press for the next tick to ensure the screen is fully initialized
+            client.execute(() -> {
+                long handle = client.getWindow().getHandle();
+                client.keyboard.onKey(handle, GLFW.GLFW_KEY_TAB, 0, GLFW.GLFW_PRESS, 0);
+            });
         }
     }
 }

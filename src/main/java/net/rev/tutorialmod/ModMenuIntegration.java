@@ -192,16 +192,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to hold to activate the Trigger Bot. Use a translation key, e.g., 'key.keyboard.0'."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotHotkey = newValue)
                     .build());
-            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Toggle Sneak Hotkey"), TutorialMod.CONFIG.toggleSneakHotkey)
-                    .setDefaultValue("key.keyboard.c")
-                    .setTooltip(Text.literal("The hotkey to toggle sneaking on or off."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleSneakHotkey = newValue)
-                    .build());
-            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Toggle Sprint Hotkey"), TutorialMod.CONFIG.toggleSprintHotkey)
-                    .setDefaultValue("key.keyboard.v")
-                    .setTooltip(Text.literal("The hotkey to toggle sprinting on or off."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleSprintHotkey = newValue)
-                    .build());
             hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Toggle Overlay Hotkey"), TutorialMod.CONFIG.toggleOverlayHotkey)
                     .setDefaultValue("key.keyboard.h")
                     .setTooltip(Text.literal("The hotkey to toggle the overlay on or off."))

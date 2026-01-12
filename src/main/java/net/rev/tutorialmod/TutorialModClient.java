@@ -76,8 +76,6 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean masterToggleWasPressed = false;
     private boolean teammateWasPressed = false;
     private boolean triggerBotToggleWasPressed = false;
-    private boolean toggleSneakWasPressed = false;
-    private boolean toggleSprintWasPressed = false;
     private boolean overlayToggleWasPressed = false;
 
     private static int clickCooldown = -1;
@@ -192,7 +190,6 @@ public class TutorialModClient implements ClientModInitializer {
 
         // --- Toggles ---
         // This is handled here to ensure toggles can be turned off even if the master switch is disabled.
-        handleToggleKeys(client);
 
         // Master toggle check for all subsequent features.
         if (!TutorialMod.CONFIG.masterEnabled) return;
@@ -222,7 +219,9 @@ public class TutorialModClient implements ClientModInitializer {
             boolean hasArmor = isArmored(attackedPlayer);
             PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
 
-            boolean shouldAttemptSwap = (isShielding && isFacing) || (RANDOM.nextInt(100) < TutorialMod.CONFIG.fakePredictionChance);
+            boolean hasShield = attackedPlayer.getMainHandStack().getItem() == Items.SHIELD || attackedPlayer.getOffHandStack().getItem() == Items.SHIELD;
+            boolean fakePrediction = hasShield && !isShielding && (RANDOM.nextInt(100) < TutorialMod.CONFIG.fakePredictionChance);
+            boolean shouldAttemptSwap = (isShielding && isFacing) || fakePrediction;
 
             if (shouldAttemptSwap && TutorialMod.CONFIG.axeSwapEnabled) {
                 if (TutorialMod.CONFIG.axeSwapFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.axeSwapFailChance) {
@@ -307,56 +306,6 @@ public class TutorialModClient implements ClientModInitializer {
                 }
             }
             triggerBotToggleWasPressed = isTriggerBotTogglePressed;
-        } catch (IllegalArgumentException e) {
-        }
-
-        // --- Toggle Sneak Hotkey ---
-        try {
-            boolean isToggleSneakPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleSneakHotkey).getCode());
-            if (isToggleSneakPressed && !toggleSneakWasPressed) {
-                TutorialMod.CONFIG.isToggleSneakOn = !TutorialMod.CONFIG.isToggleSneakOn;
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    client.player.sendMessage(Text.of("Toggle Sneak: " + (TutorialMod.CONFIG.isToggleSneakOn ? "ON" : "OFF")), false);
-                }
-
-                if (TutorialMod.CONFIG.isToggleSneakOn) {
-                    if (TutorialMod.CONFIG.isToggleSprintOn) {
-                        TutorialMod.CONFIG.isToggleSprintOn = false;
-                        if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                            client.player.sendMessage(Text.of("Toggle Sprint: OFF"), false);
-                        }
-                        client.options.sprintKey.setPressed(false);
-                    }
-                } else {
-                    client.options.sneakKey.setPressed(false);
-                }
-            }
-            toggleSneakWasPressed = isToggleSneakPressed;
-        } catch (IllegalArgumentException e) {
-        }
-
-        // --- Toggle Sprint Hotkey ---
-        try {
-            boolean isToggleSprintPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleSprintHotkey).getCode());
-            if (isToggleSprintPressed && !toggleSprintWasPressed) {
-                TutorialMod.CONFIG.isToggleSprintOn = !TutorialMod.CONFIG.isToggleSprintOn;
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    client.player.sendMessage(Text.of("Toggle Sprint: " + (TutorialMod.CONFIG.isToggleSprintOn ? "ON" : "OFF")), false);
-                }
-
-                if (TutorialMod.CONFIG.isToggleSprintOn) {
-                    if (TutorialMod.CONFIG.isToggleSneakOn) {
-                        TutorialMod.CONFIG.isToggleSneakOn = false;
-                        if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                            client.player.sendMessage(Text.of("Toggle Sneak: OFF"), false);
-                        }
-                        client.options.sneakKey.setPressed(false);
-                    }
-                } else {
-                    client.options.sprintKey.setPressed(false);
-                }
-            }
-            toggleSprintWasPressed = isToggleSprintPressed;
         } catch (IllegalArgumentException e) {
         }
 
@@ -651,31 +600,6 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    private void handleToggleKeys(MinecraftClient client) {
-        if (client.player == null) return;
-        // If master switch is off, ensure all toggles are disabled.
-        if (!TutorialMod.CONFIG.masterEnabled) {
-            if (TutorialMod.CONFIG.isToggleSneakOn) {
-                TutorialMod.CONFIG.isToggleSneakOn = false;
-                client.options.sneakKey.setPressed(false);
-            }
-            if (TutorialMod.CONFIG.isToggleSprintOn) {
-                TutorialMod.CONFIG.isToggleSprintOn = false;
-                client.options.sprintKey.setPressed(false);
-            }
-            return;
-        }
-
-        // --- Handle Toggle Sneak ---
-        if (TutorialMod.CONFIG.isToggleSneakOn) {
-            client.options.sneakKey.setPressed(true);
-        }
-
-        // --- Handle Toggle Sprint ---
-        if (TutorialMod.CONFIG.isToggleSprintOn) {
-            client.options.sprintKey.setPressed(true);
-        }
-    }
     private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {
         PlayerEntity foundPlayer = null;
         double maxDot = -1.0; // cos(180)

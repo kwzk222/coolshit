@@ -66,18 +66,12 @@ public class ModConfig {
     public boolean triggerBotActiveInInventory = false;
     public transient boolean triggerBotToggledOn = true;
 
-    // --- Toggles ---
-    public transient boolean isToggleSneakOn = false;
-    public transient boolean isToggleSprintOn = false;
-
     // --- Hotkeys ---
     public String openSettingsHotkey = "key.keyboard.right.shift";
     public String masterToggleHotkey = "key.keyboard.m";
     public String teammateHotkey = "key.keyboard.g";
     public String triggerBotToggleHotkey = "key.keyboard.k";
     public String triggerBotHotkey = "key.keyboard.0";
-    public String toggleSneakHotkey = "key.keyboard.c";
-    public String toggleSprintHotkey = "key.keyboard.v";
     public String toggleOverlayHotkey = "key.keyboard.h";
     public boolean activeInInventory = false;
 
