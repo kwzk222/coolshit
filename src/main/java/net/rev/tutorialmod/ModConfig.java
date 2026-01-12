@@ -17,6 +17,7 @@ public class ModConfig {
     private static final File CONFIG_FILE = new File(FabricLoader.getInstance().getConfigDir().toFile(), "tutorialmod.json");
 
     // --- Attribute Swapping ---
+    public int fakePredictionChance = 0;
     public int axeSwapFailChance = 0;
     public int axeSwapDelay = 5;
     public int maceSwapDelay = 1;
@@ -70,6 +71,7 @@ public class ModConfig {
     public transient boolean isToggleSprintOn = false;
 
     // --- Hotkeys ---
+    public String openSettingsHotkey = "key.keyboard.right.shift";
     public String masterToggleHotkey = "key.keyboard.m";
     public String teammateHotkey = "key.keyboard.g";
     public String triggerBotToggleHotkey = "key.keyboard.k";

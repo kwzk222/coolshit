@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.minecraft.client.MinecraftClient;
@@ -41,6 +42,7 @@ import net.rev.tutorialmod.modules.TriggerBot;
 
 public class TutorialModClient implements ClientModInitializer {
 
+    private static final Random RANDOM = new Random();
     private final Map<String, Boolean> wasMacroKeyPressed = new HashMap<>();
 
     // --- Singleton Instance ---
@@ -70,6 +72,7 @@ public class TutorialModClient implements ClientModInitializer {
 
 
     // --- Keybind States ---
+    private boolean openSettingsWasPressed = false;
     private boolean masterToggleWasPressed = false;
     private boolean teammateWasPressed = false;
     private boolean triggerBotToggleWasPressed = false;
@@ -218,8 +221,11 @@ public class TutorialModClient implements ClientModInitializer {
 
             boolean hasArmor = isArmored(attackedPlayer);
             PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
-            if (isShielding && isFacing && TutorialMod.CONFIG.axeSwapEnabled) {
-                if (TutorialMod.CONFIG.axeSwapFailChance > 0 && new java.util.Random().nextInt(100) < TutorialMod.CONFIG.axeSwapFailChance) {
+
+            boolean shouldAttemptSwap = (isShielding && isFacing) || (RANDOM.nextInt(100) < TutorialMod.CONFIG.fakePredictionChance);
+
+            if (shouldAttemptSwap && TutorialMod.CONFIG.axeSwapEnabled) {
+                if (TutorialMod.CONFIG.axeSwapFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.axeSwapFailChance) {
                     return ActionResult.PASS;
                 }
                 int axeSlot = findAxeInHotbar(player);
@@ -254,6 +260,17 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (!TutorialMod.CONFIG.activeInInventory && client.currentScreen != null) {
             return;
+        }
+
+        // --- Open Settings Hotkey ---
+        try {
+            boolean isOpenSettingsPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.openSettingsHotkey).getCode());
+            if (isOpenSettingsPressed && !openSettingsWasPressed) {
+                client.setScreen(new ModMenuIntegration().getModConfigScreenFactory().create(client.currentScreen));
+            }
+            openSettingsWasPressed = isOpenSettingsPressed;
+        } catch (IllegalArgumentException e) {
+            // Invalid key
         }
 
         try {
@@ -789,11 +806,7 @@ public class TutorialModClient implements ClientModInitializer {
             for (Entity ignored : client.world.getEntities()) {
                 entityCount++;
             }
-            int totalEntities = 0;
-            if (client.world.getChunkManager() != null) {
-                totalEntities = client.world.getChunkManager().getLoadedChunkCount() * 100; // approximation
-            }
-            result += " E: " + entityCount + "/" + totalEntities;
+            result += " E: " + entityCount;
         }
 
         return result;

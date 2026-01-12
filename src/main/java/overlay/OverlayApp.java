@@ -102,7 +102,7 @@ public class OverlayApp {
                         final String facing = parts.length > 1 ? parts[1] : "";
                         String text = "<html><div style='text-align: left;'>Coords: " + coords + "<br>Facing: " + facing;
                         if (line.contains(" E: ")) {
-                            text += " " + line.substring(line.indexOf(" E: "));
+                            text += line.substring(line.indexOf(" E: "));
                         }
                         text += "</div></html>";
                         final String finalText = text;

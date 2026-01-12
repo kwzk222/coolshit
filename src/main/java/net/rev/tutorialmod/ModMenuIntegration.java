@@ -28,13 +28,15 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // AutoStun Category
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("AutoStun"));
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Fake Prediction Chance (%)"), TutorialMod.CONFIG.fakePredictionChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The chance (%) to attempt an axe swap even if the enemy is not shielding."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.fakePredictionChance = newValue)
+                    .build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("AutoStun Fail Chance (%)"), TutorialMod.CONFIG.axeSwapFailChance, 0, 100)
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("The chance (in %) for the regular axe swap to fail."))
-                    .setSaveConsumer(newValue -> {
-                        TutorialMod.CONFIG.axeSwapFailChance = newValue;
-                        TutorialMod.CONFIG.save();
-                    })
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapFailChance = newValue)
                     .build());
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("AutoStun Enabled"), TutorialMod.CONFIG.axeSwapEnabled)
                     .setDefaultValue(true)
@@ -165,6 +167,11 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // Hotkeys Category
             ConfigCategory hotkeys = builder.getOrCreateCategory(Text.literal("Hotkeys"));
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Open Settings Hotkey"), TutorialMod.CONFIG.openSettingsHotkey)
+                    .setDefaultValue("key.keyboard.right.shift")
+                    .setTooltip(Text.literal("The hotkey to open the mod settings screen."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.openSettingsHotkey = newValue)
+                    .build());
             hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey)
                     .setDefaultValue("key.keyboard.m")
                     .setTooltip(Text.literal("The hotkey to toggle the entire mod on or off. Use a translation key, e.g., 'key.keyboard.m'."))
@@ -274,10 +281,7 @@ public class ModMenuIntegration implements ModMenuApi {
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Double Enemy Info Range"), TutorialMod.CONFIG.doubleEnemyInfoRange)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Doubles the range at which enemy info is displayed."))
-                    .setSaveConsumer(newValue -> {
-                        TutorialMod.CONFIG.doubleEnemyInfoRange = newValue;
-                        TutorialMod.CONFIG.save();
-                    })
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.doubleEnemyInfoRange = newValue)
                     .build());
             overlay.addEntry(enemyInfoSubCategory.build());
 
