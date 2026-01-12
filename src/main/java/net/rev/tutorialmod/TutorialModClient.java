@@ -78,8 +78,6 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean triggerBotToggleWasPressed = false;
     private boolean overlayToggleWasPressed = false;
 
-    private static int clickCooldown = -1;
-
     // --- State: Combat Swap ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_TO_ORIGINAL_THEN_MACE, SWITCH_BACK_FROM_MACE }
     private int swapCooldown = -1;
@@ -329,15 +327,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private void handlePlacementClick(MinecraftClient client) {
-        if (clickCooldown > 0) {
-            clickCooldown--;
-        } else if (clickCooldown == 0) {
-            client.options.useKey.setPressed(false);
-            clickCooldown = -1;
-        }
-    }
-
     private void handleTeammateKeybind(MinecraftClient client) {
         PlayerEntity target = getPlayerLookingAt(client, 9.0);
         if (target != null) {
@@ -415,7 +404,7 @@ public class TutorialModClient implements ClientModInitializer {
                     int minecartSlot = findTntMinecartInHotbar(client.player);
                     if (minecartSlot != -1) {
                         inventory.setSelectedSlot(minecartSlot);
-                        requestPlacement(); // Programmatically trigger a right-click
+                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                         awaitingMinecartConfirmationCooldown = 10; // Wait for server confirmation
                     }
                     railPos = null; // Clear railPos after attempting placement
@@ -443,17 +432,6 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleConfirmationCooldowns(MinecraftClient client) {
         if (awaitingRailConfirmationCooldown > 0) {
             awaitingRailConfirmationCooldown--;
-        }
-    }
-
-    public static void requestPlacement() {
-        if (clickCooldown == -1) {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player != null) {
-                client.options.useKey.setPressed(true);
-                client.player.swingHand(Hand.MAIN_HAND);
-                clickCooldown = 1;
-            }
         }
     }
 
