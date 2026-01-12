@@ -2,8 +2,9 @@ package net.rev.tutorialmod.mixin;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.world.GameMode;
-import org.lwjgl.glfw.GLFW;
+import net.rev.tutorialmod.mixin.accessor.InventoryScreenAccessor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,10 +17,12 @@ public class InventoryScreenMixin {
     private void onInit(CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.interactionManager != null && client.interactionManager.getCurrentGameMode() == GameMode.SURVIVAL) {
-            // Schedule the TAB press for the next tick to ensure the screen is fully initialized
             client.execute(() -> {
-                InventoryScreen screen = (InventoryScreen) (Object) this;
-                screen.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0);
+                InventoryScreenAccessor screen = (InventoryScreenAccessor) this;
+                ButtonWidget recipeBookButton = screen.getRecipeBookButton();
+                if (recipeBookButton != null) {
+                    ((InventoryScreen) (Object) this).setFocused(recipeBookButton);
+                }
             });
         }
     }

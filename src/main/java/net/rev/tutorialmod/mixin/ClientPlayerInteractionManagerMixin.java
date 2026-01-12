@@ -1,6 +1,6 @@
 package net.rev.tutorialmod.mixin;
 
-import net.minecraft.block.RailBlock;
+import net.minecraft.block.AbstractRailBlock;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.entity.Entity;
@@ -36,7 +36,7 @@ public class ClientPlayerInteractionManagerMixin {
     private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
         if (TutorialMod.CONFIG.tntMinecartPlacementEnabled && cir.getReturnValue().isAccepted()) {
             ItemStack stack = player.getStackInHand(hand);
-            if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof RailBlock) {
+            if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {
                 TutorialModClient.setAwaitingRailConfirmation();
             }
         }

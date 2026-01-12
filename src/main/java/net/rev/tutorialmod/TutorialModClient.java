@@ -99,6 +99,7 @@ public class TutorialModClient implements ClientModInitializer {
     // --- State: Misc ---
     public static long lastBowShotTick = -1;
     public static int awaitingRailConfirmationCooldown = -1;
+    public static int awaitingMinecartConfirmationCooldown = -1;
 
 
     @Override
@@ -411,15 +412,13 @@ public class TutorialModClient implements ClientModInitializer {
             PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
             switch (action) {
                 case PLACE_TNT_MINECART:
-                    HitResult crosshairTarget = client.crosshairTarget;
-                    if (crosshairTarget != null && crosshairTarget.getType() == HitResult.Type.BLOCK && ((BlockHitResult) crosshairTarget).getBlockPos().equals(railPos)) {
-                        inventory.setSelectedSlot(findTntMinecartInHotbar(client.player));
-                        BlockHitResult hitResult = new BlockHitResult(railPos.toCenterPos(), Direction.UP, railPos, false);
-                        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, hitResult);
-                        startPostMinecartSequence(client);
-                    } else {
-                        railPos = null;
+                    int minecartSlot = findTntMinecartInHotbar(client.player);
+                    if (minecartSlot != -1) {
+                        inventory.setSelectedSlot(minecartSlot);
+                        requestPlacement(); // Programmatically trigger a right-click
+                        awaitingMinecartConfirmationCooldown = 10; // Wait for server confirmation
                     }
+                    railPos = null; // Clear railPos after attempting placement
                     break;
                 case AWAITING_LAVA_PLACEMENT:
                 case AWAITING_FIRE_PLACEMENT:

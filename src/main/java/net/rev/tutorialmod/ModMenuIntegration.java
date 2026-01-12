@@ -256,7 +256,14 @@ public class ModMenuIntegration implements ModMenuApi {
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show Enemy Info"), TutorialMod.CONFIG.showEnemyInfo)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Shows information about the player you are looking at."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showEnemyInfo = newValue)
+                    .setSaveConsumer(newValue -> {
+                        TutorialMod.CONFIG.showEnemyInfo = newValue;
+                        if (newValue) {
+                            TutorialModClient.getOverlayManager().start();
+                        } else if (!TutorialMod.CONFIG.showCoordsOverlay) {
+                            TutorialModClient.getOverlayManager().stop();
+                        }
+                    })
                     .build());
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show HP Decimals"), TutorialMod.CONFIG.showHpDecimals)
                     .setDefaultValue(false)
