@@ -464,7 +464,7 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public static void confirmRailPlacement(BlockPos pos, BlockState state) {
-        if (awaitingRailConfirmationCooldown > 0 && state.getBlock() instanceof net.minecraft.block.RailBlock) {
+        if (awaitingRailConfirmationCooldown > 0 && state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
             if (instance != null) instance.startRailPlacement(pos);
             awaitingRailConfirmationCooldown = -1;
         }

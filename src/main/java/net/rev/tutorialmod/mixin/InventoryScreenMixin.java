@@ -18,8 +18,8 @@ public class InventoryScreenMixin {
         if (client.interactionManager != null && client.interactionManager.getCurrentGameMode() == GameMode.SURVIVAL) {
             // Schedule the TAB press for the next tick to ensure the screen is fully initialized
             client.execute(() -> {
-                long handle = client.getWindow().getHandle();
-                client.keyboard.onKey(handle, GLFW.GLFW_KEY_TAB, 0, GLFW.GLFW_PRESS, 0);
+                InventoryScreen screen = (InventoryScreen) (Object) this;
+                screen.keyPressed(GLFW.GLFW_KEY_TAB, 0, 0);
             });
         }
     }
