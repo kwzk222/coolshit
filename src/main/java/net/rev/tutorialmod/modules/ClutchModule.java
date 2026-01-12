@@ -40,30 +40,38 @@ public class ClutchModule {
             double fallDistance = client.player.fallDistance;
             if (fallDistance < TutorialMod.CONFIG.minFallDistanceClutch || clutchTriggered) return;
 
+            if (!isLandingSoon(client.player)) return;
+
             if (!(client.crosshairTarget instanceof BlockHitResult hit)) return;
 
             if (!isLandingUnsafe(client.player)) return;
 
+            // Refined Placement Validation
+            BlockPos supportPos = hit.getBlockPos();
+            if (!client.player.getWorld().getBlockState(supportPos).isSideSolidFullSquare(client.player.getWorld(), supportPos, hit.getSide())) return;
+
+            BlockPos placePos = supportPos.offset(hit.getSide());
+            if (!client.player.getWorld().getBlockState(placePos).isAir()) return;
+
             int slot = findBestClutchSlot(client.player.getInventory());
             if (slot == -1) return;
 
-            BlockPos placePos = hit.getBlockPos().offset(hit.getSide());
-            if (!client.world.getBlockState(placePos).isAir()) return;
-
             ((net.rev.tutorialmod.mixin.PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(slot);
 
-            if (client.interactionManager == null) return;
+            // Simulate a right-click
+            client.options.useKey.setPressed(true);
+            client.execute(() -> client.options.useKey.setPressed(false));
 
-            ActionResult result = client.interactionManager.interactBlock(
-                    client.player,
-                    Hand.MAIN_HAND,
-                    hit
-            );
-
-            if (result.isAccepted()) {
-                clutchTriggered = true;
-            }
+            clutchTriggered = true;
         });
+    }
+
+    private boolean isLandingSoon(ClientPlayerEntity player) {
+        Vec3d vel = player.getVelocity();
+        if (vel.y >= 0) return false;
+
+        double ticksToImpact = player.getY() / -vel.y;
+        return ticksToImpact < 6; // ~0.3s
     }
 
     private boolean isLandingUnsafe(ClientPlayerEntity player) {
