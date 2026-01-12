@@ -2,7 +2,7 @@ package net.rev.tutorialmod.mixin;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.screen.recipebook.RecipeBookWidget;
 import net.minecraft.world.GameMode;
 import net.rev.tutorialmod.mixin.accessor.InventoryScreenAccessor;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,9 +19,9 @@ public class InventoryScreenMixin {
         if (client.interactionManager != null && client.interactionManager.getCurrentGameMode() == GameMode.SURVIVAL) {
             client.execute(() -> {
                 InventoryScreenAccessor screen = (InventoryScreenAccessor) this;
-                ButtonWidget recipeBookButton = screen.getRecipeBookButton();
-                if (recipeBookButton != null) {
-                    ((InventoryScreen) (Object) this).setFocused(recipeBookButton);
+                RecipeBookWidget recipeBook = screen.getRecipeBook();
+                if (recipeBook != null) {
+                    ((InventoryScreen) (Object) this).setFocused(recipeBook);
                 }
             });
         }
