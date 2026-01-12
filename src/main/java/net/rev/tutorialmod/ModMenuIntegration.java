@@ -133,6 +133,9 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Replace the trigger word in commands."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.replaceInCommands = newValue)
                     .build());
+            // NOTE: The user requested to make this text box visibly wider.
+            // The Cloth Config API does not provide a simple way to adjust the width of a single text field.
+            // The old `startLongTextField` was removed, and `startStrField` does not have a width option.
             chat.addEntry(entryBuilder.startStrField(Text.literal("Coordinate Format"), TutorialMod.CONFIG.format)
                     .setDefaultValue("{bx} {by} {bz} {dim} {facing}")
                     .setTooltip(Text.literal("Format for coordinates. Placeholders:\n" +
