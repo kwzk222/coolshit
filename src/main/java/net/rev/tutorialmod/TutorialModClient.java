@@ -197,7 +197,6 @@ public class TutorialModClient implements ClientModInitializer {
         if (TutorialMod.CONFIG.autoTotemEnabled) {
             autoTotem.onTick(client);
         }
-        handlePlacementClick(client);
         handleCombatSwap(client);
         handlePlacementSequence(client);
         handleConfirmationCooldowns(client);

@@ -16,20 +16,15 @@ import java.util.List;
 @Mixin(InventoryScreen.class)
 public abstract class InventoryScreenMixin {
 
-    @Shadow
-    protected abstract List<? extends Element> children();
-
-    @Shadow
-    public abstract void setFocused(Element focused);
-
     @Inject(method = "init", at = @At("TAIL"))
     private void onInit(CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.interactionManager != null && client.interactionManager.getCurrentGameMode() == GameMode.SURVIVAL) {
             client.execute(() -> {
-                for (Element e : this.children()) {
+                InventoryScreen screen = (InventoryScreen) (Object) this;
+                for (Element e : screen.children()) {
                     if (e instanceof RecipeBookWidget) {
-                        this.setFocused(e);
+                        screen.setFocused(e);
                         break;
                     }
                 }

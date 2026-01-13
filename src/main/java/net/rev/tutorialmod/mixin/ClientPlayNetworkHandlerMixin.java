@@ -2,6 +2,7 @@ package net.rev.tutorialmod.mixin;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.entity.Entity;
 import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
@@ -27,7 +28,7 @@ public class ClientPlayNetworkHandlerMixin {
         if (TutorialModClient.awaitingMinecartConfirmationCooldown > 0) {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.world != null) {
-                Entity entity = client.world.getEntityById(packet.getId());
+                Entity entity = client.world.getEntityById(packet.getEntityId());
                 if (entity instanceof net.minecraft.entity.vehicle.TntMinecartEntity) {
                     if (entity.getBlockPos().isWithinDistance(client.player.getBlockPos(), 5)) {
                         TutorialModClient.getInstance().startPostMinecartSequence(client);
