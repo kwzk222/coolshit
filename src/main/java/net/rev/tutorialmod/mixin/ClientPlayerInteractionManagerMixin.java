@@ -32,14 +32,24 @@ public class ClientPlayerInteractionManagerMixin {
         }
     }
 
-    @Inject(method = "interactBlock", at = @At("TAIL"))
-    private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
-        if (TutorialMod.CONFIG.tntMinecartPlacementEnabled && cir.getReturnValue().isAccepted()) {
+    private boolean isPlacingRail = false;
+
+    @Inject(method = "interactBlock", at = @At("HEAD"))
+    private void onInteractBlockHead(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+        if (TutorialMod.CONFIG.tntMinecartPlacementEnabled) {
             ItemStack stack = player.getStackInHand(hand);
             if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {
-                TutorialModClient.getInstance().onRailPlaced(hitResult.getBlockPos());
+                isPlacingRail = true;
             }
         }
+    }
+
+    @Inject(method = "interactBlock", at = @At("TAIL"))
+    private void onInteractBlockTail(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+        if (isPlacingRail && cir.getReturnValue().isAccepted()) {
+            TutorialModClient.getInstance().onRailPlaced(hitResult.getBlockPos());
+        }
+        isPlacingRail = false;
     }
 
     @Inject(method = "updateBlockBreakingProgress", at = @At("HEAD"))

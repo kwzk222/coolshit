@@ -39,9 +39,12 @@ import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.TriggerBot;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TutorialModClient implements ClientModInitializer {
 
+    public static final Logger LOGGER = LoggerFactory.getLogger("tutorial-mod-client");
     private static final Random RANDOM = new Random();
     private final Map<String, Boolean> wasMacroKeyPressed = new HashMap<>();
 
@@ -259,7 +262,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         // --- Open Settings Hotkey ---
-        /* try {
+        try {
             boolean isOpenSettingsPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.openSettingsHotkey).getCode());
             if (isOpenSettingsPressed && !openSettingsWasPressed) {
                 client.setScreen(new ModMenuIntegration().getModConfigScreenFactory().create(client.currentScreen));
@@ -267,7 +270,7 @@ public class TutorialModClient implements ClientModInitializer {
             openSettingsWasPressed = isOpenSettingsPressed;
         } catch (IllegalArgumentException e) {
             // Invalid key
-        } */
+        }
 
         try {
             boolean isMasterTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.masterToggleHotkey).getCode());
@@ -426,6 +429,7 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
     }
+
 
     public static void confirmLavaPlacement(BlockPos pos, BlockState state) {
         if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_LAVA_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.LAVA) {
