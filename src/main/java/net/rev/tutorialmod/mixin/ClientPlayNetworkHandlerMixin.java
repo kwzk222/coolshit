@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class ClientPlayNetworkHandlerMixin {
     @Inject(method = "onBlockUpdate", at = @At("TAIL"))
     private void onBlockUpdate(BlockUpdateS2CPacket packet, CallbackInfo info) {
-        TutorialModClient.confirmRailPlacement(packet.getPos(), packet.getState());
+        TutorialModClient.getInstance().confirmRailPlacement(packet.getPos(), packet.getState());
         TutorialModClient.confirmLavaPlacement(packet.getPos(), packet.getState());
         TutorialModClient.confirmFirePlacement(packet.getPos(), packet.getState());
     }

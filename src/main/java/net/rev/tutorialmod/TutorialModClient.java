@@ -90,13 +90,13 @@ public class TutorialModClient implements ClientModInitializer {
     private int placementCooldown = -1;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
+    private BlockPos railPositionToPlaceMinecart = null;
     private int utilitySlot = -1;
     private int crossbowSlot = -1;
     private int actionTimeout = -1;
 
     // --- State: Misc ---
     public static long lastBowShotTick = -1;
-    public static int awaitingRailConfirmationCooldown = -1;
     public static int awaitingMinecartConfirmationCooldown = -1;
 
 
@@ -199,7 +199,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
         handleCombatSwap(client);
         handlePlacementSequence(client);
-        handleConfirmationCooldowns(client);
     }
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
@@ -400,7 +399,7 @@ public class TutorialModClient implements ClientModInitializer {
             PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
             switch (action) {
                 case PLACE_TNT_MINECART:
-                    int minecartSlot = findTntMinecartInHotbar(client.player);
+                    int minecartSlot = findTntMinecart(client.player);
                     if (minecartSlot != -1) {
                         inventory.setSelectedSlot(minecartSlot);
                         client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
@@ -428,24 +427,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private void handleConfirmationCooldowns(MinecraftClient client) {
-        if (awaitingRailConfirmationCooldown > 0) {
-            awaitingRailConfirmationCooldown--;
-        }
-    }
-
-    public static void setAwaitingRailConfirmation() {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.tntMinecartPlacementEnabled) return;
-        awaitingRailConfirmationCooldown = 2;
-    }
-
-    public static void confirmRailPlacement(BlockPos pos, BlockState state) {
-        if (awaitingRailConfirmationCooldown > 0 && state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
-            if (instance != null) instance.startRailPlacement(pos);
-            awaitingRailConfirmationCooldown = -1;
-        }
-    }
-
     public static void confirmLavaPlacement(BlockPos pos, BlockState state) {
         if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_LAVA_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.LAVA) {
             instance.placementCooldown = 1;
@@ -468,13 +449,51 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    public void startRailPlacement(BlockPos pos) {
-        if (placementCooldown != -1) return;
+    public void onRailPlaced(BlockPos pos) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || findTntMinecartInHotbar(client.player) == -1) return;
-        this.railPos = pos;
-        this.placementCooldown = 1;
-        this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
+        if (client.player == null || findTntMinecart(client.player) == -1) {
+            return;
+        }
+
+        if (client.player.isCreative()) {
+            placeTntMinecart();
+        } else {
+            railPositionToPlaceMinecart = pos;
+        }
+    }
+
+    public void placeTntMinecart() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+
+        int minecartSlot = findTntMinecart(client.player);
+        if (minecartSlot == -1) return;
+
+        int previousSlot = ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot();
+        boolean switchedSlot = false;
+
+        if (minecartSlot != 40 && minecartSlot != previousSlot) {
+            ((PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(minecartSlot);
+            switchedSlot = true;
+        }
+
+        // Simulate a right-click
+        client.options.useKey.setPressed(true);
+        client.execute(() -> client.options.useKey.setPressed(false));
+
+        // Switch back to the previous slot if necessary
+        if (switchedSlot) {
+            final int finalPreviousSlot = previousSlot;
+            client.execute(() -> ((PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(finalPreviousSlot));
+        }
+
+        railPositionToPlaceMinecart = null; // Clear after use
+    }
+
+    public void confirmRailPlacement(BlockPos pos, BlockState state) {
+        if (railPositionToPlaceMinecart != null && railPositionToPlaceMinecart.equals(pos) && state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+            placeTntMinecart();
+        }
     }
 
     public void startPostMinecartSequence(MinecraftClient client) {
@@ -538,9 +557,14 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    private int findTntMinecartInHotbar(PlayerEntity player) {
+    private int findTntMinecart(PlayerEntity player) {
+        if (player.getOffHandStack().getItem() == Items.TNT_MINECART) {
+            return 40; // Corresponds to PlayerInventory.OFF_HAND_SLOT
+        }
         for (int i = 0; i < 9; i++) {
-            if (player.getInventory().getStack(i).getItem() == Items.TNT_MINECART) return i;
+            if (player.getInventory().getStack(i).getItem() == Items.TNT_MINECART) {
+                return i;
+            }
         }
         return -1;
     }

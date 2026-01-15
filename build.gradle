@@ -21,6 +21,12 @@ repositories {
 		name = "Terraformers"
 		url = "https://maven.terraformersmc.com/"
 	}
+	maven {
+		url "https://cursemaven.com"
+		content {
+			includeGroup "curse.maven"
+		}
+	}
 }
 
 fabricApi {
@@ -44,7 +50,7 @@ dependencies {
 	}
 
 	// Mod Menu
-	modImplementation("com.terraformersmc:modmenu:${project.modmenu_version}")
+	modImplementation("curse.maven:modmenu-308702:6347337")
 
 	// GSON
 	implementation("com.google.code.gson:gson:${project.gson_version}")
