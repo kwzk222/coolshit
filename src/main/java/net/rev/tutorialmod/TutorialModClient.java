@@ -259,7 +259,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         // --- Open Settings Hotkey ---
-        try {
+        /* try {
             boolean isOpenSettingsPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.openSettingsHotkey).getCode());
             if (isOpenSettingsPressed && !openSettingsWasPressed) {
                 client.setScreen(new ModMenuIntegration().getModConfigScreenFactory().create(client.currentScreen));
@@ -267,7 +267,7 @@ public class TutorialModClient implements ClientModInitializer {
             openSettingsWasPressed = isOpenSettingsPressed;
         } catch (IllegalArgumentException e) {
             // Invalid key
-        }
+        } */
 
         try {
             boolean isMasterTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.masterToggleHotkey).getCode());

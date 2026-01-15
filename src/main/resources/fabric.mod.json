@@ -23,9 +23,6 @@
 		],
 		"client": [
 			"net.rev.tutorialmod.TutorialModClient"
-		],
-		"modmenu": [
-			"net.rev.tutorialmod.ModMenuIntegration"
 		]
 	},
 	"mixins": [

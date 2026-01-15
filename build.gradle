@@ -17,16 +17,6 @@ repositories {
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
 	// for more information about repositories.
 	maven { url = "https://maven.shedaniel.me/" }
-	maven {
-		name = "Terraformers"
-		url = "https://maven.terraformersmc.com/"
-	}
-	maven {
-		url "https://cursemaven.com"
-		content {
-			includeGroup "curse.maven"
-		}
-	}
 }
 
 fabricApi {
@@ -50,7 +40,7 @@ dependencies {
 	}
 
 	// Mod Menu
-	modImplementation("curse.maven:modmenu-308702:6347337")
+	// modImplementation("curse.maven:modmenu-308702:6347337")
 
 	// GSON
 	implementation("com.google.code.gson:gson:${project.gson_version}")
