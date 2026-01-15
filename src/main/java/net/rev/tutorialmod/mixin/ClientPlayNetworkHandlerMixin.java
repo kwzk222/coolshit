@@ -24,7 +24,9 @@ public class ClientPlayNetworkHandlerMixin {
         if (packet.getPos().equals(TutorialModClient.pendingRailPos)
                 && packet.getState().getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
 
-            TutorialModClient.placeTntMinecart(MinecraftClient.getInstance());
+            MinecraftClient.getInstance().execute(() -> {
+                TutorialModClient.placeTntMinecart(MinecraftClient.getInstance());
+            });
             TutorialModClient.pendingRailPos = null;
         }
     }
