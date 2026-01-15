@@ -39,6 +39,7 @@ public class ClientPlayerInteractionManagerMixin {
         if (TutorialMod.CONFIG.tntMinecartPlacementEnabled) {
             ItemStack stack = player.getStackInHand(hand);
             if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {
+                TutorialModClient.LOGGER.info("Player is attempting to place a rail.");
                 isPlacingRail = true;
             }
         }
@@ -47,6 +48,7 @@ public class ClientPlayerInteractionManagerMixin {
     @Inject(method = "interactBlock", at = @At("TAIL"))
     private void onInteractBlockTail(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
         if (isPlacingRail && cir.getReturnValue().isAccepted()) {
+            TutorialModClient.LOGGER.info("Rail placement successful, calling onRailPlaced.");
             TutorialModClient.getInstance().onRailPlaced(hitResult.getBlockPos());
         }
         isPlacingRail = false;

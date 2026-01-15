@@ -454,40 +454,53 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public void onRailPlaced(BlockPos pos) {
+        LOGGER.info("onRailPlaced called at: " + pos);
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || findTntMinecart(client.player) == -1) {
+            LOGGER.info("No TNT minecart found, aborting.");
             return;
         }
 
         if (client.player.isCreative()) {
+            LOGGER.info("Player is in creative mode, placing minecart immediately.");
             placeTntMinecart();
         } else {
+            LOGGER.info("Player is in survival mode, waiting for server confirmation.");
             railPositionToPlaceMinecart = pos;
         }
     }
 
     public void placeTntMinecart() {
+        LOGGER.info("placeTntMinecart called.");
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
         int minecartSlot = findTntMinecart(client.player);
-        if (minecartSlot == -1) return;
+        if (minecartSlot == -1) {
+            LOGGER.info("No TNT minecart found in placeTntMinecart, aborting.");
+            return;
+        }
+
+        LOGGER.info("Found TNT minecart in slot: " + minecartSlot);
 
         int previousSlot = ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot();
         boolean switchedSlot = false;
 
         if (minecartSlot != 40 && minecartSlot != previousSlot) {
+            LOGGER.info("Switching to hotbar slot: " + minecartSlot);
             ((PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(minecartSlot);
             switchedSlot = true;
         }
 
         // Simulate a right-click
+        LOGGER.info("Simulating right-click.");
         client.options.useKey.setPressed(true);
         client.execute(() -> client.options.useKey.setPressed(false));
 
         // Switch back to the previous slot if necessary
         if (switchedSlot) {
             final int finalPreviousSlot = previousSlot;
+            LOGGER.info("Switching back to previous slot: " + finalPreviousSlot);
             client.execute(() -> ((PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(finalPreviousSlot));
         }
 
@@ -496,6 +509,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     public void confirmRailPlacement(BlockPos pos, BlockState state) {
         if (railPositionToPlaceMinecart != null && railPositionToPlaceMinecart.equals(pos) && state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+            LOGGER.info("Rail placement confirmed at: " + pos);
             placeTntMinecart();
         }
     }
