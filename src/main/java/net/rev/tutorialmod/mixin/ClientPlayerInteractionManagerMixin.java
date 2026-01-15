@@ -35,21 +35,29 @@ public class ClientPlayerInteractionManagerMixin {
     private boolean isPlacingRail = false;
 
     @Inject(method = "interactBlock", at = @At("HEAD"))
-    private void onInteractBlockHead(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
-        if (TutorialMod.CONFIG.tntMinecartPlacementEnabled && hitResult != null && hitResult.getType() == BlockHitResult.Type.BLOCK) {
-            ItemStack stack = player.getStackInHand(hand);
-            if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {
-                TutorialModClient.LOGGER.info("Player is attempting to place a rail.");
-                isPlacingRail = true;
-            }
+    private void tutorialmod$preInteract(
+            ClientPlayerEntity player,
+            Hand hand,
+            BlockHitResult hitResult,
+            CallbackInfoReturnable<ActionResult> cir
+    ) {
+        ItemStack stack = player.getStackInHand(hand);
+        if (stack.getItem() instanceof BlockItem blockItem
+            && blockItem.getBlock() instanceof AbstractRailBlock) {
+
+            isPlacingRail = true;
         }
     }
 
     @Inject(method = "interactBlock", at = @At("TAIL"))
-    private void onInteractBlockTail(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+    private void tutorialmod$postInteract(
+            ClientPlayerEntity player,
+            Hand hand,
+            BlockHitResult hitResult,
+            CallbackInfoReturnable<ActionResult> cir
+    ) {
         if (isPlacingRail && cir.getReturnValue().isAccepted()) {
-            TutorialModClient.LOGGER.info("Rail placement successful, calling onRailPlaced.");
-            TutorialModClient.getInstance().onRailPlaced(hitResult.getBlockPos());
+            TutorialModClient.onRailPlacedClient(hitResult.getBlockPos());
         }
         isPlacingRail = false;
     }

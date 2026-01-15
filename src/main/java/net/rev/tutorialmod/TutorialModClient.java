@@ -89,18 +89,10 @@ public class TutorialModClient implements ClientModInitializer {
     private Entity targetEntity = null;
 
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
-    private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_LAVA_PLACEMENT, AWAITING_FIRE_PLACEMENT, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
-    private int placementCooldown = -1;
-    private PlacementAction nextPlacementAction = PlacementAction.NONE;
-    private BlockPos railPos = null;
-    private BlockPos railPositionToPlaceMinecart = null;
-    private int utilitySlot = -1;
-    private int crossbowSlot = -1;
-    private int actionTimeout = -1;
+    private static BlockPos pendingRailPos = null;
 
     // --- State: Misc ---
     public static long lastBowShotTick = -1;
-    public static int awaitingMinecartConfirmationCooldown = -1;
 
 
     @Override
@@ -201,7 +193,6 @@ public class TutorialModClient implements ClientModInitializer {
             autoTotem.onTick(client);
         }
         handleCombatSwap(client);
-        handlePlacementSequence(client);
     }
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
@@ -381,176 +372,54 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private void handlePlacementSequence(MinecraftClient client) {
-        if (actionTimeout > 0) {
-            actionTimeout--;
-            if (client.player != null && ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot() != utilitySlot) {
-                actionTimeout = 0;
-            }
-        }
-        if (placementCooldown > 0) {
-            placementCooldown--;
-        }
-        if (placementCooldown == 0) {
-            PlacementAction action = nextPlacementAction;
-            if (action == PlacementAction.NONE) {
-                placementCooldown = -1;
-                return;
-            }
-            nextPlacementAction = PlacementAction.NONE;
-            if (client.player == null || client.interactionManager == null) return;
-            PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-            switch (action) {
-                case PLACE_TNT_MINECART:
-                    int minecartSlot = findTntMinecart(client.player);
-                    if (minecartSlot != -1) {
-                        inventory.setSelectedSlot(minecartSlot);
-                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
-                        awaitingMinecartConfirmationCooldown = 10; // Wait for server confirmation
-                    }
-                    railPos = null; // Clear railPos after attempting placement
-                    break;
-                case AWAITING_LAVA_PLACEMENT:
-                case AWAITING_FIRE_PLACEMENT:
-                    if (actionTimeout == 0) {
-                        utilitySlot = -1;
-                        crossbowSlot = -1;
-                    } else {
-                        placementCooldown = 1;
-                        nextPlacementAction = action;
-                    }
-                    break;
-                case SWITCH_TO_CROSSBOW:
-                    inventory.setSelectedSlot(crossbowSlot);
-                    utilitySlot = -1;
-                    crossbowSlot = -1;
-                    break;
-                default: break;
-            }
-        }
+
+    public static void onRailPlacedClient(BlockPos pos) {
+        pendingRailPos = pos;
     }
 
+    public static void onBlockUpdate(BlockPos pos) {
+        if (pendingRailPos == null) return;
+        if (!pos.equals(pendingRailPos)) return;
 
-    public static void confirmLavaPlacement(BlockPos pos, BlockState state) {
-        if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_LAVA_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.LAVA) {
-            instance.placementCooldown = 1;
-            instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
-            instance.actionTimeout = -1;
-        }
-    }
-
-    public static void confirmFirePlacement(BlockPos pos, BlockState state) {
-        if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_FIRE_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.FIRE) {
-            instance.placementCooldown = 1;
-            instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
-            instance.actionTimeout = -1;
-        }
-    }
-
-    public static void recordBowUsage() {
-        if (instance != null) {
-            instance.lastBowShotTick = MinecraftClient.getInstance().world.getTime();
-        }
-    }
-
-    public void onRailPlaced(BlockPos pos) {
-        LOGGER.info("onRailPlaced called at: " + pos);
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || findTntMinecart(client.player) == -1) {
-            LOGGER.info("No TNT minecart found, aborting.");
-            return;
-        }
-
-        if (client.player.isCreative()) {
-            LOGGER.info("Player is in creative mode, placing minecart immediately.");
-            placeTntMinecart();
-        } else {
-            LOGGER.info("Player is in survival mode, waiting for server confirmation.");
-            railPositionToPlaceMinecart = pos;
+        if (client.world.getBlockState(pos).getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+            placeTntMinecart(client);
+            pendingRailPos = null;
         }
     }
 
-    public void placeTntMinecart() {
-        LOGGER.info("placeTntMinecart called.");
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null) return;
+    private static void placeTntMinecart(MinecraftClient client) {
+        int slot = findTntMinecartSlot(client.player);
+        if (slot == -1) return;
 
-        int minecartSlot = findTntMinecart(client.player);
-        if (minecartSlot == -1) {
-            LOGGER.info("No TNT minecart found in placeTntMinecart, aborting.");
-            return;
+        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+        int prevSlot = inventory.getSelectedSlot();
+
+        if (slot != prevSlot) {
+            inventory.setSelectedSlot(slot);
         }
 
-        LOGGER.info("Found TNT minecart in slot: " + minecartSlot);
-
-        int previousSlot = ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot();
-        boolean switchedSlot = false;
-
-        if (minecartSlot != 40 && minecartSlot != previousSlot) {
-            LOGGER.info("Switching to hotbar slot: " + minecartSlot);
-            ((PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(minecartSlot);
-            switchedSlot = true;
-        }
-
-        // Simulate a right-click
-        LOGGER.info("Simulating right-click.");
         client.options.useKey.setPressed(true);
+
         client.execute(() -> client.options.useKey.setPressed(false));
 
-        // Switch back to the previous slot if necessary
-        if (switchedSlot) {
-            final int finalPreviousSlot = previousSlot;
-            LOGGER.info("Switching back to previous slot: " + finalPreviousSlot);
-            client.execute(() -> ((PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(finalPreviousSlot));
-        }
-
-        railPositionToPlaceMinecart = null; // Clear after use
-    }
-
-    public void confirmRailPlacement(BlockPos pos, BlockState state) {
-        if (railPositionToPlaceMinecart != null && railPositionToPlaceMinecart.equals(pos) && state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
-            LOGGER.info("Rail placement confirmed at: " + pos);
-            placeTntMinecart();
+        if (slot != prevSlot) {
+            client.execute(() ->
+                inventory.setSelectedSlot(prevSlot)
+            );
         }
     }
 
-    public void startPostMinecartSequence(MinecraftClient client) {
-        if (client.player == null) return;
-        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-        if (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled) {
-            int crossSlot = findLoadedCrossbowInHotbar(client.player);
-            if (crossSlot != -1) {
-                int lavaSlot = findLavaBucketInHotbar(client.player);
-                if (lavaSlot != -1) {
-                    this.utilitySlot = lavaSlot;
-                    this.crossbowSlot = crossSlot;
-                    inventory.setSelectedSlot(lavaSlot);
-                    this.actionTimeout = 60;
-                    this.placementCooldown = 1;
-                    this.nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
-                    return;
-                }
-                int flintSlot = findFlintAndSteelInHotbar(client.player);
-                if (flintSlot != -1) {
-                    this.utilitySlot = flintSlot;
-                    this.crossbowSlot = crossSlot;
-                    inventory.setSelectedSlot(flintSlot);
-                    this.actionTimeout = 60;
-                    this.placementCooldown = 1;
-                    this.nextPlacementAction = PlacementAction.AWAITING_FIRE_PLACEMENT;
-                    return;
-                }
+    private static int findTntMinecartSlot(PlayerEntity player) {
+        if (player.getOffHandStack().getItem() == Items.TNT_MINECART) {
+            return 40; // Corresponds to PlayerInventory.OFF_HAND_SLOT
+        }
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).getItem() == Items.TNT_MINECART) {
+                return i;
             }
         }
-        if (TutorialMod.CONFIG.bowSequenceEnabled) {
-            long currentTime = client.world.getTime();
-            if (lastBowShotTick == -1 || (currentTime - lastBowShotTick) > TutorialMod.CONFIG.bowCooldown) {
-                int bowSlot = findBowInHotbar(client.player);
-                if (bowSlot != -1) {
-                    inventory.setSelectedSlot(bowSlot);
-                }
-            }
-        }
+        return -1;
     }
 
     private boolean isArmored(PlayerEntity player) {

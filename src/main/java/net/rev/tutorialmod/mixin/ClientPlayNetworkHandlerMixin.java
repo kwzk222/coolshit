@@ -18,26 +18,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class ClientPlayNetworkHandlerMixin {
     @Inject(method = "onBlockUpdate", at = @At("TAIL"))
     private void onBlockUpdate(BlockUpdateS2CPacket packet, CallbackInfo info) {
-        TutorialModClient.getInstance().confirmRailPlacement(packet.getPos(), packet.getState());
-        TutorialModClient.confirmLavaPlacement(packet.getPos(), packet.getState());
-        TutorialModClient.confirmFirePlacement(packet.getPos(), packet.getState());
+        TutorialModClient.onBlockUpdate(packet.getPos());
     }
 
-    @Inject(method = "onEntitySpawn", at = @At("HEAD"))
-    private void onEntitySpawn(EntitySpawnS2CPacket packet, CallbackInfo ci) {
-        if (TutorialModClient.awaitingMinecartConfirmationCooldown > 0) {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world != null) {
-                Entity entity = client.world.getEntityById(packet.getEntityId());
-                if (entity instanceof net.minecraft.entity.vehicle.TntMinecartEntity) {
-                    if (entity.getBlockPos().isWithinDistance(client.player.getBlockPos(), 5)) {
-                        TutorialModClient.getInstance().startPostMinecartSequence(client);
-                        TutorialModClient.awaitingMinecartConfirmationCooldown = -1;
-                    }
-                }
-            }
-        }
-    }
 
     @Inject(method = "onEntityStatus", at = @At("HEAD"))
     private void onEntityStatus(EntityStatusS2CPacket packet, CallbackInfo ci) {
