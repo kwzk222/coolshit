@@ -20,6 +20,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
 import net.minecraft.item.CrossbowItem;
@@ -90,6 +91,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
     public static BlockPos pendingRailPos = null;
+    public static int ticksSinceRailPlaced = 0;
 
     // --- State: Misc ---
     public static long lastBowShotTick = -1;
@@ -193,6 +195,17 @@ public class TutorialModClient implements ClientModInitializer {
             autoTotem.onTick(client);
         }
         handleCombatSwap(client);
+        handleRailTimeout();
+    }
+
+    private void handleRailTimeout() {
+        if (pendingRailPos != null) {
+            ticksSinceRailPlaced++;
+            if (ticksSinceRailPlaced > 20) {
+                pendingRailPos = null;
+                ticksSinceRailPlaced = 0;
+            }
+        }
     }
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
@@ -377,37 +390,30 @@ public class TutorialModClient implements ClientModInitializer {
         pendingRailPos = pos;
     }
 
-    public static void onBlockUpdate(BlockPos pos) {
-        if (pendingRailPos == null) return;
-        if (!pos.equals(pendingRailPos)) return;
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world.getBlockState(pos).getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
-            placeTntMinecart(client);
-            pendingRailPos = null;
-        }
-    }
-
     public static void placeTntMinecart(MinecraftClient client) {
+        if (client.player == null || client.world == null) return;
+
         int slot = findTntMinecartSlot(client.player);
+
         if (slot == -1) return;
 
-        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-        int prevSlot = inventory.getSelectedSlot();
+        client.execute(() -> {
+            PlayerInventoryMixin inv = (PlayerInventoryMixin) client.player.getInventory();
+            int prevSlot = inv.getSelectedSlot();
 
-        if (slot != prevSlot) {
-            inventory.setSelectedSlot(slot);
-        }
+            if (slot != prevSlot) {
+                inv.setSelectedSlot(slot);
+            }
 
-        client.options.useKey.setPressed(true);
+            client.options.useKey.setPressed(true);
 
-        client.execute(() -> client.options.useKey.setPressed(false));
-
-        if (slot != prevSlot) {
-            client.execute(() ->
-                inventory.setSelectedSlot(prevSlot)
-            );
-        }
+            client.execute(() -> {
+                client.options.useKey.setPressed(false);
+                if (slot != prevSlot) {
+                    inv.setSelectedSlot(prevSlot);
+                }
+            });
+        });
     }
 
     public static int findTntMinecartSlot(PlayerEntity player) {
@@ -440,18 +446,6 @@ public class TutorialModClient implements ClientModInitializer {
     private int findMaceInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
             if (player.getInventory().getStack(i).getItem() == Items.MACE) return i;
-        }
-        return -1;
-    }
-
-    private int findTntMinecart(PlayerEntity player) {
-        if (player.getOffHandStack().getItem() == Items.TNT_MINECART) {
-            return 40; // Corresponds to PlayerInventory.OFF_HAND_SLOT
-        }
-        for (int i = 0; i < 9; i++) {
-            if (player.getInventory().getStack(i).getItem() == Items.TNT_MINECART) {
-                return i;
-            }
         }
         return -1;
     }

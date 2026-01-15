@@ -2,38 +2,17 @@ package net.rev.tutorialmod.mixin;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.entity.Entity;
 import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
-import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
-    @Inject(method = "onChunkDeltaUpdate", at = @At("TAIL"))
-    private void tutorialmod$onChunkDelta(
-            net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket packet,
-            CallbackInfo ci
-    ) {
-        if (TutorialModClient.pendingRailPos == null) return;
-
-        packet.visitUpdates((pos, state) -> {
-            if (!pos.equals(TutorialModClient.pendingRailPos)) return;
-
-            if (state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
-                TutorialModClient.placeTntMinecart(
-                    MinecraftClient.getInstance()
-                );
-                TutorialModClient.pendingRailPos = null;
-            }
-        });
-    }
 
     @Inject(method = "onBlockUpdate", at = @At("TAIL"))
     private void tutorialmod$onBlockUpdate(
@@ -43,11 +22,9 @@ public class ClientPlayNetworkHandlerMixin {
         if (TutorialModClient.pendingRailPos == null) return;
 
         if (packet.getPos().equals(TutorialModClient.pendingRailPos)
-            && packet.getState().getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+                && packet.getState().getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
 
-            TutorialModClient.placeTntMinecart(
-                MinecraftClient.getInstance()
-            );
+            TutorialModClient.placeTntMinecart(MinecraftClient.getInstance());
             TutorialModClient.pendingRailPos = null;
         }
     }
