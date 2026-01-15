@@ -44,7 +44,6 @@ public class ClientPlayerInteractionManagerMixin {
         ItemStack stack = player.getStackInHand(hand);
         if (stack.getItem() instanceof BlockItem blockItem
             && blockItem.getBlock() instanceof AbstractRailBlock) {
-
             isPlacingRail = true;
         }
     }

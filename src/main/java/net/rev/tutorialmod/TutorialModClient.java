@@ -89,7 +89,7 @@ public class TutorialModClient implements ClientModInitializer {
     private Entity targetEntity = null;
 
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
-    private static BlockPos pendingRailPos = null;
+    public static BlockPos pendingRailPos = null;
 
     // --- State: Misc ---
     public static long lastBowShotTick = -1;
@@ -388,7 +388,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private static void placeTntMinecart(MinecraftClient client) {
+    public static void placeTntMinecart(MinecraftClient client) {
         int slot = findTntMinecartSlot(client.player);
         if (slot == -1) return;
 
@@ -410,7 +410,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private static int findTntMinecartSlot(PlayerEntity player) {
+    public static int findTntMinecartSlot(PlayerEntity player) {
         if (player.getOffHandStack().getItem() == Items.TNT_MINECART) {
             return 40; // Corresponds to PlayerInventory.OFF_HAND_SLOT
         }

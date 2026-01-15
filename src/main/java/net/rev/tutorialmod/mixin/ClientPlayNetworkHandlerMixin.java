@@ -16,9 +16,40 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
+    @Inject(method = "onChunkDeltaUpdate", at = @At("TAIL"))
+    private void tutorialmod$onChunkDelta(
+            net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket packet,
+            CallbackInfo ci
+    ) {
+        if (TutorialModClient.pendingRailPos == null) return;
+
+        packet.visitUpdates((pos, state) -> {
+            if (!pos.equals(TutorialModClient.pendingRailPos)) return;
+
+            if (state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+                TutorialModClient.placeTntMinecart(
+                    MinecraftClient.getInstance()
+                );
+                TutorialModClient.pendingRailPos = null;
+            }
+        });
+    }
+
     @Inject(method = "onBlockUpdate", at = @At("TAIL"))
-    private void onBlockUpdate(BlockUpdateS2CPacket packet, CallbackInfo info) {
-        TutorialModClient.onBlockUpdate(packet.getPos());
+    private void tutorialmod$onBlockUpdate(
+            BlockUpdateS2CPacket packet,
+            CallbackInfo ci
+    ) {
+        if (TutorialModClient.pendingRailPos == null) return;
+
+        if (packet.getPos().equals(TutorialModClient.pendingRailPos)
+            && packet.getState().getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+
+            TutorialModClient.placeTntMinecart(
+                MinecraftClient.getInstance()
+            );
+            TutorialModClient.pendingRailPos = null;
+        }
     }
 
 
