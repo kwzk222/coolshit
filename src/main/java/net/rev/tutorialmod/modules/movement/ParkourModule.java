@@ -32,7 +32,7 @@ public class ParkourModule {
         var player = mc.player;
 
         // Must be on ground
-        if (!player.isOnGround()) return;
+        if (!player.isOnGround() && player.fallDistance > 0.05f) return;
 
         // Do not interfere with sneaking
         if (player.isSneaking()) return;

@@ -76,9 +76,10 @@ public class ModConfig {
     public String masterToggleHotkey = "key.keyboard.m";
     public String teammateHotkey = "key.keyboard.g";
     public String triggerBotToggleHotkey = "key.keyboard.k";
-    public String triggerBotHotkey = "key.keyboard.0";
+    public String triggerBotHotkey = "key.keyboard.unknown";
     public String toggleOverlayHotkey = "key.keyboard.h";
     public String parkourHotkey = "key.keyboard.p";
+    public String bridgeAssistHotkey = "key.keyboard.left.alt";
     public boolean activeInInventory = false;
 
     // --- Chat ---

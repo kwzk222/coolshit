@@ -205,6 +205,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to toggle the Parkour module."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue)
                     .build());
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Bridge Assist Hotkey"), TutorialMod.CONFIG.bridgeAssistHotkey)
+                    .setDefaultValue("key.keyboard.left.alt")
+                    .setTooltip(Text.literal("The hotkey to hold to activate Bridge Assist."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistHotkey = newValue)
+                    .build());
             hotkeys.addEntry(entryBuilder.startBooleanToggle(Text.literal("Active in Inventory"), TutorialMod.CONFIG.activeInInventory)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Whether the hotkeys should be active while you are in an inventory screen."))

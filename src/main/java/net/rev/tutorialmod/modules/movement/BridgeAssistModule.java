@@ -1,9 +1,9 @@
 package net.rev.tutorialmod.modules.movement;
 
-import net.rev.tutorialmod.Keybinds;
 import net.rev.tutorialmod.TutorialMod;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
@@ -23,12 +23,16 @@ public class BridgeAssistModule {
         var player = mc.player;
 
         // Only active while key is held
-        if (!Keybinds.EDGE_SNEAK_KEY.isPressed()) {
-            if (player.isSneaking()) {
-                // Only stop sneaking if we are not manually holding the sneak key
-                if (!mc.options.sneakKey.isPressed()) {
-                    player.setSneaking(false);
-                }
+        boolean isPressed;
+        try {
+            isPressed = InputUtil.isKeyPressed(mc.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode());
+        } catch (Exception e) {
+            isPressed = false;
+        }
+
+        if (!isPressed) {
+            if (player.isSneaking() && !mc.options.sneakKey.isPressed()) {
+                player.setSneaking(false);
             }
             return;
         }

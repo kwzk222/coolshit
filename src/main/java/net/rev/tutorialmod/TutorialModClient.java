@@ -108,7 +108,6 @@ public class TutorialModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         instance = this;
-        Keybinds.register();
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
         enemyInfo = new EnemyInfo();
@@ -197,19 +196,18 @@ public class TutorialModClient implements ClientModInitializer {
         // Handle AutoToolSwitch tick
         TutorialMod.getAutoToolSwitch().onTick();
 
-        // --- Toggles ---
-        // This is handled here to ensure toggles can be turned off even if the master switch is disabled.
+        // --- Feature Ticks ---
+        // These are handled even if master is disabled to ensure state is cleaned up or updated.
+        handleCombatSwap(client);
+        handlePlacementSequence(client);
+        handleConfirmationCooldowns(client);
 
         // Master toggle check for all subsequent features.
         if (!TutorialMod.CONFIG.masterEnabled) return;
 
-        // --- Feature Ticks ---
         if (TutorialMod.CONFIG.autoTotemEnabled) {
             autoTotem.onTick(client);
         }
-        handleCombatSwap(client);
-        handlePlacementSequence(client);
-        handleConfirmationCooldowns(client);
     }
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
