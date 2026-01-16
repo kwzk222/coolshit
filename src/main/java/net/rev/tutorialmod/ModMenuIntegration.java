@@ -205,6 +205,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to toggle the Parkour module."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue)
                     .build());
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey)
+                    .setDefaultValue("key.keyboard.n")
+                    .setTooltip(Text.literal("The hotkey to toggle between Hold and Toggle sprint modes."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintModeHotkey = newValue)
+                    .build());
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Sneak Mode Toggle Hotkey"), TutorialMod.CONFIG.sneakModeHotkey)
+                    .setDefaultValue("key.keyboard.b")
+                    .setTooltip(Text.literal("The hotkey to toggle between Hold and Toggle sneak modes."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.sneakModeHotkey = newValue)
+                    .build());
             hotkeys.addEntry(entryBuilder.startBooleanToggle(Text.literal("Active in Inventory"), TutorialMod.CONFIG.activeInInventory)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Whether the hotkeys should be active while you are in an inventory screen."))
@@ -295,6 +305,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Show the entity count in the overlay."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.showEntityCount = newValue)
+                    .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Sprint Mode Status"), TutorialMod.CONFIG.showSprintModeOverlay)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Show the current sprint mode (Hold/Toggle) in the overlay."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showSprintModeOverlay = newValue)
+                    .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Sneak Mode Status"), TutorialMod.CONFIG.showSneakModeOverlay)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Show the current sneak mode (Hold/Toggle) in the overlay."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showSneakModeOverlay = newValue)
                     .build());
 
             // Enemy Info SubCategory

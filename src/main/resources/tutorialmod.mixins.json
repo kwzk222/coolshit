@@ -10,7 +10,8 @@
 		"ClientPlayerInteractionManagerMixin",
 		"ClientPlayNetworkHandlerMixin",
 		"HandledScreenAccessor",
-		"MinecraftClientMixin"
+		"MinecraftClientMixin",
+		"GameOptionsAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

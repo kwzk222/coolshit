@@ -34,6 +34,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
+import net.rev.tutorialmod.mixin.GameOptionsAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.EnemyInfo;
@@ -82,6 +83,8 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean triggerBotToggleWasPressed = false;
     private boolean overlayToggleWasPressed = false;
     private boolean parkourToggleWasPressed = false;
+    private boolean sprintModeWasPressed = false;
+    private boolean sneakModeWasPressed = false;
 
     // --- State: Combat Swap ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_TO_ORIGINAL_THEN_MACE, SWITCH_BACK_FROM_MACE }
@@ -345,6 +348,38 @@ public class TutorialModClient implements ClientModInitializer {
             parkourToggleWasPressed = isParkourTogglePressed;
         } catch (IllegalArgumentException e) {
             // Invalid key
+        }
+
+        // --- Toggle Sprint Mode Hotkey ---
+        try {
+            boolean isSprintModePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sprintModeHotkey).getCode());
+            if (isSprintModePressed && !sprintModeWasPressed) {
+                var sprintToggled = ((GameOptionsAccessor) client.options).getSprintToggled();
+                sprintToggled.setValue(!sprintToggled.getValue());
+                client.options.write();
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    String mode = sprintToggled.getValue() ? "Toggle" : "Hold";
+                    client.player.sendMessage(Text.of("Sprint Mode: " + mode), true);
+                }
+            }
+            sprintModeWasPressed = isSprintModePressed;
+        } catch (IllegalArgumentException e) {
+        }
+
+        // --- Toggle Sneak Mode Hotkey ---
+        try {
+            boolean isSneakModePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sneakModeHotkey).getCode());
+            if (isSneakModePressed && !sneakModeWasPressed) {
+                var sneakToggled = ((GameOptionsAccessor) client.options).getSneakToggled();
+                sneakToggled.setValue(!sneakToggled.getValue());
+                client.options.write();
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    String mode = sneakToggled.getValue() ? "Toggle" : "Hold";
+                    client.player.sendMessage(Text.of("Sneak Mode: " + mode), true);
+                }
+            }
+            sneakModeWasPressed = isSneakModePressed;
+        } catch (IllegalArgumentException e) {
         }
     }
 
@@ -729,6 +764,15 @@ public class TutorialModClient implements ClientModInitializer {
                 entityCount++;
             }
             result += " E: " + entityCount;
+        }
+
+        if (TutorialMod.CONFIG.showSprintModeOverlay) {
+            String mode = ((GameOptionsAccessor) client.options).getSprintToggled().getValue() ? "Toggle" : "Hold";
+            result += "\nSprint: " + mode;
+        }
+        if (TutorialMod.CONFIG.showSneakModeOverlay) {
+            String mode = ((GameOptionsAccessor) client.options).getSneakToggled().getValue() ? "Toggle" : "Hold";
+            result += (TutorialMod.CONFIG.showSprintModeOverlay ? " | " : "\n") + "Sneak: " + mode;
         }
 
         return result;

@@ -84,6 +84,8 @@ public class ModConfig {
     public String toggleOverlayHotkey = "key.keyboard.h";
     public String parkourHotkey = "key.keyboard.p";
     public String bridgeAssistHotkey = "key.keyboard.left.alt";
+    public String sprintModeHotkey = "key.keyboard.n";
+    public String sneakModeHotkey = "key.keyboard.b";
     public boolean activeInInventory = false;
 
     // --- Chat ---
@@ -110,6 +112,8 @@ public class ModConfig {
     public boolean showCoordsOverlay = false;
     public boolean showAccurateCoordinates = false;
     public boolean showEntityCount = false;
+    public boolean showSprintModeOverlay = true;
+    public boolean showSneakModeOverlay = true;
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;
