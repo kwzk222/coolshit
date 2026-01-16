@@ -108,6 +108,7 @@ public class TutorialModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         instance = this;
+        Keybinds.register();
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
         enemyInfo = new EnemyInfo();

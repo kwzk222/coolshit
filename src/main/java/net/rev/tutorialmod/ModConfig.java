@@ -79,7 +79,6 @@ public class ModConfig {
     public String triggerBotHotkey = "key.keyboard.0";
     public String toggleOverlayHotkey = "key.keyboard.h";
     public String parkourHotkey = "key.keyboard.p";
-    public String bridgeAssistHotkey = "key.keyboard.left.alt";
     public boolean activeInInventory = false;
 
     // --- Chat ---

@@ -1,9 +1,9 @@
 package net.rev.tutorialmod.modules.movement;
 
+import net.rev.tutorialmod.Keybinds;
 import net.rev.tutorialmod.TutorialMod;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
@@ -12,7 +12,8 @@ public class BridgeAssistModule {
     private static final MinecraftClient mc = MinecraftClient.getInstance();
 
     public void init() {
-        ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
+        // Use START_CLIENT_TICK as recommended
+        ClientTickEvents.START_CLIENT_TICK.register(client -> tick());
     }
 
     private void tick() {
@@ -22,26 +23,27 @@ public class BridgeAssistModule {
         var player = mc.player;
 
         // Only active while key is held
-        boolean isPressed;
-        try {
-            isPressed = InputUtil.isKeyPressed(mc.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode());
-        } catch (Exception e) {
-            isPressed = false;
-        }
-
-        if (!isPressed) {
+        if (!Keybinds.EDGE_SNEAK_KEY.isPressed()) {
+            if (player.isSneaking()) {
+                // Only stop sneaking if we are not manually holding the sneak key
+                if (!mc.options.sneakKey.isPressed()) {
+                    player.setSneaking(false);
+                }
+            }
             return;
         }
 
-        if (!player.isOnGround()) {
-             // In air, we might want to release sneak if we were sneaking,
-             // but usually Bridge Assist is for walking on edges.
-             return;
+        // Improved isOnGround check
+        if (!player.isOnGround() && player.fallDistance > 0.05f) {
+            return;
         }
 
         Vec3d velocity = player.getVelocity();
-        if (velocity.horizontalLengthSquared() < 1.0E-4) {
-            player.setSneaking(false);
+        // Lower velocity threshold
+        if (velocity.horizontalLengthSquared() < 1.0E-6) {
+            if (player.isSneaking() && !mc.options.sneakKey.isPressed()) {
+                player.setSneaking(false);
+            }
             return;
         }
 
@@ -54,7 +56,9 @@ public class BridgeAssistModule {
 
         // Small drops (stairs, slabs) → no sneak
         if (drop <= TutorialMod.CONFIG.parkourMaxDropHeight) {
-            player.setSneaking(false);
+            if (player.isSneaking() && !mc.options.sneakKey.isPressed()) {
+                player.setSneaking(false);
+            }
             return;
         }
 
