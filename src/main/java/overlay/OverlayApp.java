@@ -96,25 +96,10 @@ public class OverlayApp {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (line.contains("|")) {
-                        final String[] parts = line.split("\\|");
-                        final String coords = parts[0];
-                        final String facing = parts.length > 1 ? parts[1] : "";
-                        String text = "<html><div style='text-align: left;'>Coords: " + coords + "<br>Facing: " + facing;
-                        if (line.contains(" E: ")) {
-                            text += line.substring(line.indexOf(" E: "));
-                        }
-                        text += "</div></html>";
-                        final String finalText = text;
-                        SwingUtilities.invokeLater(() -> {
-                            infoLabel.setText(finalText);
-                        });
-                    } else {
-                        final String enemyInfo = line.replace("\\n", "<br>");
-                        SwingUtilities.invokeLater(() -> {
-                            infoLabel.setText("<html><div style='text-align: left;'>" + enemyInfo + "</div></html>");
-                        });
-                    }
+                    final String htmlContent = line.replace("\\n", "<br>");
+                    SwingUtilities.invokeLater(() -> {
+                        infoLabel.setText("<html><div style='text-align: left;'>" + htmlContent + "</div></html>");
+                    });
                 }
             } catch (Exception e) {
                 e.printStackTrace();

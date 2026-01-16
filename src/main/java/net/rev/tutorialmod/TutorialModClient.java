@@ -355,10 +355,15 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isSprintModePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sprintModeHotkey).getCode());
             if (isSprintModePressed && !sprintModeWasPressed) {
                 var sprintToggled = ((GameOptionsAccessor) client.options).getSprintToggled();
-                sprintToggled.setValue(!sprintToggled.getValue());
+                boolean newValue = !sprintToggled.getValue();
+                sprintToggled.setValue(newValue);
+                // Reset state when switching to Hold mode
+                if (!newValue) {
+                    client.options.sprintKey.setPressed(isKeyCurrentlyPressed(client.options.sprintKey, client));
+                }
                 client.options.write();
                 if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    String mode = sprintToggled.getValue() ? "Toggle" : "Hold";
+                    String mode = newValue ? "Toggle" : "Hold";
                     client.player.sendMessage(Text.of("Sprint Mode: " + mode), true);
                 }
             }
@@ -371,10 +376,15 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isSneakModePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sneakModeHotkey).getCode());
             if (isSneakModePressed && !sneakModeWasPressed) {
                 var sneakToggled = ((GameOptionsAccessor) client.options).getSneakToggled();
-                sneakToggled.setValue(!sneakToggled.getValue());
+                boolean newValue = !sneakToggled.getValue();
+                sneakToggled.setValue(newValue);
+                // Reset state when switching to Hold mode
+                if (!newValue) {
+                    client.options.sneakKey.setPressed(isKeyCurrentlyPressed(client.options.sneakKey, client));
+                }
                 client.options.write();
                 if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    String mode = sneakToggled.getValue() ? "Toggle" : "Hold";
+                    String mode = newValue ? "Toggle" : "Hold";
                     client.player.sendMessage(Text.of("Sneak Mode: " + mode), true);
                 }
             }
@@ -588,6 +598,15 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
+    private boolean isKeyCurrentlyPressed(net.minecraft.client.option.KeyBinding keyBinding, MinecraftClient client) {
+        try {
+            return InputUtil.isKeyPressed(client.getWindow().getHandle(),
+                InputUtil.fromTranslationKey(keyBinding.getBoundKeyTranslationKey()).getCode());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private int findMaceInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
             if (player.getInventory().getStack(i).getItem() == Items.MACE) return i;
@@ -757,24 +776,33 @@ public class TutorialModClient implements ClientModInitializer {
             }
         } catch (Exception ignored) {}
 
-        String result = coords + "|" + facing;
+        StringBuilder result = new StringBuilder();
+        result.append("Coords: ").append(coords);
+        result.append("\\nFacing: ").append(facing);
+
         if (TutorialMod.CONFIG.showEntityCount && client.world != null) {
             int entityCount = 0;
             for (Entity ignored : client.world.getEntities()) {
                 entityCount++;
             }
-            result += " E: " + entityCount;
+            result.append(" E: ").append(entityCount);
         }
 
-        if (TutorialMod.CONFIG.showSprintModeOverlay) {
-            String mode = ((GameOptionsAccessor) client.options).getSprintToggled().getValue() ? "Toggle" : "Hold";
-            result += "\nSprint: " + mode;
-        }
-        if (TutorialMod.CONFIG.showSneakModeOverlay) {
-            String mode = ((GameOptionsAccessor) client.options).getSneakToggled().getValue() ? "Toggle" : "Hold";
-            result += (TutorialMod.CONFIG.showSprintModeOverlay ? " | " : "\n") + "Sneak: " + mode;
+        if (TutorialMod.CONFIG.showSprintModeOverlay || TutorialMod.CONFIG.showSneakModeOverlay) {
+            result.append("\\n");
+            if (TutorialMod.CONFIG.showSprintModeOverlay) {
+                String mode = ((GameOptionsAccessor) client.options).getSprintToggled().getValue() ? "Toggle" : "Hold";
+                result.append("Sprint: ").append(mode);
+            }
+            if (TutorialMod.CONFIG.showSneakModeOverlay) {
+                String mode = ((GameOptionsAccessor) client.options).getSneakToggled().getValue() ? "Toggle" : "Hold";
+                if (TutorialMod.CONFIG.showSprintModeOverlay) {
+                    result.append(" | ");
+                }
+                result.append("Sneak: ").append(mode);
+            }
         }
 
-        return result;
+        return result.toString();
     }
 }
