@@ -39,6 +39,7 @@ import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.TriggerBot;
+import net.rev.tutorialmod.modules.movement.BridgeAssistModule;
 import net.rev.tutorialmod.modules.movement.ParkourModule;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -58,6 +59,7 @@ public class TutorialModClient implements ClientModInitializer {
     private AutoTotem autoTotem;
     private EnemyInfo enemyInfo;
     private ParkourModule parkourModule;
+    private BridgeAssistModule bridgeAssistModule;
     private static OverlayManager overlayManager;
 
     public AutoTotem getAutoTotem() {
@@ -110,9 +112,11 @@ public class TutorialModClient implements ClientModInitializer {
         autoTotem = new AutoTotem();
         enemyInfo = new EnemyInfo();
         parkourModule = new ParkourModule();
+        bridgeAssistModule = new BridgeAssistModule();
         overlayManager = new OverlayManager();
         autoTotem.init();
         parkourModule.init();
+        bridgeAssistModule.init();
 
         // Add shutdown hook to stop overlay process
         Runtime.getRuntime().addShutdownHook(new Thread(overlayManager::stop));

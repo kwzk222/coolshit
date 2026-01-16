@@ -3,7 +3,6 @@ package net.rev.tutorialmod.modules.movement;
 import net.rev.tutorialmod.TutorialMod;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
@@ -53,7 +52,7 @@ public class ParkourModule {
                 .offset(direction.multiply(predict));
 
         // Find how far we would fall
-        double dropDistance = computeDropDistance(player, futureBox);
+        double dropDistance = MovementUtils.computeDropDistance(player, futureBox);
 
         // If drop is small (stairs, slabs), do NOT jump
         if (dropDistance <= TutorialMod.CONFIG.parkourMaxDropHeight) return;
@@ -70,24 +69,5 @@ public class ParkourModule {
         if (!hasGround) {
             player.jump();
         }
-    }
-
-    private double computeDropDistance(PlayerEntity player, Box box) {
-        // Scan downward up to 1.2 blocks
-        for (double y = 0; y <= 1.2; y += 0.05) {
-            Box testBox = box.offset(0, -y, 0);
-
-            boolean collides = mc.world
-                    .getBlockCollisions(player, testBox)
-                    .iterator()
-                    .hasNext();
-
-            if (collides) {
-                return y;
-            }
-        }
-
-        // No ground within range → large drop
-        return Double.MAX_VALUE;
     }
 }

@@ -26,8 +26,8 @@ public class ModMenuIntegration implements ModMenuApi {
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
-            // AutoStun Category
-            ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("AutoStun"));
+            // Attribute Swapping Category
+            ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Fake Prediction Chance (%)"), TutorialMod.CONFIG.fakePredictionChance, 0, 100)
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("The chance (%) to attempt an axe swap even if the enemy is not shielding."))
@@ -200,6 +200,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to toggle the overlay on or off."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleOverlayHotkey = newValue)
                     .build());
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Parkour Hotkey"), TutorialMod.CONFIG.parkourHotkey)
+                    .setDefaultValue("key.keyboard.p")
+                    .setTooltip(Text.literal("The hotkey to toggle the Parkour module."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue)
+                    .build());
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Bridge Assist Hotkey"), TutorialMod.CONFIG.bridgeAssistHotkey)
+                    .setDefaultValue("key.keyboard.left.alt")
+                    .setTooltip(Text.literal("The hotkey to hold to activate Bridge Assist."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistHotkey = newValue)
+                    .build());
             hotkeys.addEntry(entryBuilder.startBooleanToggle(Text.literal("Active in Inventory"), TutorialMod.CONFIG.activeInInventory)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Whether the hotkeys should be active while you are in an inventory screen."))
@@ -235,11 +245,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Automatically jump when about to lose ground support."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourEnabled = newValue)
-                    .build());
-            movement.addEntry(entryBuilder.startStrField(Text.literal("Parkour Hotkey"), TutorialMod.CONFIG.parkourHotkey)
-                    .setDefaultValue("key.keyboard.p")
-                    .setTooltip(Text.literal("The hotkey to toggle the Parkour module."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue)
                     .build());
             movement.addEntry(entryBuilder.startLongSlider(Text.literal("Parkour Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50)
                     .setDefaultValue(12)
