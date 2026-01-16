@@ -3,8 +3,10 @@ package net.rev.tutorialmod.modules.movement;
 import net.rev.tutorialmod.TutorialMod;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
+import org.lwjgl.glfw.GLFW;
 
 public class ParkourModule {
 
@@ -13,6 +15,9 @@ public class ParkourModule {
     public void init() {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.parkourEnabled) return;
+            if (client.currentScreen != null) return;
+            // Disable if Bridge Assist key (Left Alt) is held
+            if (InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_LEFT_ALT)) return;
             tick();
         });
     }
@@ -31,8 +36,8 @@ public class ParkourModule {
 
         var player = mc.player;
 
-        // Must be on ground
-        if (!player.isOnGround() && player.fallDistance > 0.05f) return;
+        // Must be on ground - STRICT check to prevent flying
+        if (!player.isOnGround()) return;
 
         // Do not interfere with sneaking
         if (player.isSneaking()) return;

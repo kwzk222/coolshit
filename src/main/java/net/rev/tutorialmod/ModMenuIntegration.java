@@ -205,11 +205,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to toggle the Parkour module."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue)
                     .build());
-            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Bridge Assist Hotkey"), TutorialMod.CONFIG.bridgeAssistHotkey)
-                    .setDefaultValue("key.keyboard.left.alt")
-                    .setTooltip(Text.literal("The hotkey to hold to activate Bridge Assist."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistHotkey = newValue)
-                    .build());
             hotkeys.addEntry(entryBuilder.startBooleanToggle(Text.literal("Active in Inventory"), TutorialMod.CONFIG.activeInInventory)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Whether the hotkeys should be active while you are in an inventory screen."))
@@ -255,6 +250,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(60)
                     .setTooltip(Text.literal("Maximum drop height to ignore (prevents jumping on stairs/slabs). Default: 0.6 (60 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0)
+                    .build());
+            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Prediction"), (long)(TutorialMod.CONFIG.bridgeAssistPredict * 100), 0, 50)
+                    .setDefaultValue(12)
+                    .setTooltip(Text.literal("How far ahead to predict ground loss for Bridge Assist. Default: 0.12 (12 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistPredict = newValue / 100.0)
+                    .build());
+            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Max Drop Height"), (long)(TutorialMod.CONFIG.bridgeAssistMaxDropHeight * 100), 0, 150)
+                    .setDefaultValue(60)
+                    .setTooltip(Text.literal("Maximum drop height to ignore for Bridge Assist (prevents sneaking on stairs/slabs). Default: 0.6 (60 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistMaxDropHeight = newValue / 100.0)
                     .build());
 
             // Overlay Category

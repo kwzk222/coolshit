@@ -37,6 +37,8 @@ public class ModConfig {
     public boolean parkourEnabled = false;
     public double parkourPredict = 0.12;
     public double parkourMaxDropHeight = 0.6;
+    public double bridgeAssistPredict = 0.12;
+    public double bridgeAssistMaxDropHeight = 0.6;
 
     // --- General ---
     public boolean masterEnabled = true;
