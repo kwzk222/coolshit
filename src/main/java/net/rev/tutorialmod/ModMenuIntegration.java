@@ -241,6 +241,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to toggle the Parkour module."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue)
                     .build());
+            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Parkour Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50)
+                    .setDefaultValue(12)
+                    .setTooltip(Text.literal("How far ahead to predict ground loss. Higher values jump earlier. Default: 0.12 (12 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourPredict = newValue / 100.0)
+                    .build());
+            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Parkour Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150)
+                    .setDefaultValue(60)
+                    .setTooltip(Text.literal("Maximum drop height to ignore (prevents jumping on stairs/slabs). Default: 0.6 (60 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0)
+                    .build());
 
             // Overlay Category
             ConfigCategory overlay = builder.getOrCreateCategory(Text.literal("Overlay"));

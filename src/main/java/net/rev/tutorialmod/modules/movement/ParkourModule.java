@@ -3,6 +3,7 @@ package net.rev.tutorialmod.modules.movement;
 import net.rev.tutorialmod.TutorialMod;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
@@ -45,14 +46,23 @@ public class ParkourModule {
         // Normalize horizontal movement direction
         Vec3d direction = new Vec3d(velocity.x, 0, velocity.z).normalize();
 
-        // Predict the next bounding box
-        Box futureBox = player.getBoundingBox()
-                .offset(direction.multiply(0.05)) // small forward step
-                .offset(0.0, -0.01, 0.0);          // slight downward check
+        // Predict forward movement (earlier jump = better distance)
+        double predict = TutorialMod.CONFIG.parkourPredict;
 
-        // Check if future box still has ground collision
+        Box futureBox = player.getBoundingBox()
+                .offset(direction.multiply(predict));
+
+        // Find how far we would fall
+        double dropDistance = computeDropDistance(player, futureBox);
+
+        // If drop is small (stairs, slabs), do NOT jump
+        if (dropDistance <= TutorialMod.CONFIG.parkourMaxDropHeight) return;
+
+        // If there is no ground support → jump
+        Box groundCheck = futureBox.offset(0.0, -0.01, 0.0);
+
         boolean hasGround = mc.world
-                .getBlockCollisions(player, futureBox)
+                .getBlockCollisions(player, groundCheck)
                 .iterator()
                 .hasNext();
 
@@ -60,5 +70,24 @@ public class ParkourModule {
         if (!hasGround) {
             player.jump();
         }
+    }
+
+    private double computeDropDistance(PlayerEntity player, Box box) {
+        // Scan downward up to 1.2 blocks
+        for (double y = 0; y <= 1.2; y += 0.05) {
+            Box testBox = box.offset(0, -y, 0);
+
+            boolean collides = mc.world
+                    .getBlockCollisions(player, testBox)
+                    .iterator()
+                    .hasNext();
+
+            if (collides) {
+                return y;
+            }
+        }
+
+        // No ground within range → large drop
+        return Double.MAX_VALUE;
     }
 }
