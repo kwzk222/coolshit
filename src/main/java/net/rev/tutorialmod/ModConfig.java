@@ -33,6 +33,9 @@ public class ModConfig {
     public boolean bowSequenceEnabled = true;
     public int minFallDistance = 3;
 
+    // --- Movement ---
+    public boolean parkourEnabled = false;
+
     // --- General ---
     public boolean masterEnabled = true;
     public int bowCooldown = 100;
@@ -73,6 +76,7 @@ public class ModConfig {
     public String triggerBotToggleHotkey = "key.keyboard.k";
     public String triggerBotHotkey = "key.keyboard.0";
     public String toggleOverlayHotkey = "key.keyboard.h";
+    public String parkourHotkey = "key.keyboard.p";
     public boolean activeInInventory = false;
 
     // --- Chat ---

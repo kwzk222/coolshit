@@ -39,6 +39,7 @@ import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.TriggerBot;
+import net.rev.tutorialmod.modules.movement.ParkourModule;
 
 public class TutorialModClient implements ClientModInitializer {
 
@@ -56,6 +57,7 @@ public class TutorialModClient implements ClientModInitializer {
     private TriggerBot triggerBot;
     private AutoTotem autoTotem;
     private EnemyInfo enemyInfo;
+    private ParkourModule parkourModule;
     private static OverlayManager overlayManager;
 
     public AutoTotem getAutoTotem() {
@@ -77,6 +79,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean teammateWasPressed = false;
     private boolean triggerBotToggleWasPressed = false;
     private boolean overlayToggleWasPressed = false;
+    private boolean parkourToggleWasPressed = false;
 
     // --- State: Combat Swap ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_TO_ORIGINAL_THEN_MACE, SWITCH_BACK_FROM_MACE }
@@ -106,8 +109,10 @@ public class TutorialModClient implements ClientModInitializer {
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
         enemyInfo = new EnemyInfo();
+        parkourModule = new ParkourModule();
         overlayManager = new OverlayManager();
         autoTotem.init();
+        parkourModule.init();
 
         // Add shutdown hook to stop overlay process
         Runtime.getRuntime().addShutdownHook(new Thread(overlayManager::stop));
@@ -321,6 +326,20 @@ public class TutorialModClient implements ClientModInitializer {
                 }
             }
             overlayToggleWasPressed = isToggleOverlayPressed;
+        } catch (IllegalArgumentException e) {
+            // Invalid key
+        }
+
+        // --- Toggle Parkour Hotkey ---
+        try {
+            boolean isParkourTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.parkourHotkey).getCode());
+            if (isParkourTogglePressed && !parkourToggleWasPressed) {
+                parkourModule.toggle();
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    client.player.sendMessage(Text.of("Parkour: " + (TutorialMod.CONFIG.parkourEnabled ? "ON" : "OFF")), false);
+                }
+            }
+            parkourToggleWasPressed = isParkourTogglePressed;
         } catch (IllegalArgumentException e) {
             // Invalid key
         }

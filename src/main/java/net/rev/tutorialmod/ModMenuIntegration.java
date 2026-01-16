@@ -229,6 +229,19 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue)
                     .build());
 
+            // Movement Category
+            ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
+            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Parkour Enabled"), TutorialMod.CONFIG.parkourEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Automatically jump when about to lose ground support."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourEnabled = newValue)
+                    .build());
+            movement.addEntry(entryBuilder.startStrField(Text.literal("Parkour Hotkey"), TutorialMod.CONFIG.parkourHotkey)
+                    .setDefaultValue("key.keyboard.p")
+                    .setTooltip(Text.literal("The hotkey to toggle the Parkour module."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue)
+                    .build());
+
             // Overlay Category
             ConfigCategory overlay = builder.getOrCreateCategory(Text.literal("Overlay"));
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Coords Overlay"), TutorialMod.CONFIG.showCoordsOverlay)

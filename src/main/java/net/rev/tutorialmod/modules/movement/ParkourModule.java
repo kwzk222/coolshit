@@ -1,0 +1,64 @@
+package net.rev.tutorialmod.modules.movement;
+
+import net.rev.tutorialmod.TutorialMod;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+
+public class ParkourModule {
+
+    private static final MinecraftClient mc = MinecraftClient.getInstance();
+
+    public void init() {
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.parkourEnabled) return;
+            tick();
+        });
+    }
+
+    public void toggle() {
+        TutorialMod.CONFIG.parkourEnabled = !TutorialMod.CONFIG.parkourEnabled;
+        TutorialMod.CONFIG.save();
+    }
+
+    public boolean isEnabled() {
+        return TutorialMod.CONFIG.parkourEnabled;
+    }
+
+    private void tick() {
+        if (mc.player == null || mc.world == null) return;
+
+        var player = mc.player;
+
+        // Must be on ground
+        if (!player.isOnGround()) return;
+
+        // Do not interfere with sneaking
+        if (player.isSneaking()) return;
+
+        Vec3d velocity = player.getVelocity();
+
+        // Ignore if not moving horizontally
+        if (velocity.horizontalLengthSquared() < 1.0E-4) return;
+
+        // Normalize horizontal movement direction
+        Vec3d direction = new Vec3d(velocity.x, 0, velocity.z).normalize();
+
+        // Predict the next bounding box
+        Box futureBox = player.getBoundingBox()
+                .offset(direction.multiply(0.05)) // small forward step
+                .offset(0.0, -0.01, 0.0);          // slight downward check
+
+        // Check if future box still has ground collision
+        boolean hasGround = mc.world
+                .getBlockCollisions(player, futureBox)
+                .iterator()
+                .hasNext();
+
+        // If no collision → jump
+        if (!hasGround) {
+            player.jump();
+        }
+    }
+}
