@@ -8,10 +8,14 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayDeque;
+import java.util.Queue;
+
 public class BridgeAssistModule {
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     private boolean lastAutoSneak = false;
+    private final Queue<Double> lastDrops = new ArrayDeque<>();
 
     public void init() {
         // Use START_CLIENT_TICK to affect current tick's movement
@@ -29,6 +33,7 @@ public class BridgeAssistModule {
             if (lastAutoSneak) {
                 mc.options.sneakKey.setPressed(isManualSneakPressed());
                 lastAutoSneak = false;
+                lastDrops.clear();
             }
             return;
         }
@@ -58,15 +63,19 @@ public class BridgeAssistModule {
                 .offset(direction.multiply(TutorialMod.CONFIG.bridgeAssistPredict));
 
         // Find how far we would fall
-        double drop = MovementUtils.computeDropDistance(player, futureBox);
+        double drop = getSmoothedDrop(MovementUtils.computeDropDistance(player, futureBox));
 
-        boolean shouldSneak = false;
-        // If drop is large (not stairs/slabs) → potential edge
-        if (drop > TutorialMod.CONFIG.bridgeAssistMaxDropHeight) {
-            // If there is no ground support at all for the predicted position → sneak
+        boolean shouldSneak = lastAutoSneak;
+
+        if (!lastAutoSneak && drop > TutorialMod.CONFIG.bridgeAssistStartSneakHeight) {
+            // Potential edge detected
             Box groundCheck = futureBox.offset(0.0, -0.01, 0.0);
             boolean hasGround = mc.world.getBlockCollisions(player, groundCheck).iterator().hasNext();
-            shouldSneak = !hasGround;
+            if (!hasGround) {
+                shouldSneak = true;
+            }
+        } else if (lastAutoSneak && drop < TutorialMod.CONFIG.bridgeAssistStopSneakHeight) {
+            shouldSneak = false;
         }
 
         if (shouldSneak) {
@@ -78,6 +87,12 @@ public class BridgeAssistModule {
                 lastAutoSneak = false;
             }
         }
+    }
+
+    private double getSmoothedDrop(double currentDrop) {
+        lastDrops.add(currentDrop);
+        if (lastDrops.size() > 3) lastDrops.poll();
+        return lastDrops.stream().mapToDouble(d -> d).average().orElse(currentDrop);
     }
 
     private boolean isManualSneakPressed() {

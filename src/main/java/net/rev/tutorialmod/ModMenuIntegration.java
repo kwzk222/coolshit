@@ -252,14 +252,19 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0)
                     .build());
             movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Prediction"), (long)(TutorialMod.CONFIG.bridgeAssistPredict * 100), 0, 50)
-                    .setDefaultValue(12)
-                    .setTooltip(Text.literal("How far ahead to predict ground loss for Bridge Assist. Default: 0.12 (12 on slider)"))
+                    .setDefaultValue(14)
+                    .setTooltip(Text.literal("How far ahead to predict ground loss for Bridge Assist. Default: 0.14 (14 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistPredict = newValue / 100.0)
                     .build());
-            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Max Drop Height"), (long)(TutorialMod.CONFIG.bridgeAssistMaxDropHeight * 100), 0, 150)
-                    .setDefaultValue(60)
-                    .setTooltip(Text.literal("Maximum drop height to ignore for Bridge Assist (prevents sneaking on stairs/slabs). Default: 0.6 (60 on slider)"))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistMaxDropHeight = newValue / 100.0)
+            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Start Height"), (long)(TutorialMod.CONFIG.bridgeAssistStartSneakHeight * 100), 0, 150)
+                    .setDefaultValue(65)
+                    .setTooltip(Text.literal("Start sneaking when drop is above this height. Default: 0.65 (65 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistStartSneakHeight = newValue / 100.0)
+                    .build());
+            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Stop Height"), (long)(TutorialMod.CONFIG.bridgeAssistStopSneakHeight * 100), 0, 150)
+                    .setDefaultValue(55)
+                    .setTooltip(Text.literal("Stop sneaking only when drop is below this height. Default: 0.55 (55 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistStopSneakHeight = newValue / 100.0)
                     .build());
 
             // Overlay Category
