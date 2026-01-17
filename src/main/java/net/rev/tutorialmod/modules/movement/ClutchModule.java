@@ -53,6 +53,19 @@ public class ClutchModule {
         }
         dangerKeyPressedLastTick = dangerPressed;
 
+        // Danger Mode Activation check: Anytime while falling and looking down
+        if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance
+            && dangerLatched && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
+
+            if (state == ClutchState.IDLE || state == ClutchState.PREARMED) {
+                if (originalSlot == -1) originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
+                dangerTickCounter = 0;
+                state = ClutchState.DANGER_PLACE_BLOCK;
+                dangerLatched = false; // consume
+                return;
+            }
+        }
+
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
@@ -80,13 +93,6 @@ public class ClutchModule {
                     return;
                 }
 
-                if (dangerLatched && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
-                    dangerTickCounter = 0;
-                    state = ClutchState.DANGER_PLACE_BLOCK;
-                    dangerLatched = false; // consume the latch
-                    return;
-                }
-
                 // TRUE spam — every tick, no cooldown, full pipeline
                 spamUse();
 
@@ -106,19 +112,18 @@ public class ClutchModule {
                 if (dangerTickCounter == 0) {
                     int blockSlot = findPlaceableBlock();
                     if (blockSlot == -1) {
-                        state = ClutchState.PREARMED; // fallback
-                        dangerLatched = false;
+                        state = ClutchState.PREARMED; // fallback to normal clutch
                         return;
                     }
 
                     setSlot(blockSlot);
-                    spamUse(); // place block
+                    spamUse(); // place block once
                 }
 
                 dangerTickCounter++;
 
-                // Give the client 1 tick to sync the placed block, then switch to water
-                if (dangerTickCounter >= 1) {
+                // Wait 1-2 ticks for the block to be registered by the engine
+                if (dangerTickCounter >= 2) {
                     state = ClutchState.DANGER_PLACE_WATER;
                 }
             }
@@ -132,15 +137,15 @@ public class ClutchModule {
                 int waterSlot = findWaterBucket();
                 if (waterSlot == -1) {
                     state = ClutchState.FINISHING;
-                    dangerLatched = false;
                     return;
                 }
 
                 setSlot(waterSlot);
-                spamUse();
+                spamUse(); // Spam water until successful or landed
 
-                state = ClutchState.LANDED;
-                dangerLatched = false;
+                if (waterPlacedBelow(p)) {
+                    state = ClutchState.LANDED;
+                }
             }
 
             case LANDED -> {
