@@ -2,6 +2,7 @@ package net.rev.tutorialmod.modules.movement;
 
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor;
+import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.fluid.Fluids;
@@ -52,27 +53,23 @@ public class ClutchModule {
             }
 
             case PREARMED -> {
-                // Keep engine armed
-                mc.options.useKey.setPressed(true);
-
                 if (p.isOnGround()) {
                     tickCounter++;
                     if (waterPlacedBelow(p)) {
-                        mc.options.useKey.setPressed(false);
                         tickCounter = 0;
                         state = ClutchState.LANDED;
                     } else if (tickCounter > POST_GROUND_TICKS) {
-                        // Failed to clutch after buffer ticks
-                        mc.options.useKey.setPressed(false);
                         tickCounter = 0;
                         state = ClutchState.FINISHING;
                     }
                     return;
                 }
 
-                // Check for early placement (server ahead of client)
+                // TRUE spam — every tick, no cooldown, full pipeline
+                spamUse();
+
+                // early-detect server placement
                 if (waterPlacedBelow(p)) {
-                    mc.options.useKey.setPressed(false);
                     tickCounter = 0;
                     state = ClutchState.LANDED;
                 }
@@ -89,7 +86,6 @@ public class ClutchModule {
             case RECOVERING -> {
                 tickCounter++;
                 if (tickCounter >= MAX_RECOVERY_TIME) {
-                    mc.options.useKey.setPressed(false);
                     tickCounter = 0;
                     state = ClutchState.FINISHING;
                     return;
@@ -98,16 +94,13 @@ public class ClutchModule {
                 int bucketSlot = findEmptyBucket();
                 if (bucketSlot != -1) {
                     setSlot(bucketSlot);
-                    mc.options.useKey.setPressed(true);
+                    spamUse();
 
-                    // Success when bucket is full again
                     if (p.getInventory().getStack(bucketSlot).isOf(Items.WATER_BUCKET)) {
-                        mc.options.useKey.setPressed(false);
                         tickCounter = 0;
                         state = ClutchState.FINISHING;
                     }
                 } else {
-                    mc.options.useKey.setPressed(false);
                     tickCounter = 0;
                     state = ClutchState.FINISHING;
                 }
@@ -120,6 +113,14 @@ public class ClutchModule {
                 }
             }
         }
+    }
+
+    private void spamUse() {
+        // reset cooldown so every tick is valid
+        ((MinecraftClientAccessor) mc).setItemUseCooldown(0);
+
+        // true RMB press (full pipeline)
+        ((MinecraftClientAccessor) mc).invokeDoItemUse();
     }
 
     private void setSlot(int slot) {
@@ -137,7 +138,6 @@ public class ClutchModule {
     }
 
     private void reset() {
-        mc.options.useKey.setPressed(isManualUsePressed());
         if (originalSlot != -1 && mc.player != null) {
             setSlot(originalSlot);
             originalSlot = -1;
@@ -160,14 +160,5 @@ public class ClutchModule {
                 return i;
         }
         return -1;
-    }
-
-    private boolean isManualUsePressed() {
-        try {
-            return net.minecraft.client.util.InputUtil.isKeyPressed(mc.getWindow().getHandle(),
-                    net.minecraft.client.util.InputUtil.fromTranslationKey(mc.options.useKey.getBoundKeyTranslationKey()).getCode());
-        } catch (Exception e) {
-            return false;
-        }
     }
 }

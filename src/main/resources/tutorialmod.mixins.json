@@ -12,6 +12,7 @@
 		"ClientPlayNetworkHandlerMixin",
 		"HandledScreenAccessor",
 		"MinecraftClientMixin",
+		"MinecraftClientAccessor",
 		"GameOptionsAccessor"
 	],
 	"injectors": {
