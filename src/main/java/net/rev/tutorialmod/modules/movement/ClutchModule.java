@@ -1,6 +1,7 @@
 package net.rev.tutorialmod.modules.movement;
 
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.minecraft.block.*;
 import net.minecraft.block.enums.BlockHalf;
@@ -25,21 +26,26 @@ public class ClutchModule {
         IDLE,
         FALLING,
         AIMING,
-        PLACING,
+        SWITCH_TO_BLOCK,
+        PLACE_BLOCK,
+        SWITCH_TO_WATER,
+        PLACE_WATER,
         COOLDOWN
     }
 
     private ClutchState state = ClutchState.IDLE;
-    private BlockPos targetPos;
-    private BlockHitResult targetHit;
-    private boolean isWhitelisted;
-    private boolean blockPlaced;
-    private boolean isSneaking;
+    private int tickDelay = 0;
     private int originalSlot = -1;
+    private boolean isSneaking = false;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
-            reset();
+            if (state != ClutchState.IDLE) reset();
+            return;
+        }
+
+        if (tickDelay > 0) {
+            tickDelay--;
             return;
         }
 
@@ -67,50 +73,83 @@ public class ClutchModule {
                     reset();
                     return;
                 }
+                // Hysteresis: stay in aiming unless pitch drops significantly
                 if (p.getPitch() < TutorialMod.CONFIG.clutchActivationPitch - 5.0f) {
                     state = ClutchState.FALLING;
                     return;
                 }
 
                 BlockHitResult hit = getTargetBlock();
-                if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
-                    targetHit = hit;
-                    targetPos = hit.getBlockPos();
-                    BlockState blockState = mc.world.getBlockState(targetPos);
-                    isWhitelisted = isWaterloggableWhitelist(blockState);
+                if (hit != null) {
+                    BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
 
-                    if (isInteractable(blockState)) {
-                        mc.options.sneakKey.setPressed(true);
-                        isSneaking = true;
+                    if (originalSlot == -1) {
+                        originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
                     }
 
-                    originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
-                    blockPlaced = false;
-                    state = ClutchState.PLACING;
+                    if (isWaterloggableWhitelist(blockState)) {
+                        state = ClutchState.SWITCH_TO_BLOCK;
+                    } else {
+                        state = ClutchState.SWITCH_TO_WATER;
+                    }
                 }
             }
 
-            case PLACING -> {
-                if (isWhitelisted) {
-                    if (!blockPlaced) {
-                        int blockSlot = findPlaceableBlock();
-                        if (blockSlot != -1) {
-                            ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(blockSlot);
-                            mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, targetHit);
-                            blockPlaced = true;
-                            // Update targetHit for water placement on top of the new block
-                            targetHit = new BlockHitResult(targetHit.getPos().add(0, 1, 0), Direction.UP, targetPos.offset(targetHit.getSide()), false);
-                        } else {
-                            // Fallback to water if no block found
-                            isWhitelisted = false;
-                        }
-                    } else {
-                        placeWater();
-                        state = ClutchState.COOLDOWN;
-                    }
+            case SWITCH_TO_BLOCK -> {
+                int blockSlot = findPlaceableBlock();
+                if (blockSlot != -1) {
+                    ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(blockSlot);
+                    ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+                    tickDelay = 2;
+                    state = ClutchState.PLACE_BLOCK;
                 } else {
-                    placeWater();
+                    // No block? Try water directly as fallback
+                    state = ClutchState.SWITCH_TO_WATER;
+                }
+            }
+
+            case PLACE_BLOCK -> {
+                BlockHitResult hit = getTargetBlock();
+                if (hit != null) {
+                    BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
+                    handleSneak(blockState);
+
+                    // Force Direction.UP for clutch placement
+                    BlockHitResult placementHit = new BlockHitResult(hit.getPos(), Direction.UP, hit.getBlockPos(), false);
+                    mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placementHit);
+
+                    state = ClutchState.SWITCH_TO_WATER;
+                    tickDelay = 1; // Short delay before switching to water
+                } else {
+                    reset(); // Lost target
+                }
+            }
+
+            case SWITCH_TO_WATER -> {
+                int waterSlot = findWaterBucket();
+                if (waterSlot != -1) {
+                    ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(waterSlot);
+                    ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+                    tickDelay = 2;
+                    state = ClutchState.PLACE_WATER;
+                } else {
+                    reset(); // No water
+                }
+            }
+
+            case PLACE_WATER -> {
+                BlockHitResult hit = getTargetBlock();
+                if (hit != null) {
+                    BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
+                    handleSneak(blockState);
+
+                    BlockHitResult placementHit = new BlockHitResult(hit.getPos(), Direction.UP, hit.getBlockPos(), false);
+                    mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placementHit);
+
                     state = ClutchState.COOLDOWN;
+                    tickDelay = 1;
+                } else {
+                    reset();
                 }
             }
 
@@ -120,11 +159,13 @@ public class ClutchModule {
         }
     }
 
-    private void placeWater() {
-        int waterSlot = findWaterBucket();
-        if (waterSlot != -1) {
-            ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(waterSlot);
-            mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, targetHit);
+    private void handleSneak(BlockState state) {
+        if (isInteractable(state)) {
+            mc.options.sneakKey.setPressed(true);
+            isSneaking = true;
+        } else {
+            mc.options.sneakKey.setPressed(isManualSneakPressed());
+            isSneaking = false;
         }
     }
 
@@ -135,12 +176,11 @@ public class ClutchModule {
         }
         if (originalSlot != -1 && mc.player != null) {
             ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(originalSlot);
+            ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
             originalSlot = -1;
         }
         state = ClutchState.IDLE;
-        targetPos = null;
-        targetHit = null;
-        blockPlaced = false;
+        tickDelay = 0;
     }
 
     private BlockHitResult getTargetBlock() {
