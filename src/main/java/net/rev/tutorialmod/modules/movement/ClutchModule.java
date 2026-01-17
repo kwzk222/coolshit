@@ -29,6 +29,8 @@ public class ClutchModule {
     private ClutchState state = ClutchState.IDLE;
     private int originalSlot = -1;
     private int tickCounter = 0;
+    private boolean dangerLatched = false;
+    private boolean blockPlaced = false;
 
     private static final int RECOVERY_DELAY = 20;
     private static final int MAX_RECOVERY_TIME = 60;
@@ -52,6 +54,8 @@ public class ClutchModule {
                         setSlot(waterSlot);
                         state = ClutchState.PREARMED;
                         tickCounter = 0;
+                        dangerLatched = false;
+                        blockPlaced = false;
                     }
                 }
             }
@@ -69,12 +73,14 @@ public class ClutchModule {
                     return;
                 }
 
-                if (isDangerModePressed()) {
+                if (!dangerLatched && isDangerModePressed()) {
+                    dangerLatched = true;
                     state = ClutchState.DANGER_PLACE_BLOCK;
-                } else {
-                    // TRUE spam — every tick, no cooldown, full pipeline
-                    spamUse();
+                    return;
                 }
+
+                // TRUE spam — every tick, no cooldown, full pipeline
+                spamUse();
 
                 // early-detect server placement
                 if (waterPlacedBelow(p)) {
@@ -89,20 +95,20 @@ public class ClutchModule {
                     return;
                 }
 
-                int blockSlot = findPlaceableBlock();
-                if (blockSlot == -1) {
-                    state = ClutchState.PREARMED;
-                    return;
+                if (!blockPlaced) {
+                    int blockSlot = findPlaceableBlock();
+                    if (blockSlot == -1) {
+                        state = ClutchState.PREARMED; // fallback
+                        return;
+                    }
+
+                    setSlot(blockSlot);
+                    spamUse();
+                    blockPlaced = true;
+                    return; // Wait a tick for client to sync
                 }
 
-                setSlot(blockSlot);
-                spamUse();
-
-                // detect block placement by checking beneath player
-                BlockPos below = p.getBlockPos().down();
-                if (!mc.world.getBlockState(below).isAir()) {
-                    state = ClutchState.DANGER_PLACE_WATER;
-                }
+                state = ClutchState.DANGER_PLACE_WATER;
             }
 
             case DANGER_PLACE_WATER -> {
@@ -194,6 +200,8 @@ public class ClutchModule {
         }
         state = ClutchState.IDLE;
         tickCounter = 0;
+        dangerLatched = false;
+        blockPlaced = false;
     }
 
     private int findWaterBucket() {
