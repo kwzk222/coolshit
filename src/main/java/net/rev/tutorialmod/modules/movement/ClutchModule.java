@@ -7,6 +7,7 @@ import net.minecraft.block.*;
 import net.minecraft.block.enums.BlockHalf;
 import net.minecraft.block.enums.SlabType;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.fluid.Fluids;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -14,9 +15,6 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.math.Vec3d;
 
 public class ClutchModule {
 
@@ -35,13 +33,13 @@ public class ClutchModule {
 
         var p = mc.player;
 
-        // Reset immediately when grounded
+        // Reset when grounded
         if (p.isOnGround()) {
             if (clutching) reset();
             return;
         }
 
-        // Trigger based on fall distance and looking down
+        // Trigger: fall distance + look down
         if (p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
             if (!clutching) {
                 clutching = true;
@@ -49,68 +47,91 @@ public class ClutchModule {
                 blockPlaced = false;
             }
 
-            // 20 TIMES PER SECOND SPAM (Every Tick)
             BlockHitResult hit = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
-            if (hit == null) return;
+            if (hit == null) {
+                stopUsing();
+                return;
+            }
 
             BlockState targetState = mc.world.getBlockState(hit.getBlockPos());
             boolean waterloggable = isWaterloggableWhitelist(targetState);
 
             if (waterloggable && !blockPlaced) {
-                // PHASE A: PLACE BLOCK
+                // PHASE A: Block placement
                 int blockSlot = findPlaceableBlock();
                 if (blockSlot != -1) {
                     ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(blockSlot);
                     ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
 
-                    handleSneak(targetState);
+                    updateSneakState(targetState);
+                    startUsing();
 
-                    BlockHitResult placeHit = new BlockHitResult(
-                        Vec3d.ofCenter(hit.getBlockPos()),
-                        Direction.UP,
-                        hit.getBlockPos(),
-                        false
-                    );
-                    mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placeHit);
-                    p.swingHand(Hand.MAIN_HAND);
-
-                    // Detect if block was placed to move to next stage
+                    // Check if block was placed (space above target is no longer replaceable)
                     if (!mc.world.getBlockState(hit.getBlockPos().up()).isReplaceable()) {
                         blockPlaced = true;
+                        stopUsing(); // Stop block usage to switch to water
                     }
                 } else {
-                    blockPlaced = true; // Fallback to water
+                    blockPlaced = true; // Fallback
                 }
             } else {
-                // PHASE B: PLACE WATER
+                // PHASE B: Water placement
                 int waterSlot = findWaterBucket();
                 if (waterSlot != -1) {
                     ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(waterSlot);
                     ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
 
-                    handleSneak(targetState);
+                    updateSneakState(targetState);
+                    startUsing();
 
-                    BlockHitResult placeHit = new BlockHitResult(
-                        Vec3d.ofCenter(hit.getBlockPos()),
-                        Direction.UP,
-                        hit.getBlockPos(),
-                        false
-                    );
-                    mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placeHit);
-                    p.swingHand(Hand.MAIN_HAND);
+                    // Success detection for water
+                    if (waterPlacedBelow(p)) {
+                        reset();
+                    }
+                } else {
+                    reset();
                 }
+            }
+        } else {
+            // Not triggered yet or conditions lost
+            if (clutching) {
+                // Keep clutching if we already started, until ground
             }
         }
     }
 
-    private void handleSneak(BlockState state) {
-        if (isInteractable(state)) {
+    private void startUsing() {
+        mc.options.useKey.setPressed(true);
+    }
+
+    private void stopUsing() {
+        mc.options.useKey.setPressed(isManualUsePressed());
+    }
+
+    private void updateSneakState(BlockState targetState) {
+        if (isInteractable(targetState)) {
             mc.options.sneakKey.setPressed(true);
             isSneaking = true;
+        } else if (isSneaking) {
+            mc.options.sneakKey.setPressed(isManualSneakPressed());
+            isSneaking = false;
         }
     }
 
+    private boolean waterPlacedBelow(net.minecraft.client.network.ClientPlayerEntity p) {
+        BlockPos pos = p.getBlockPos();
+        for (int y = 0; y >= -2; y--) {
+            for (int x = -1; x <= 1; x++) {
+                for (int z = -1; z <= 1; z++) {
+                    if (p.getWorld().getFluidState(pos.add(x, y, z)).isOf(Fluids.WATER)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void reset() {
+        stopUsing();
         if (isSneaking) {
             mc.options.sneakKey.setPressed(isManualSneakPressed());
             isSneaking = false;
@@ -200,6 +221,15 @@ public class ClutchModule {
         try {
             return net.minecraft.client.util.InputUtil.isKeyPressed(mc.getWindow().getHandle(),
                     net.minecraft.client.util.InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isManualUsePressed() {
+        try {
+            return net.minecraft.client.util.InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+                    net.minecraft.client.util.InputUtil.fromTranslationKey(mc.options.useKey.getBoundKeyTranslationKey()).getCode());
         } catch (Exception e) {
             return false;
         }
