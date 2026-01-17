@@ -16,6 +16,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.registry.Registries;
 
 public class ClutchModule {
@@ -37,6 +38,7 @@ public class ClutchModule {
     private int tickDelay = 0;
     private int originalSlot = -1;
     private boolean isSneaking = false;
+    private BlockPos lastTargetPos = null;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
@@ -63,7 +65,12 @@ public class ClutchModule {
                     state = ClutchState.IDLE;
                     return;
                 }
-                if (p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
+
+                // Predictive check
+                double predictedY = p.getY() + p.getVelocity().y * 2.0;
+                BlockHitResult ray = getTargetBlock(4.5);
+
+                if (p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch || (ray != null && predictedY <= ray.getBlockPos().getY() + 3.2)) {
                     state = ClutchState.AIMING;
                 }
             }
@@ -73,15 +80,11 @@ public class ClutchModule {
                     reset();
                     return;
                 }
-                // Hysteresis: stay in aiming unless pitch drops significantly
-                if (p.getPitch() < TutorialMod.CONFIG.clutchActivationPitch - 5.0f) {
-                    state = ClutchState.FALLING;
-                    return;
-                }
 
-                BlockHitResult hit = getTargetBlock();
+                BlockHitResult hit = getTargetBlock(4.5);
                 if (hit != null) {
-                    BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
+                    lastTargetPos = hit.getBlockPos();
+                    BlockState blockState = mc.world.getBlockState(lastTargetPos);
 
                     if (originalSlot == -1) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
@@ -100,28 +103,35 @@ public class ClutchModule {
                 if (blockSlot != -1) {
                     ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(blockSlot);
                     ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
-                    tickDelay = 2;
+                    tickDelay = 1;
                     state = ClutchState.PLACE_BLOCK;
                 } else {
-                    // No block? Try water directly as fallback
                     state = ClutchState.SWITCH_TO_WATER;
                 }
             }
 
             case PLACE_BLOCK -> {
-                BlockHitResult hit = getTargetBlock();
-                if (hit != null) {
-                    BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
-                    handleSneak(blockState);
+                BlockHitResult hit = getTargetBlock(4.5);
+                BlockPos targetPos = (hit != null) ? hit.getBlockPos() : lastTargetPos;
 
-                    // Force Direction.UP for clutch placement
-                    BlockHitResult placementHit = new BlockHitResult(hit.getPos(), Direction.UP, hit.getBlockPos(), false);
+                if (targetPos != null) {
+                    handleSneak(mc.world.getBlockState(targetPos));
+
+                    // Interaction with the top face of the block
+                    BlockHitResult placementHit = new BlockHitResult(
+                        Vec3d.ofCenter(targetPos).add(0, 0.5, 0),
+                        Direction.UP,
+                        targetPos,
+                        false
+                    );
                     mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placementHit);
+                    p.swingHand(Hand.MAIN_HAND);
 
+                    lastTargetPos = targetPos.up();
                     state = ClutchState.SWITCH_TO_WATER;
-                    tickDelay = 1; // Short delay before switching to water
+                    tickDelay = 1;
                 } else {
-                    reset(); // Lost target
+                    reset();
                 }
             }
 
@@ -130,21 +140,28 @@ public class ClutchModule {
                 if (waterSlot != -1) {
                     ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(waterSlot);
                     ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
-                    tickDelay = 2;
+                    tickDelay = 1;
                     state = ClutchState.PLACE_WATER;
                 } else {
-                    reset(); // No water
+                    reset();
                 }
             }
 
             case PLACE_WATER -> {
-                BlockHitResult hit = getTargetBlock();
-                if (hit != null) {
-                    BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
-                    handleSneak(blockState);
+                BlockHitResult hit = getTargetBlock(4.5);
+                BlockPos targetPos = (hit != null) ? hit.getBlockPos() : lastTargetPos;
 
-                    BlockHitResult placementHit = new BlockHitResult(hit.getPos(), Direction.UP, hit.getBlockPos(), false);
+                if (targetPos != null) {
+                    handleSneak(mc.world.getBlockState(targetPos));
+
+                    BlockHitResult placementHit = new BlockHitResult(
+                        Vec3d.ofCenter(targetPos).add(0, 0.5, 0),
+                        Direction.UP,
+                        targetPos,
+                        false
+                    );
                     mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placementHit);
+                    p.swingHand(Hand.MAIN_HAND);
 
                     state = ClutchState.COOLDOWN;
                     tickDelay = 1;
@@ -181,10 +198,11 @@ public class ClutchModule {
         }
         state = ClutchState.IDLE;
         tickDelay = 0;
+        lastTargetPos = null;
     }
 
-    private BlockHitResult getTargetBlock() {
-        HitResult hit = mc.player.raycast(TutorialMod.CONFIG.clutchMaxReach, 1.0f, false);
+    private BlockHitResult getTargetBlock(double reach) {
+        HitResult hit = mc.player.raycast(reach, 1.0f, false);
         if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
             return (BlockHitResult) hit;
         }
@@ -202,14 +220,11 @@ public class ClutchModule {
             return state.get(TrapdoorBlock.HALF) == BlockHalf.TOP && !state.get(TrapdoorBlock.OPEN);
         }
 
-        if (block == Blocks.CAULDRON) return true;
-        if (block == Blocks.BIG_DRIPLEAF) return true;
-        if (block == Blocks.COPPER_GRATE) return true;
-        if (block == Blocks.DECORATED_POT) return true;
-        if (block == Blocks.MANGROVE_ROOTS) return true;
-
-        String id = Registries.BLOCK.getId(block).getPath();
-        return id.contains("copper_grate");
+        return block == Blocks.CAULDRON
+                || block == Blocks.BIG_DRIPLEAF
+                || block == Blocks.COPPER_GRATE
+                || block == Blocks.DECORATED_POT
+                || block == Blocks.MANGROVE_ROOTS;
     }
 
     private boolean isInteractable(BlockState state) {
