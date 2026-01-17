@@ -17,7 +17,10 @@ public class ParkourModule {
             if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.parkourEnabled) return;
             if (client.currentScreen != null) return;
             // Disable if Bridge Assist key is held
-            if (BridgeAssistModule.BRIDGE_KEY != null && BridgeAssistModule.BRIDGE_KEY.isPressed()) return;
+            try {
+                if (InputUtil.isKeyPressed(client.getWindow().getHandle(),
+                    InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode())) return;
+            } catch (Exception ignored) {}
             tick();
         });
     }

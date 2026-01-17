@@ -2,30 +2,17 @@ package net.rev.tutorialmod.modules.movement;
 
 import net.rev.tutorialmod.TutorialMod;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import org.lwjgl.glfw.GLFW;
 
 public class BridgeAssistModule {
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
-    public static KeyBinding BRIDGE_KEY;
 
     private boolean lastAutoSneak = false;
     private int sneakHoldCounter = 0;
-
-    public static void registerKey() {
-        BRIDGE_KEY = KeyBindingHelper.registerKeyBinding(
-            new KeyBinding("key.tutorialmod.bridge_assist",
-                           InputUtil.Type.KEYSYM,
-                           GLFW.GLFW_KEY_LEFT_CONTROL,
-                           "category.tutorialmod.movement")
-        );
-    }
 
     public void init() {
         // Use START_CLIENT_TICK to affect current tick's movement
@@ -35,9 +22,14 @@ public class BridgeAssistModule {
     private void tick() {
         if (mc.player == null || mc.world == null) return;
 
-        // activation conditions
-        boolean activeKey = BRIDGE_KEY != null && BRIDGE_KEY.isPressed();
-        boolean active = activeKey && TutorialMod.CONFIG.masterEnabled && mc.currentScreen == null;
+        // Configurable hotkey activation (string-based like before)
+        boolean keyPressed = false;
+        try {
+            keyPressed = InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+                InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode());
+        } catch (Exception ignored) {}
+
+        boolean active = keyPressed && TutorialMod.CONFIG.masterEnabled && mc.currentScreen == null;
 
         if (!active) {
             // restore manual sneak only if we forced it previously
@@ -141,7 +133,6 @@ public class BridgeAssistModule {
 
     private boolean isManualSneakPressed() {
         try {
-            // Check physical key state to avoid getting stuck when auto-sneak is active
             return InputUtil.isKeyPressed(mc.getWindow().getHandle(),
                 InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
         } catch (Exception e) {

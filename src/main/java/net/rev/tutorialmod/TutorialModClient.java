@@ -123,7 +123,6 @@ public class TutorialModClient implements ClientModInitializer {
         overlayManager = new OverlayManager();
         autoTotem.init();
         parkourModule.init();
-        BridgeAssistModule.registerKey();
         bridgeAssistModule.init();
 
         // Add shutdown hook to stop overlay process
