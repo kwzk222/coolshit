@@ -313,11 +313,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Minimum pitch (looking down) to trigger clutch. Default: 60"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue())
                     .build());
-            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Max Reach"), (long)(TutorialMod.CONFIG.clutchMaxReach * 10), 0, 50)
-                    .setDefaultValue(32)
-                    .setTooltip(Text.literal("Maximum reach for clutch placement. Default: 3.2 (32 on slider)"))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMaxReach = newValue / 10.0)
-                    .build());
             movement.addEntry(clutchSub.build());
 
             // Overlay Category

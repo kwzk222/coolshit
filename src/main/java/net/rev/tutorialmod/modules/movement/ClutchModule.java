@@ -17,7 +17,8 @@ public class ClutchModule {
         IDLE,
         PREARMED,
         LANDED,
-        RECOVERING
+        RECOVERING,
+        FINISHING
     }
 
     private ClutchState state = ClutchState.IDLE;
@@ -26,6 +27,8 @@ public class ClutchModule {
 
     private static final int RECOVERY_DELAY = 20;
     private static final int MAX_RECOVERY_TIME = 60;
+    private static final int POST_GROUND_TICKS = 3;
+    private static final int SLOT_RESTORE_DELAY = 5;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
@@ -37,33 +40,37 @@ public class ClutchModule {
 
         switch (state) {
             case IDLE -> {
-                // Trigger at any height once threshold is met
                 if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
                     int waterSlot = findWaterBucket();
                     if (waterSlot != -1) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
                         setSlot(waterSlot);
                         state = ClutchState.PREARMED;
+                        tickCounter = 0;
                     }
                 }
             }
 
             case PREARMED -> {
+                // Keep engine armed
+                mc.options.useKey.setPressed(true);
+
                 if (p.isOnGround()) {
+                    tickCounter++;
                     if (waterPlacedBelow(p)) {
                         mc.options.useKey.setPressed(false);
                         tickCounter = 0;
                         state = ClutchState.LANDED;
-                    } else {
-                        reset();
+                    } else if (tickCounter > POST_GROUND_TICKS) {
+                        // Failed to clutch after buffer ticks
+                        mc.options.useKey.setPressed(false);
+                        tickCounter = 0;
+                        state = ClutchState.FINISHING;
                     }
                     return;
                 }
 
-                // Arm the engine - it will raycast and place when in range (3-4 blocks)
-                mc.options.useKey.setPressed(true);
-
-                // If we detect water while still falling (e.g. placed it early)
+                // Check for early placement (server ahead of client)
                 if (waterPlacedBelow(p)) {
                     mc.options.useKey.setPressed(false);
                     tickCounter = 0;
@@ -82,7 +89,9 @@ public class ClutchModule {
             case RECOVERING -> {
                 tickCounter++;
                 if (tickCounter >= MAX_RECOVERY_TIME) {
-                    reset();
+                    mc.options.useKey.setPressed(false);
+                    tickCounter = 0;
+                    state = ClutchState.FINISHING;
                     return;
                 }
 
@@ -93,9 +102,20 @@ public class ClutchModule {
 
                     // Success when bucket is full again
                     if (p.getInventory().getStack(bucketSlot).isOf(Items.WATER_BUCKET)) {
-                        reset();
+                        mc.options.useKey.setPressed(false);
+                        tickCounter = 0;
+                        state = ClutchState.FINISHING;
                     }
                 } else {
+                    mc.options.useKey.setPressed(false);
+                    tickCounter = 0;
+                    state = ClutchState.FINISHING;
+                }
+            }
+
+            case FINISHING -> {
+                tickCounter++;
+                if (tickCounter >= SLOT_RESTORE_DELAY) {
                     reset();
                 }
             }
@@ -111,7 +131,6 @@ public class ClutchModule {
 
     private boolean waterPlacedBelow(net.minecraft.client.network.ClientPlayerEntity p) {
         BlockPos pos = p.getBlockPos();
-        // Check current, below, and slightly above for reliability
         return mc.world.getFluidState(pos).isOf(Fluids.WATER) ||
                mc.world.getFluidState(pos.down()).isOf(Fluids.WATER) ||
                mc.world.getFluidState(pos.up()).isOf(Fluids.WATER);

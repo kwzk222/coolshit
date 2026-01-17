@@ -46,7 +46,6 @@ public class ModConfig {
     public boolean clutchEnabled = false;
     public double clutchMinFallDistance = 3.0;
     public double clutchActivationPitch = 60.0;
-    public double clutchMaxReach = 3.2;
 
     // --- General ---
     public boolean masterEnabled = true;
