@@ -42,6 +42,12 @@ public class ModConfig {
     public double bridgeAssistStopSneakHeight = 0.5;
     public int bridgeAssistMinHoldTicks = 3;
 
+    // --- Clutch ---
+    public boolean clutchEnabled = false;
+    public double clutchMinFallDistance = 3.0;
+    public double clutchActivationPitch = 60.0;
+    public double clutchMaxReach = 3.2;
+
     // --- General ---
     public boolean masterEnabled = true;
     public int bowCooldown = 100;
@@ -83,6 +89,7 @@ public class ModConfig {
     public String triggerBotHotkey = "key.keyboard.unknown";
     public String toggleOverlayHotkey = "key.keyboard.h";
     public String parkourHotkey = "key.keyboard.p";
+    public String clutchHotkey = "key.keyboard.j";
     public String bridgeAssistHotkey = "key.keyboard.left.alt";
     public String sprintModeHotkey = "key.keyboard.n";
     public String sneakModeHotkey = "key.keyboard.b";

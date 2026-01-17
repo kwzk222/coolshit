@@ -41,6 +41,7 @@ import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.TriggerBot;
 import net.rev.tutorialmod.modules.movement.BridgeAssistModule;
+import net.rev.tutorialmod.modules.movement.ClutchModule;
 import net.rev.tutorialmod.modules.movement.ParkourModule;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -60,6 +61,7 @@ public class TutorialModClient implements ClientModInitializer {
     private AutoTotem autoTotem;
     private EnemyInfo enemyInfo;
     private ParkourModule parkourModule;
+    private ClutchModule clutchModule;
     private BridgeAssistModule bridgeAssistModule;
     private static OverlayManager overlayManager;
 
@@ -83,6 +85,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean triggerBotToggleWasPressed = false;
     private boolean overlayToggleWasPressed = false;
     private boolean parkourToggleWasPressed = false;
+    private boolean clutchToggleWasPressed = false;
     private boolean sprintModeWasPressed = false;
     private boolean sneakModeWasPressed = false;
 
@@ -115,6 +118,7 @@ public class TutorialModClient implements ClientModInitializer {
         autoTotem = new AutoTotem();
         enemyInfo = new EnemyInfo();
         parkourModule = new ParkourModule();
+        clutchModule = new ClutchModule();
         bridgeAssistModule = new BridgeAssistModule();
         overlayManager = new OverlayManager();
         autoTotem.init();
@@ -211,6 +215,10 @@ public class TutorialModClient implements ClientModInitializer {
         if (TutorialMod.CONFIG.autoTotemEnabled) {
             autoTotem.onTick(client);
         }
+
+        if (clutchModule != null) {
+            clutchModule.tick();
+        }
     }
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
@@ -277,6 +285,21 @@ public class TutorialModClient implements ClientModInitializer {
                 client.setScreen(new ModMenuIntegration().getModConfigScreenFactory().create(client.currentScreen));
             }
             openSettingsWasPressed = isOpenSettingsPressed;
+        } catch (IllegalArgumentException e) {
+            // Invalid key
+        }
+
+        // --- Toggle Clutch Hotkey ---
+        try {
+            boolean isClutchTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.clutchHotkey).getCode());
+            if (isClutchTogglePressed && !clutchToggleWasPressed) {
+                TutorialMod.CONFIG.clutchEnabled = !TutorialMod.CONFIG.clutchEnabled;
+                TutorialMod.CONFIG.save();
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    client.player.sendMessage(Text.of("Clutch: " + (TutorialMod.CONFIG.clutchEnabled ? "ON" : "OFF")), false);
+                }
+            }
+            clutchToggleWasPressed = isClutchTogglePressed;
         } catch (IllegalArgumentException e) {
             // Invalid key
         }

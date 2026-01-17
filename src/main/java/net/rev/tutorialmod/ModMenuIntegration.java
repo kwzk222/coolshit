@@ -205,6 +205,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to toggle the Parkour module."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue)
                     .build());
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Clutch Hotkey"), TutorialMod.CONFIG.clutchHotkey)
+                    .setDefaultValue("key.keyboard.j")
+                    .setTooltip(Text.literal("The hotkey to toggle the Clutch module."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchHotkey = newValue)
+                    .build());
             hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey)
                     .setDefaultValue("key.keyboard.n")
                     .setTooltip(Text.literal("The hotkey to toggle between Hold and Toggle sprint modes."))
@@ -281,6 +286,30 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Minimum number of ticks to hold sneak after it is triggered. Prevents flickering. Default: 3"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistMinHoldTicks = newValue)
                     .build());
+
+            // Clutch
+            me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder clutchSub = entryBuilder.startSubCategory(Text.literal("Clutch"));
+            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Clutch"), TutorialMod.CONFIG.clutchEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Automatically clutch with water or blocks when falling."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.clutchMinFallDistance * 10), 0, 100)
+                    .setDefaultValue(30)
+                    .setTooltip(Text.literal("Minimum fall distance to trigger clutch. Default: 3.0 (30 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue / 10.0)
+                    .build());
+            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90)
+                    .setDefaultValue(60)
+                    .setTooltip(Text.literal("Minimum pitch (looking down) to trigger clutch. Default: 60"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue())
+                    .build());
+            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Max Reach"), (long)(TutorialMod.CONFIG.clutchMaxReach * 10), 0, 50)
+                    .setDefaultValue(32)
+                    .setTooltip(Text.literal("Maximum reach for clutch placement. Default: 3.2 (32 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMaxReach = newValue / 10.0)
+                    .build());
+            movement.addEntry(clutchSub.build());
 
             // Overlay Category
             ConfigCategory overlay = builder.getOrCreateCategory(Text.literal("Overlay"));
