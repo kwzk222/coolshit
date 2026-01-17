@@ -48,7 +48,7 @@ public class ClutchModule {
 
         // Global edge detection for Danger Mode key
         boolean dangerPressed = isDangerModePressed();
-        if (state != ClutchState.IDLE && dangerPressed && !dangerKeyPressedLastTick) {
+        if (dangerPressed && !dangerKeyPressedLastTick) {
             dangerLatched = true;
         }
         dangerKeyPressedLastTick = dangerPressed;
@@ -62,7 +62,6 @@ public class ClutchModule {
                         setSlot(waterSlot);
                         state = ClutchState.PREARMED;
                         tickCounter = 0;
-                        dangerLatched = false;
                         dangerTickCounter = 0;
                     }
                 }
@@ -81,9 +80,10 @@ public class ClutchModule {
                     return;
                 }
 
-                if (dangerLatched) {
+                if (dangerLatched && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
                     dangerTickCounter = 0;
                     state = ClutchState.DANGER_PLACE_BLOCK;
+                    dangerLatched = false; // consume the latch
                     return;
                 }
 
@@ -132,16 +132,15 @@ public class ClutchModule {
                 int waterSlot = findWaterBucket();
                 if (waterSlot == -1) {
                     state = ClutchState.FINISHING;
+                    dangerLatched = false;
                     return;
                 }
 
                 setSlot(waterSlot);
                 spamUse();
 
-                if (waterPlacedBelow(p)) {
-                    state = ClutchState.LANDED;
-                    dangerLatched = false;
-                }
+                state = ClutchState.LANDED;
+                dangerLatched = false;
             }
 
             case LANDED -> {
