@@ -251,41 +251,49 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // Movement Category
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
-            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Parkour Enabled"), TutorialMod.CONFIG.parkourEnabled)
+
+            // Parkour
+            me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder parkourSub = entryBuilder.startSubCategory(Text.literal("Parkour"));
+            parkourSub.add(entryBuilder.startBooleanToggle(Text.literal("Parkour Enabled"), TutorialMod.CONFIG.parkourEnabled)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Automatically jump when about to lose ground support."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourEnabled = newValue)
                     .build());
-            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Parkour Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50)
+            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Parkour Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50)
                     .setDefaultValue(12)
                     .setTooltip(Text.literal("How far ahead to predict ground loss. Higher values jump earlier. Default: 0.12 (12 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourPredict = newValue / 100.0)
                     .build());
-            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Parkour Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150)
+            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Parkour Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150)
                     .setDefaultValue(60)
                     .setTooltip(Text.literal("Maximum drop height to ignore (prevents jumping on stairs/slabs). Default: 0.6 (60 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0)
                     .build());
-            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Prediction"), (long)(TutorialMod.CONFIG.bridgeAssistPredict * 100), 0, 50)
+            movement.addEntry(parkourSub.build());
+
+            // Bridge Assist
+            me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder bridgeAssistSub = entryBuilder.startSubCategory(Text.literal("Bridge Assist"));
+            bridgeAssistSub.add(entryBuilder.startLongSlider(Text.literal("Bridge Assist Prediction"), (long)(TutorialMod.CONFIG.bridgeAssistPredict * 100), 0, 50)
                     .setDefaultValue(16)
                     .setTooltip(Text.literal("How far ahead to predict ground loss for Bridge Assist. Default: 0.16 (16 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistPredict = newValue / 100.0)
                     .build());
-            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Start Height"), (long)(TutorialMod.CONFIG.bridgeAssistStartSneakHeight * 100), 0, 150)
+            bridgeAssistSub.add(entryBuilder.startLongSlider(Text.literal("Bridge Assist Start Height"), (long)(TutorialMod.CONFIG.bridgeAssistStartSneakHeight * 100), 0, 150)
                     .setDefaultValue(70)
                     .setTooltip(Text.literal("Start sneaking when drop is above this height. Default: 0.70 (70 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistStartSneakHeight = newValue / 100.0)
                     .build());
-            movement.addEntry(entryBuilder.startLongSlider(Text.literal("Bridge Assist Stop Height"), (long)(TutorialMod.CONFIG.bridgeAssistStopSneakHeight * 100), 0, 150)
+            bridgeAssistSub.add(entryBuilder.startLongSlider(Text.literal("Bridge Assist Stop Height"), (long)(TutorialMod.CONFIG.bridgeAssistStopSneakHeight * 100), 0, 150)
                     .setDefaultValue(50)
                     .setTooltip(Text.literal("Stop sneaking only when drop is below this height. Default: 0.50 (50 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistStopSneakHeight = newValue / 100.0)
                     .build());
-            movement.addEntry(entryBuilder.startIntSlider(Text.literal("Bridge Assist Min Hold Ticks"), TutorialMod.CONFIG.bridgeAssistMinHoldTicks, 0, 10)
+            bridgeAssistSub.add(entryBuilder.startIntSlider(Text.literal("Bridge Assist Min Hold Ticks"), TutorialMod.CONFIG.bridgeAssistMinHoldTicks, 0, 10)
                     .setDefaultValue(3)
                     .setTooltip(Text.literal("Minimum number of ticks to hold sneak after it is triggered. Prevents flickering. Default: 3"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistMinHoldTicks = newValue)
                     .build());
+            movement.addEntry(bridgeAssistSub.build());
 
             // Clutch
             me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder clutchSub = entryBuilder.startSubCategory(Text.literal("Clutch"));

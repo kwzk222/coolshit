@@ -28,8 +28,10 @@ public class ClutchModule {
         AIMING,
         SWITCHING_TO_BLOCK,
         HOLDING_USE_BLOCK,
+        WAITING_AFTER_BLOCK,
         SWITCHING_TO_WATER,
         HOLDING_USE_WATER,
+        WAITING_FOR_GROUND,
         RESTORE_SLOT,
         COOLDOWN
     }
@@ -40,9 +42,8 @@ public class ClutchModule {
     private boolean isSneaking = false;
     private int totalClutchTimer = 0;
 
-    // Timing constants
-    private static final int USE_HOLD_TICKS = 6;
-    private static final int MAX_CLUTCH_TICKS = 60;
+    // Maximum ticks to stay in a clutch sequence before forcing reset
+    private static final int MAX_CLUTCH_TICKS = 100;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
@@ -54,42 +55,49 @@ public class ClutchModule {
 
         if (state != ClutchState.IDLE) {
             totalClutchTimer++;
+            // Safety timeout or grounded state triggers slot restoration
             if (totalClutchTimer > MAX_CLUTCH_TICKS || p.isOnGround()) {
-                state = ClutchState.RESTORE_SLOT;
+                if (state != ClutchState.RESTORE_SLOT && state != ClutchState.COOLDOWN) {
+                    state = ClutchState.RESTORE_SLOT;
+                }
             }
         }
 
         switch (state) {
             case IDLE -> {
-                if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getVelocity().y < -0.1) {
+                // Early trigger based on velocity and fall distance
+                if (!p.isOnGround() && p.fallDistance >= 2.0 && p.getVelocity().y < -0.08) {
                     state = ClutchState.FALLING;
                     totalClutchTimer = 0;
                 }
             }
 
             case FALLING -> {
-                // Abort if falling too fast/too late
-                if (p.getVelocity().y < -3.5) { // Roughly 20+ block fall speed
-                    // reset? Or just wait?
+                // High-velocity abort guard (too late to clutch safely)
+                if (p.getVelocity().y < -3.0) {
+                    reset();
+                    return;
                 }
 
-                // Predictive check
-                BlockHitResult ray = getTargetBlock(4.5);
-                boolean inRange = false;
+                // Check for ground within reach
+                double reach = TutorialMod.CONFIG.clutchMaxReach;
+                BlockHitResult ray = getTargetBlock(reach + 1.0);
                 if (ray != null) {
                     double dist = p.getY() - ray.getBlockPos().getY();
-                    if (dist <= 4.0 && dist >= 1.0) {
-                        inRange = true;
+                    // Trigger when ground is close enough to start aiming/placing
+                    if (dist <= reach + 0.5) {
+                        state = ClutchState.AIMING;
                     }
                 }
 
-                if (p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch || inRange) {
+                // Manual aim trigger (pitch)
+                if (p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
                     state = ClutchState.AIMING;
                 }
             }
 
             case AIMING -> {
-                BlockHitResult hit = getTargetBlock(4.5);
+                BlockHitResult hit = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
                 if (hit != null) {
                     BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
 
@@ -111,8 +119,10 @@ public class ClutchModule {
                     ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(blockSlot);
                     ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
                     state = ClutchState.HOLDING_USE_BLOCK;
-                    stateTimer = USE_HOLD_TICKS;
+                    // Scale hold duration with fall distance for long falls
+                    stateTimer = Math.min(20, 5 + (int)(p.fallDistance / 2));
                 } else {
+                    // Fallback to water if no block found
                     state = ClutchState.SWITCHING_TO_WATER;
                 }
             }
@@ -123,6 +133,15 @@ public class ClutchModule {
                 stateTimer--;
                 if (stateTimer <= 0) {
                     mc.options.useKey.setPressed(false);
+                    state = ClutchState.WAITING_AFTER_BLOCK;
+                    stateTimer = 3; // Pipeline delay between stages
+                }
+            }
+
+            case WAITING_AFTER_BLOCK -> {
+                updateSneakState();
+                stateTimer--;
+                if (stateTimer <= 0) {
                     state = ClutchState.SWITCHING_TO_WATER;
                 }
             }
@@ -133,9 +152,9 @@ public class ClutchModule {
                     ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(waterSlot);
                     ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
                     state = ClutchState.HOLDING_USE_WATER;
-                    stateTimer = USE_HOLD_TICKS;
+                    stateTimer = Math.min(20, 5 + (int)(p.fallDistance / 2));
                 } else {
-                    state = ClutchState.RESTORE_SLOT;
+                    state = ClutchState.WAITING_FOR_GROUND;
                 }
             }
 
@@ -145,13 +164,21 @@ public class ClutchModule {
                 stateTimer--;
                 if (stateTimer <= 0) {
                     mc.options.useKey.setPressed(false);
-                    state = ClutchState.RESTORE_SLOT;
+                    state = ClutchState.WAITING_FOR_GROUND;
                 }
+            }
+
+            case WAITING_FOR_GROUND -> {
+                updateSneakState();
+                // Sequence finished, waiting to land to restore slot
             }
 
             case RESTORE_SLOT -> {
                 mc.options.useKey.setPressed(false);
-                updateSneakState(); // Ensure sneak is updated/released
+                if (isSneaking) {
+                    mc.options.sneakKey.setPressed(isManualSneakPressed());
+                    isSneaking = false;
+                }
 
                 if (originalSlot != -1) {
                     ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(originalSlot);
@@ -172,7 +199,8 @@ public class ClutchModule {
     }
 
     private void updateSneakState() {
-        BlockHitResult hit = getTargetBlock(4.5);
+        // Automatically sneak when looking at interactable blocks to ensure placement
+        BlockHitResult hit = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
         if (hit != null) {
             BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
             if (isInteractable(blockState)) {
@@ -182,15 +210,18 @@ public class ClutchModule {
             }
         }
 
-        // If not looking at interactable, or no hit, revert to manual state
-        mc.options.sneakKey.setPressed(isManualSneakPressed());
-        isSneaking = false;
+        if (isSneaking) {
+            mc.options.sneakKey.setPressed(isManualSneakPressed());
+            isSneaking = false;
+        }
     }
 
     private void reset() {
         mc.options.useKey.setPressed(false);
-        mc.options.sneakKey.setPressed(isManualSneakPressed());
-        isSneaking = false;
+        if (isSneaking) {
+            mc.options.sneakKey.setPressed(isManualSneakPressed());
+            isSneaking = false;
+        }
 
         if (originalSlot != -1 && mc.player != null) {
             ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(originalSlot);
