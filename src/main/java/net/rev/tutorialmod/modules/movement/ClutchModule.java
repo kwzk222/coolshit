@@ -26,20 +26,22 @@ public class ClutchModule {
         ARMED_BLOCK,
         EXECUTING_BLOCK,
         ARMED_WATER,
-        EXECUTING_WATER
+        EXECUTING_WATER,
+        COOLDOWN
     }
 
     private ClutchState state = ClutchState.IDLE;
     private int originalSlot = -1;
     private int execTicks = 0;
+    private int landingTicks = 0;
     private boolean usingItem = false;
     private boolean isSneaking = false;
 
     // Constants
     private static final double ARM_VELOCITY = -0.08;
-    private static final double EXEC_VELOCITY = -0.9;
+    private static final double EXEC_VELOCITY = -0.55;
     private static final double ABORT_VELOCITY = -2.1;
-    private static final int MAX_EXEC_TICKS = 10;
+    private static final int MAX_EXEC_TICKS = 15;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
@@ -51,17 +53,13 @@ public class ClutchModule {
 
         switch (state) {
             case IDLE -> {
-                // Respect all configurations for triggering
-                if (!p.isOnGround() && p.getVelocity().y < ARM_VELOCITY
-                        && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch
-                        && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance) {
-
-                    BlockHitResult ray = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach + 2.0);
+                // PHASE A: Confirm fall and Arm Early
+                if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getVelocity().y < ARM_VELOCITY) {
+                    BlockHitResult ray = getTargetBlock(10.0);
                     if (ray != null) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
 
-                        BlockState targetState = mc.world.getBlockState(ray.getBlockPos());
-                        if (isWaterloggableWhitelist(targetState)) {
+                        if (isWaterloggableWhitelist(mc.world.getBlockState(ray.getBlockPos()))) {
                             int blockSlot = findPlaceableBlock();
                             if (blockSlot != -1) {
                                 ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(blockSlot);
@@ -78,50 +76,66 @@ public class ClutchModule {
             }
 
             case ARMED_BLOCK -> {
-                if (p.isOnGround()) {
-                    reset();
-                    return;
-                }
-                if (p.getVelocity().y < EXEC_VELOCITY) {
+                if (p.isOnGround()) { reset(); return; }
+                // PHASE B: Execution Window
+                if (p.getVelocity().y < EXEC_VELOCITY && p.getPitch() >= 45.0f) {
                     execTicks = 0;
+                    landingTicks = 0;
                     state = ClutchState.EXECUTING_BLOCK;
                 }
             }
 
             case EXECUTING_BLOCK -> {
-                if (p.isOnGround() || p.getVelocity().y < ABORT_VELOCITY || execTicks >= 4) { // Blocks don't need 10 ticks
+                // Abort if way too fast for block placement or timeout
+                if (p.getVelocity().y < ABORT_VELOCITY || execTicks >= 5) {
                     stopUsing();
                     armWater(p);
                     return;
+                }
+
+                // Handle landing logic: continue spamming for 2 ticks to account for latency
+                if (p.isOnGround()) {
+                    if (landingTicks >= 2) {
+                        stopUsing();
+                        armWater(p);
+                        return;
+                    }
+                    landingTicks++;
                 }
 
                 startUsing();
                 updateSneakState();
                 execTicks++;
 
-                // Check if block was placed (crude check: solid block above target)
+                // Success detection for block (check if space above target is no longer replaceable)
                 BlockHitResult ray = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
-                if (ray != null && mc.world.getBlockState(ray.getBlockPos().up()).isSolid()) {
+                if (ray != null && !mc.world.getBlockState(ray.getBlockPos().up()).isReplaceable()) {
                     stopUsing();
                     armWater(p);
                 }
             }
 
             case ARMED_WATER -> {
-                if (p.isOnGround()) {
-                    reset();
-                    return;
-                }
-                if (p.getVelocity().y < EXEC_VELOCITY) {
+                if (p.isOnGround()) { reset(); return; }
+                if (p.getVelocity().y < EXEC_VELOCITY && p.getPitch() >= 45.0f) {
                     execTicks = 0;
+                    landingTicks = 0;
                     state = ClutchState.EXECUTING_WATER;
                 }
             }
 
             case EXECUTING_WATER -> {
-                if (p.isOnGround() || p.getVelocity().y < ABORT_VELOCITY || execTicks >= MAX_EXEC_TICKS) {
+                if (p.getVelocity().y < ABORT_VELOCITY || execTicks >= MAX_EXEC_TICKS) {
                     reset();
                     return;
+                }
+
+                if (p.isOnGround()) {
+                    if (landingTicks >= 2) {
+                        reset();
+                        return;
+                    }
+                    landingTicks++;
                 }
 
                 startUsing();
@@ -130,6 +144,13 @@ public class ClutchModule {
 
                 if (waterPlacedBelow(p)) {
                     reset();
+                }
+            }
+
+            case COOLDOWN -> {
+                execTicks--;
+                if (execTicks <= 0) {
+                    state = ClutchState.IDLE;
                 }
             }
         }
@@ -154,13 +175,13 @@ public class ClutchModule {
     }
 
     private void stopUsing() {
-        mc.options.useKey.setPressed(false);
+        mc.options.useKey.setPressed(isManualUsePressed());
         usingItem = false;
     }
 
     private boolean waterPlacedBelow(ClientPlayerEntity p) {
         BlockPos pos = p.getBlockPos();
-        // Check current block and 2 blocks below for water
+        // Check 3x3x3 volume below player for water source/flow
         for (int y = 0; y >= -2; y--) {
             for (int x = -1; x <= 1; x++) {
                 for (int z = -1; z <= 1; z++) {
@@ -172,6 +193,7 @@ public class ClutchModule {
     }
 
     private void updateSneakState() {
+        // Automatically sneak when looking at interactable blocks to ensure placement
         BlockHitResult hit = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
         if (hit != null) {
             BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
@@ -200,8 +222,8 @@ public class ClutchModule {
             ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
             originalSlot = -1;
         }
-        state = ClutchState.IDLE;
-        execTicks = 0;
+        state = ClutchState.COOLDOWN;
+        execTicks = 5; // Use as cooldown duration
     }
 
     private BlockHitResult getTargetBlock(double reach) {
@@ -280,6 +302,15 @@ public class ClutchModule {
         try {
             return net.minecraft.client.util.InputUtil.isKeyPressed(mc.getWindow().getHandle(),
                     net.minecraft.client.util.InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isManualUsePressed() {
+        try {
+            return net.minecraft.client.util.InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+                    net.minecraft.client.util.InputUtil.fromTranslationKey(mc.options.useKey.getBoundKeyTranslationKey()).getCode());
         } catch (Exception e) {
             return false;
         }
