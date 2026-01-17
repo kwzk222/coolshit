@@ -46,6 +46,11 @@ public class ModConfig {
     public boolean clutchEnabled = false;
     public double clutchMinFallDistance = 3.0;
     public double clutchActivationPitch = 60.0;
+    public int clutchRecoveryDelay = 20;
+    public int clutchSwitchDelay = 0;
+    public int clutchRestoreDelay = 5;
+    public boolean clutchRestoreOriginalSlot = true;
+    public boolean clutchAutoSwitch = true;
 
     // --- General ---
     public boolean masterEnabled = true;
@@ -89,7 +94,6 @@ public class ModConfig {
     public String toggleOverlayHotkey = "key.keyboard.h";
     public String parkourHotkey = "key.keyboard.p";
     public String clutchHotkey = "key.keyboard.j";
-    public String clutchDangerModeHotkey = "key.keyboard.left.alt";
     public String bridgeAssistHotkey = "key.keyboard.left.control";
     public String sprintModeHotkey = "key.keyboard.n";
     public String sneakModeHotkey = "key.keyboard.b";

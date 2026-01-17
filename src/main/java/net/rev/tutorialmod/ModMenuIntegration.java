@@ -318,10 +318,30 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Minimum pitch (looking down) to trigger clutch. Default: 60"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue())
                     .build());
-            clutchSub.add(entryBuilder.startStrField(Text.literal("Danger Mode Hotkey"), TutorialMod.CONFIG.clutchDangerModeHotkey)
-                    .setDefaultValue("key.keyboard.left.alt")
-                    .setTooltip(Text.literal("Hold this key while falling to place a block before water (Danger Mode)."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchDangerModeHotkey = newValue)
+            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Switch Delay (ticks)"), TutorialMod.CONFIG.clutchSwitchDelay, 0, 40)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("Time to wait after fall confirmation before switching to bucket. Default: 0"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchSwitchDelay = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Recovery Delay (ticks)"), TutorialMod.CONFIG.clutchRecoveryDelay, 0, 100)
+                    .setDefaultValue(20)
+                    .setTooltip(Text.literal("Time to wait after landing before picking up water. Default: 20"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRecoveryDelay = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay (ticks)"), TutorialMod.CONFIG.clutchRestoreDelay, 0, 100)
+                    .setDefaultValue(5)
+                    .setTooltip(Text.literal("Time to wait after recovery before switching back to original slot. Default: 5"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreDelay = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Restore Original Slot"), TutorialMod.CONFIG.clutchRestoreOriginalSlot)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Whether to switch back to the original slot after clutching."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreOriginalSlot = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Bucket Switch"), TutorialMod.CONFIG.clutchAutoSwitch)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Whether to automatically switch to the water bucket."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchAutoSwitch = newValue)
                     .build());
             movement.addEntry(clutchSub.build());
 

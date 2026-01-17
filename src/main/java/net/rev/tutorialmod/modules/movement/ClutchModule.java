@@ -5,10 +5,7 @@ import net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor;
 import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.fluid.Fluids;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.math.BlockPos;
 
@@ -18,25 +15,20 @@ public class ClutchModule {
 
     private enum ClutchState {
         IDLE,
-        PREARMED,
-        DANGER_PLACE_BLOCK,
-        DANGER_PLACE_WATER,
-        LANDED,
-        RECOVERING,
-        FINISHING
+        ARMING,      // Detected fall + pitch, waiting for switch delay
+        CLUTCHING,   // Spamming doItemUse
+        LANDED,      // Grounded, waiting for recovery delay
+        RECOVERING,  // Picking up water
+        FINISHING    // Waiting for restore delay
     }
 
     private ClutchState state = ClutchState.IDLE;
     private int originalSlot = -1;
     private int tickCounter = 0;
-    private boolean dangerLatched = false;
-    private boolean dangerKeyPressedLastTick = false;
-    private int dangerTickCounter = 0;
+    private int spamTickCounter = 0;
 
-    private static final int RECOVERY_DELAY = 20;
-    private static final int MAX_RECOVERY_TIME = 60;
+    private static final int MAX_SPAM_TICKS = 15;
     private static final int POST_GROUND_TICKS = 3;
-    private static final int SLOT_RESTORE_DELAY = 5;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
@@ -46,41 +38,43 @@ public class ClutchModule {
 
         var p = mc.player;
 
-        // Global edge detection for Danger Mode key
-        boolean dangerPressed = isDangerModePressed();
-        if (dangerPressed && !dangerKeyPressedLastTick) {
-            dangerLatched = true;
-        }
-        dangerKeyPressedLastTick = dangerPressed;
-
-        // Danger Mode Activation check: Anytime while falling and looking down
-        if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance
-            && dangerLatched && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
-
-            if (state == ClutchState.IDLE || state == ClutchState.PREARMED) {
-                if (originalSlot == -1) originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
-                dangerTickCounter = 0;
-                state = ClutchState.DANGER_PLACE_BLOCK;
-                dangerLatched = false; // consume
-                return;
-            }
+        // Disable during flight
+        if (p.getAbilities().flying) {
+            if (state != ClutchState.IDLE) reset();
+            return;
         }
 
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
-                    int waterSlot = findWaterBucket();
-                    if (waterSlot != -1) {
-                        originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
-                        setSlot(waterSlot);
-                        state = ClutchState.PREARMED;
-                        tickCounter = 0;
-                        dangerTickCounter = 0;
-                    }
+                    tickCounter = 0;
+                    state = ClutchState.ARMING;
                 }
             }
 
-            case PREARMED -> {
+            case ARMING -> {
+                if (p.isOnGround()) {
+                    reset();
+                    return;
+                }
+
+                tickCounter++;
+                if (tickCounter >= TutorialMod.CONFIG.clutchSwitchDelay) {
+                    if (TutorialMod.CONFIG.clutchAutoSwitch) {
+                        int waterSlot = findWaterBucket();
+                        if (waterSlot != -1) {
+                            if (originalSlot == -1) originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
+                            setSlot(waterSlot);
+                        }
+                    }
+
+                    tickCounter = 0;
+                    spamTickCounter = 0;
+                    state = ClutchState.CLUTCHING;
+                }
+            }
+
+            case CLUTCHING -> {
                 if (p.isOnGround()) {
                     tickCounter++;
                     if (waterPlacedBelow(p)) {
@@ -93,64 +87,30 @@ public class ClutchModule {
                     return;
                 }
 
-                // TRUE spam — every tick, no cooldown, full pipeline
-                spamUse();
+                // Interaction logic
+                boolean holdingBucket = p.getInventory().getStack(((PlayerInventoryMixin) p.getInventory()).getSelectedSlot()).isOf(Items.WATER_BUCKET);
 
-                // early-detect server placement
+                if (holdingBucket && !waterPlacedBelow(p)) {
+                    spamUse();
+                    spamTickCounter++;
+                }
+
+                // Fail-safe timeout for mid-air spam
+                if (spamTickCounter > MAX_SPAM_TICKS) {
+                    tickCounter = 0;
+                    state = ClutchState.FINISHING;
+                }
+
+                // Early detect success
                 if (waterPlacedBelow(p)) {
                     tickCounter = 0;
                     state = ClutchState.LANDED;
                 }
             }
 
-            case DANGER_PLACE_BLOCK -> {
-                if (p.isOnGround()) {
-                    state = ClutchState.FINISHING;
-                    return;
-                }
-
-                if (dangerTickCounter == 0) {
-                    int blockSlot = findPlaceableBlock();
-                    if (blockSlot == -1) {
-                        state = ClutchState.PREARMED; // fallback to normal clutch
-                        return;
-                    }
-
-                    setSlot(blockSlot);
-                    spamUse(); // place block once
-                }
-
-                dangerTickCounter++;
-
-                // Wait 1-2 ticks for the block to be registered by the engine
-                if (dangerTickCounter >= 2) {
-                    state = ClutchState.DANGER_PLACE_WATER;
-                }
-            }
-
-            case DANGER_PLACE_WATER -> {
-                if (p.isOnGround()) {
-                    state = ClutchState.LANDED;
-                    return;
-                }
-
-                int waterSlot = findWaterBucket();
-                if (waterSlot == -1) {
-                    state = ClutchState.FINISHING;
-                    return;
-                }
-
-                setSlot(waterSlot);
-                spamUse(); // Spam water until successful or landed
-
-                if (waterPlacedBelow(p)) {
-                    state = ClutchState.LANDED;
-                }
-            }
-
             case LANDED -> {
                 tickCounter++;
-                if (tickCounter >= RECOVERY_DELAY) {
+                if (tickCounter >= TutorialMod.CONFIG.clutchRecoveryDelay) {
                     tickCounter = 0;
                     state = ClutchState.RECOVERING;
                 }
@@ -158,7 +118,7 @@ public class ClutchModule {
 
             case RECOVERING -> {
                 tickCounter++;
-                if (tickCounter >= MAX_RECOVERY_TIME) {
+                if (tickCounter >= 60) { // Max recovery time fail-safe
                     tickCounter = 0;
                     state = ClutchState.FINISHING;
                     return;
@@ -174,6 +134,7 @@ public class ClutchModule {
                         state = ClutchState.FINISHING;
                     }
                 } else {
+                    // It might be that the bucket is already full or we don't have one
                     tickCounter = 0;
                     state = ClutchState.FINISHING;
                 }
@@ -181,8 +142,13 @@ public class ClutchModule {
 
             case FINISHING -> {
                 tickCounter++;
-                if (tickCounter >= SLOT_RESTORE_DELAY) {
-                    reset();
+                if (tickCounter >= TutorialMod.CONFIG.clutchRestoreDelay) {
+                    if (TutorialMod.CONFIG.clutchRestoreOriginalSlot && originalSlot != -1) {
+                        setSlot(originalSlot);
+                    }
+                    originalSlot = -1;
+                    state = ClutchState.IDLE;
+                    tickCounter = 0;
                 }
             }
         }
@@ -212,14 +178,15 @@ public class ClutchModule {
 
     private void reset() {
         if (originalSlot != -1 && mc.player != null) {
-            setSlot(originalSlot);
+            // Only switch back if configured, but always clear the variable
+            if (TutorialMod.CONFIG.clutchRestoreOriginalSlot) {
+                setSlot(originalSlot);
+            }
             originalSlot = -1;
         }
         state = ClutchState.IDLE;
         tickCounter = 0;
-        dangerLatched = false;
-        dangerKeyPressedLastTick = false;
-        dangerTickCounter = 0;
+        spamTickCounter = 0;
     }
 
     private int findWaterBucket() {
@@ -236,24 +203,5 @@ public class ClutchModule {
                 return i;
         }
         return -1;
-    }
-
-    private int findPlaceableBlock() {
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = mc.player.getInventory().getStack(i);
-            if (stack.getItem() instanceof BlockItem) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private boolean isDangerModePressed() {
-        try {
-            return InputUtil.isKeyPressed(mc.getWindow().getHandle(),
-                    InputUtil.fromTranslationKey(TutorialMod.CONFIG.clutchDangerModeHotkey).getCode());
-        } catch (Exception e) {
-            return false;
-        }
     }
 }
