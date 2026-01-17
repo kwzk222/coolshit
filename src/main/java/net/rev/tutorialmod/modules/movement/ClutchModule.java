@@ -17,7 +17,6 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.registry.Registries;
 
 public class ClutchModule {
 
@@ -27,18 +26,29 @@ public class ClutchModule {
         IDLE,
         FALLING,
         AIMING,
-        SWITCH_TO_BLOCK,
-        PLACE_BLOCK,
-        SWITCH_TO_WATER,
-        PLACE_WATER,
+        SWITCHING_TO_BLOCK,
+        WAITING_SYNC_BLOCK,
+        PLACING_BLOCK,
+        WAITING_CONFIRM_BLOCK,
+        SWITCHING_TO_WATER,
+        WAITING_SYNC_WATER,
+        PLACING_WATER,
+        WAITING_CONFIRM_WATER,
+        RESTORE_SLOT,
         COOLDOWN
     }
 
     private ClutchState state = ClutchState.IDLE;
-    private int tickDelay = 0;
+    private int stateTimer = 0;
     private int originalSlot = -1;
     private boolean isSneaking = false;
-    private BlockPos lastTargetPos = null;
+    private BlockPos currentTarget = null;
+    private int totalClutchTimer = 0;
+
+    // Timing constants
+    private static final int SLOT_SYNC_TICKS = 3;
+    private static final int POST_PLACE_TICKS = 2;
+    private static final int MAX_CLUTCH_TICKS = 40;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
@@ -46,132 +56,167 @@ public class ClutchModule {
             return;
         }
 
-        if (tickDelay > 0) {
-            tickDelay--;
-            return;
-        }
-
         var p = mc.player;
+
+        if (state != ClutchState.IDLE) {
+            totalClutchTimer++;
+            if (totalClutchTimer > MAX_CLUTCH_TICKS || p.isOnGround()) {
+                state = ClutchState.RESTORE_SLOT;
+            }
+        }
 
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getVelocity().y < -0.1) {
                     state = ClutchState.FALLING;
+                    totalClutchTimer = 0;
                 }
             }
 
             case FALLING -> {
-                if (p.isOnGround()) {
-                    state = ClutchState.IDLE;
-                    return;
+                double reach = TutorialMod.CONFIG.clutchMaxReach;
+                BlockHitResult ray = getTargetBlock(reach + 1.0); // look slightly further
+                if (ray != null) {
+                    double dist = p.getY() - ray.getBlockPos().getY();
+                    if (dist <= reach && dist >= 1.5) {
+                        state = ClutchState.AIMING;
+                    }
                 }
 
-                // Predictive check
-                double predictedY = p.getY() + p.getVelocity().y * 2.0;
-                BlockHitResult ray = getTargetBlock(4.5);
-
-                if (p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch || (ray != null && predictedY <= ray.getBlockPos().getY() + 3.2)) {
+                if (p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
                     state = ClutchState.AIMING;
                 }
             }
 
             case AIMING -> {
-                if (p.isOnGround()) {
-                    reset();
-                    return;
-                }
-
-                BlockHitResult hit = getTargetBlock(4.5);
+                BlockHitResult hit = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
                 if (hit != null) {
-                    lastTargetPos = hit.getBlockPos();
-                    BlockState blockState = mc.world.getBlockState(lastTargetPos);
+                    currentTarget = hit.getBlockPos();
+                    BlockState blockState = mc.world.getBlockState(currentTarget);
 
                     if (originalSlot == -1) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
                     }
 
                     if (isWaterloggableWhitelist(blockState)) {
-                        state = ClutchState.SWITCH_TO_BLOCK;
+                        state = ClutchState.SWITCHING_TO_BLOCK;
                     } else {
-                        state = ClutchState.SWITCH_TO_WATER;
+                        state = ClutchState.SWITCHING_TO_WATER;
                     }
+                    stateTimer = 0;
                 }
             }
 
-            case SWITCH_TO_BLOCK -> {
+            case SWITCHING_TO_BLOCK -> {
                 int blockSlot = findPlaceableBlock();
                 if (blockSlot != -1) {
-                    ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(blockSlot);
+                    ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(blockSlot);
                     ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
-                    tickDelay = 1;
-                    state = ClutchState.PLACE_BLOCK;
+                    state = ClutchState.WAITING_SYNC_BLOCK;
+                    stateTimer = SLOT_SYNC_TICKS;
                 } else {
-                    state = ClutchState.SWITCH_TO_WATER;
+                    state = ClutchState.SWITCHING_TO_WATER;
                 }
             }
 
-            case PLACE_BLOCK -> {
-                BlockHitResult hit = getTargetBlock(4.5);
-                BlockPos targetPos = (hit != null) ? hit.getBlockPos() : lastTargetPos;
+            case WAITING_SYNC_BLOCK -> {
+                stateTimer--;
+                if (stateTimer <= 0) {
+                    state = ClutchState.PLACING_BLOCK;
+                }
+            }
 
-                if (targetPos != null) {
-                    handleSneak(mc.world.getBlockState(targetPos));
+            case PLACING_BLOCK -> {
+                if (currentTarget != null) {
+                    handleSneak(mc.world.getBlockState(currentTarget));
 
-                    // Interaction with the top face of the block
                     BlockHitResult placementHit = new BlockHitResult(
-                        Vec3d.ofCenter(targetPos).add(0, 0.5, 0),
+                        Vec3d.ofCenter(currentTarget),
                         Direction.UP,
-                        targetPos,
+                        currentTarget,
                         false
                     );
+
                     mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placementHit);
                     p.swingHand(Hand.MAIN_HAND);
 
-                    lastTargetPos = targetPos.up();
-                    state = ClutchState.SWITCH_TO_WATER;
-                    tickDelay = 1;
+                    currentTarget = currentTarget.up();
+                    state = ClutchState.WAITING_CONFIRM_BLOCK;
+                    stateTimer = POST_PLACE_TICKS;
                 } else {
-                    reset();
+                    state = ClutchState.RESTORE_SLOT;
                 }
             }
 
-            case SWITCH_TO_WATER -> {
+            case WAITING_CONFIRM_BLOCK -> {
+                stateTimer--;
+                if (stateTimer <= 0) {
+                    state = ClutchState.SWITCHING_TO_WATER;
+                }
+            }
+
+            case SWITCHING_TO_WATER -> {
                 int waterSlot = findWaterBucket();
                 if (waterSlot != -1) {
-                    ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(waterSlot);
+                    ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(waterSlot);
                     ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
-                    tickDelay = 1;
-                    state = ClutchState.PLACE_WATER;
+                    state = ClutchState.WAITING_SYNC_WATER;
+                    stateTimer = SLOT_SYNC_TICKS;
                 } else {
-                    reset();
+                    state = ClutchState.RESTORE_SLOT;
                 }
             }
 
-            case PLACE_WATER -> {
-                BlockHitResult hit = getTargetBlock(4.5);
-                BlockPos targetPos = (hit != null) ? hit.getBlockPos() : lastTargetPos;
+            case WAITING_SYNC_WATER -> {
+                stateTimer--;
+                if (stateTimer <= 0) {
+                    state = ClutchState.PLACING_WATER;
+                }
+            }
 
-                if (targetPos != null) {
-                    handleSneak(mc.world.getBlockState(targetPos));
+            case PLACING_WATER -> {
+                if (currentTarget != null) {
+                    handleSneak(mc.world.getBlockState(currentTarget));
 
                     BlockHitResult placementHit = new BlockHitResult(
-                        Vec3d.ofCenter(targetPos).add(0, 0.5, 0),
+                        Vec3d.ofCenter(currentTarget),
                         Direction.UP,
-                        targetPos,
+                        currentTarget,
                         false
                     );
+
                     mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placementHit);
                     p.swingHand(Hand.MAIN_HAND);
 
-                    state = ClutchState.COOLDOWN;
-                    tickDelay = 1;
+                    state = ClutchState.WAITING_CONFIRM_WATER;
+                    stateTimer = POST_PLACE_TICKS;
                 } else {
-                    reset();
+                    state = ClutchState.RESTORE_SLOT;
                 }
+            }
+
+            case WAITING_CONFIRM_WATER -> {
+                stateTimer--;
+                if (stateTimer <= 0) {
+                    state = ClutchState.RESTORE_SLOT;
+                }
+            }
+
+            case RESTORE_SLOT -> {
+                if (originalSlot != -1) {
+                    ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(originalSlot);
+                    ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+                    originalSlot = -1;
+                }
+                state = ClutchState.COOLDOWN;
+                stateTimer = 2;
             }
 
             case COOLDOWN -> {
-                reset();
+                stateTimer--;
+                if (stateTimer <= 0) {
+                    reset();
+                }
             }
         }
     }
@@ -197,8 +242,9 @@ public class ClutchModule {
             originalSlot = -1;
         }
         state = ClutchState.IDLE;
-        tickDelay = 0;
-        lastTargetPos = null;
+        stateTimer = 0;
+        currentTarget = null;
+        totalClutchTimer = 0;
     }
 
     private BlockHitResult getTargetBlock(double reach) {
