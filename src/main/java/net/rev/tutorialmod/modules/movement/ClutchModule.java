@@ -16,8 +16,6 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.ActionResult;
 
 public class ClutchModule {
 
@@ -34,13 +32,14 @@ public class ClutchModule {
     private ClutchState state = ClutchState.IDLE;
     private int originalSlot = -1;
     private int execTicks = 0;
+    private boolean usingItem = false;
+    private boolean isSneaking = false;
 
     // Constants
     private static final double ARM_VELOCITY = -0.08;
     private static final double EXEC_VELOCITY = -0.9;
     private static final double ABORT_VELOCITY = -2.1;
-    private static final int MAX_BLOCK_TICKS = 3;
-    private static final int MAX_WATER_TICKS = 10;
+    private static final int MAX_EXEC_TICKS = 10;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
@@ -52,9 +51,11 @@ public class ClutchModule {
 
         switch (state) {
             case IDLE -> {
+                // Respect all configurations for triggering
                 if (!p.isOnGround() && p.getVelocity().y < ARM_VELOCITY
                         && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch
                         && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance) {
+
                     BlockHitResult ray = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach + 2.0);
                     if (ray != null) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
@@ -88,17 +89,20 @@ public class ClutchModule {
             }
 
             case EXECUTING_BLOCK -> {
-                if (p.isOnGround() || p.getVelocity().y < ABORT_VELOCITY || execTicks >= MAX_BLOCK_TICKS) {
+                if (p.isOnGround() || p.getVelocity().y < ABORT_VELOCITY || execTicks >= 4) { // Blocks don't need 10 ticks
+                    stopUsing();
                     armWater(p);
                     return;
                 }
 
-                attemptPlacement(p, Direction.UP);
+                startUsing();
+                updateSneakState();
                 execTicks++;
 
-                // Check if block was placed
+                // Check if block was placed (crude check: solid block above target)
                 BlockHitResult ray = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
                 if (ray != null && mc.world.getBlockState(ray.getBlockPos().up()).isSolid()) {
+                    stopUsing();
                     armWater(p);
                 }
             }
@@ -115,12 +119,13 @@ public class ClutchModule {
             }
 
             case EXECUTING_WATER -> {
-                if (p.isOnGround() || p.getVelocity().y < ABORT_VELOCITY || execTicks >= MAX_WATER_TICKS) {
+                if (p.isOnGround() || p.getVelocity().y < ABORT_VELOCITY || execTicks >= MAX_EXEC_TICKS) {
                     reset();
                     return;
                 }
 
-                attemptPlacement(p, Direction.UP);
+                startUsing();
+                updateSneakState();
                 execTicks++;
 
                 if (waterPlacedBelow(p)) {
@@ -141,59 +146,66 @@ public class ClutchModule {
         }
     }
 
+    private void startUsing() {
+        if (!usingItem) {
+            mc.options.useKey.setPressed(true);
+            usingItem = true;
+        }
+    }
+
+    private void stopUsing() {
+        mc.options.useKey.setPressed(false);
+        usingItem = false;
+    }
+
     private boolean waterPlacedBelow(ClientPlayerEntity p) {
-        // Check a small area below the player for water
         BlockPos pos = p.getBlockPos();
-        for (int x = -1; x <= 1; x++) {
-            for (int z = -1; z <= 1; z++) {
-                if (p.getWorld().getFluidState(pos.add(x, -1, z)).isOf(Fluids.WATER)) return true;
-                if (p.getWorld().getFluidState(pos.add(x, -2, z)).isOf(Fluids.WATER)) return true;
+        // Check current block and 2 blocks below for water
+        for (int y = 0; y >= -2; y--) {
+            for (int x = -1; x <= 1; x++) {
+                for (int z = -1; z <= 1; z++) {
+                    if (p.getWorld().getFluidState(pos.add(x, y, z)).isOf(Fluids.WATER)) return true;
+                }
             }
         }
         return false;
     }
 
-    private void attemptPlacement(ClientPlayerEntity p, Direction face) {
-        HitResult hit = p.raycast(TutorialMod.CONFIG.clutchMaxReach, 0.0f, false);
-        if (hit.getType() != HitResult.Type.BLOCK) return;
-
-        BlockHitResult bhr = (BlockHitResult) hit;
-        BlockState blockState = mc.world.getBlockState(bhr.getBlockPos());
-
-        // Auto-sneak for interactable blocks
-        if (isInteractable(blockState)) {
-            mc.options.sneakKey.setPressed(true);
+    private void updateSneakState() {
+        BlockHitResult hit = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
+        if (hit != null) {
+            BlockState blockState = mc.world.getBlockState(hit.getBlockPos());
+            if (isInteractable(blockState)) {
+                mc.options.sneakKey.setPressed(true);
+                isSneaking = true;
+                return;
+            }
         }
 
-        BlockHitResult placeHit = new BlockHitResult(
-            bhr.getPos(),
-            face,
-            bhr.getBlockPos(),
-            false
-        );
-
-        ActionResult result = mc.interactionManager.interactBlock(p, Hand.MAIN_HAND, placeHit);
-
-        if (result.isAccepted()) {
-            p.swingHand(Hand.MAIN_HAND);
+        if (isSneaking) {
+            mc.options.sneakKey.setPressed(isManualSneakPressed());
+            isSneaking = false;
         }
     }
 
     private void reset() {
-        if (mc.player != null) {
-            if (originalSlot != -1) {
-                ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(originalSlot);
-                ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
-            }
+        stopUsing();
+        if (isSneaking) {
             mc.options.sneakKey.setPressed(isManualSneakPressed());
+            isSneaking = false;
         }
-        originalSlot = -1;
-        execTicks = 0;
+
+        if (originalSlot != -1 && mc.player != null) {
+            ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(originalSlot);
+            ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+            originalSlot = -1;
+        }
         state = ClutchState.IDLE;
+        execTicks = 0;
     }
 
     private BlockHitResult getTargetBlock(double reach) {
-        HitResult hit = mc.player.raycast(reach, 0.0f, false);
+        HitResult hit = mc.player.raycast(reach, 1.0f, false);
         if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
             return (BlockHitResult) hit;
         }
