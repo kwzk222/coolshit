@@ -30,7 +30,8 @@ public class ClutchModule {
     private int originalSlot = -1;
     private int tickCounter = 0;
     private boolean dangerLatched = false;
-    private boolean blockPlaced = false;
+    private boolean dangerKeyPressedLastTick = false;
+    private int dangerTickCounter = 0;
 
     private static final int RECOVERY_DELAY = 20;
     private static final int MAX_RECOVERY_TIME = 60;
@@ -45,6 +46,13 @@ public class ClutchModule {
 
         var p = mc.player;
 
+        // Global edge detection for Danger Mode key
+        boolean dangerPressed = isDangerModePressed();
+        if (state != ClutchState.IDLE && dangerPressed && !dangerKeyPressedLastTick) {
+            dangerLatched = true;
+        }
+        dangerKeyPressedLastTick = dangerPressed;
+
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
@@ -55,7 +63,7 @@ public class ClutchModule {
                         state = ClutchState.PREARMED;
                         tickCounter = 0;
                         dangerLatched = false;
-                        blockPlaced = false;
+                        dangerTickCounter = 0;
                     }
                 }
             }
@@ -73,8 +81,8 @@ public class ClutchModule {
                     return;
                 }
 
-                if (!dangerLatched && isDangerModePressed()) {
-                    dangerLatched = true;
+                if (dangerLatched) {
+                    dangerTickCounter = 0;
                     state = ClutchState.DANGER_PLACE_BLOCK;
                     return;
                 }
@@ -95,20 +103,24 @@ public class ClutchModule {
                     return;
                 }
 
-                if (!blockPlaced) {
+                if (dangerTickCounter == 0) {
                     int blockSlot = findPlaceableBlock();
                     if (blockSlot == -1) {
                         state = ClutchState.PREARMED; // fallback
+                        dangerLatched = false;
                         return;
                     }
 
                     setSlot(blockSlot);
-                    spamUse();
-                    blockPlaced = true;
-                    return; // Wait a tick for client to sync
+                    spamUse(); // place block
                 }
 
-                state = ClutchState.DANGER_PLACE_WATER;
+                dangerTickCounter++;
+
+                // Give the client 1 tick to sync the placed block, then switch to water
+                if (dangerTickCounter >= 1) {
+                    state = ClutchState.DANGER_PLACE_WATER;
+                }
             }
 
             case DANGER_PLACE_WATER -> {
@@ -128,6 +140,7 @@ public class ClutchModule {
 
                 if (waterPlacedBelow(p)) {
                     state = ClutchState.LANDED;
+                    dangerLatched = false;
                 }
             }
 
@@ -201,7 +214,8 @@ public class ClutchModule {
         state = ClutchState.IDLE;
         tickCounter = 0;
         dangerLatched = false;
-        blockPlaced = false;
+        dangerKeyPressedLastTick = false;
+        dangerTickCounter = 0;
     }
 
     private int findWaterBucket() {
