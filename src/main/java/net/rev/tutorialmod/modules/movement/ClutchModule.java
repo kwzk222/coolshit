@@ -8,6 +8,7 @@ import net.minecraft.block.enums.BlockHalf;
 import net.minecraft.block.enums.SlabType;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.fluid.Fluids;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -24,109 +25,135 @@ public class ClutchModule {
 
     private enum ClutchState {
         IDLE,
-        STAGE_BLOCK,
-        STAGE_WATER,
-        DONE
+        ARMED_BLOCK,
+        EXECUTING_BLOCK,
+        ARMED_WATER,
+        EXECUTING_WATER
     }
 
     private ClutchState state = ClutchState.IDLE;
     private int originalSlot = -1;
-    private int clutchTicks = 0;
-    private int maxTicks = 0;
+    private int execTicks = 0;
 
-    // Abort threshold for vertical velocity
-    private static final double MAX_VELOCITY = -1.9;
+    // Constants
+    private static final double ARM_VELOCITY = -0.08;
+    private static final double EXEC_VELOCITY = -0.9;
+    private static final double ABORT_VELOCITY = -2.1;
+    private static final int MAX_BLOCK_TICKS = 3;
+    private static final int MAX_WATER_TICKS = 10;
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
-            if (state != ClutchState.IDLE) endClutch();
+            if (state != ClutchState.IDLE) reset();
             return;
         }
 
         var p = mc.player;
 
-        // Abort if landed or falling too fast for placement
-        if (p.isOnGround() || p.getVelocity().y < MAX_VELOCITY) {
-            if (state != ClutchState.IDLE) endClutch();
-            return;
-        }
-
         switch (state) {
             case IDLE -> {
-                // Respect configured fall distance and pitch thresholds
-                if (p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance
+                if (!p.isOnGround() && p.getVelocity().y < ARM_VELOCITY
                         && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch
-                        && p.getVelocity().y < -0.15) {
-
-                    BlockHitResult ray = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
+                        && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance) {
+                    BlockHitResult ray = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach + 2.0);
                     if (ray != null) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
-                        clutchTicks = 0;
 
-                        boolean isWaterloggable = isWaterloggableWhitelist(mc.world.getBlockState(ray.getBlockPos()));
-                        if (isWaterloggable) {
-                            state = ClutchState.STAGE_BLOCK;
-                            maxTicks = 3;
+                        BlockState targetState = mc.world.getBlockState(ray.getBlockPos());
+                        if (isWaterloggableWhitelist(targetState)) {
+                            int blockSlot = findPlaceableBlock();
+                            if (blockSlot != -1) {
+                                ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(blockSlot);
+                                ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+                                state = ClutchState.ARMED_BLOCK;
+                            } else {
+                                armWater(p);
+                            }
                         } else {
-                            state = ClutchState.STAGE_WATER;
-                            // Scale hold duration based on fall distance for reliability
-                            maxTicks = Math.min(15, 6 + (int)(p.fallDistance / 2));
+                            armWater(p);
                         }
                     }
                 }
             }
 
-            case STAGE_BLOCK -> {
-                int blockSlot = findPlaceableBlock();
-                if (blockSlot != -1) {
-                    ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(blockSlot);
-                    ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
-
-                    attemptPlacement(p, Direction.UP);
-                    clutchTicks++;
-
-                    if (clutchTicks >= maxTicks) {
-                        clutchTicks = 0;
-                        state = ClutchState.STAGE_WATER;
-                        // Set window for the next stage
-                        maxTicks = Math.min(15, 6 + (int)(p.fallDistance / 2));
-                    }
-                } else {
-                    // Fallback to water if no block is available
-                    clutchTicks = 0;
-                    state = ClutchState.STAGE_WATER;
-                    maxTicks = Math.min(15, 6 + (int)(p.fallDistance / 2));
+            case ARMED_BLOCK -> {
+                if (p.isOnGround()) {
+                    reset();
+                    return;
+                }
+                if (p.getVelocity().y < EXEC_VELOCITY) {
+                    execTicks = 0;
+                    state = ClutchState.EXECUTING_BLOCK;
                 }
             }
 
-            case STAGE_WATER -> {
-                int waterSlot = findWaterBucket();
-                if (waterSlot != -1) {
-                    ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(waterSlot);
-                    ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+            case EXECUTING_BLOCK -> {
+                if (p.isOnGround() || p.getVelocity().y < ABORT_VELOCITY || execTicks >= MAX_BLOCK_TICKS) {
+                    armWater(p);
+                    return;
+                }
 
-                    attemptPlacement(p, Direction.UP);
-                    clutchTicks++;
+                attemptPlacement(p, Direction.UP);
+                execTicks++;
 
-                    // Crude check for success (bucket emptied). End sequence immediately if placed.
-                    if (p.getMainHandStack().isOf(Items.BUCKET) || p.getOffHandStack().isOf(Items.BUCKET)) {
-                        state = ClutchState.DONE;
-                    } else if (clutchTicks >= maxTicks) {
-                        state = ClutchState.DONE;
-                    }
-                } else {
-                    state = ClutchState.DONE;
+                // Check if block was placed
+                BlockHitResult ray = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
+                if (ray != null && mc.world.getBlockState(ray.getBlockPos().up()).isSolid()) {
+                    armWater(p);
                 }
             }
 
-            case DONE -> {
-                endClutch();
+            case ARMED_WATER -> {
+                if (p.isOnGround()) {
+                    reset();
+                    return;
+                }
+                if (p.getVelocity().y < EXEC_VELOCITY) {
+                    execTicks = 0;
+                    state = ClutchState.EXECUTING_WATER;
+                }
+            }
+
+            case EXECUTING_WATER -> {
+                if (p.isOnGround() || p.getVelocity().y < ABORT_VELOCITY || execTicks >= MAX_WATER_TICKS) {
+                    reset();
+                    return;
+                }
+
+                attemptPlacement(p, Direction.UP);
+                execTicks++;
+
+                if (waterPlacedBelow(p)) {
+                    reset();
+                }
             }
         }
     }
 
+    private void armWater(ClientPlayerEntity p) {
+        int waterSlot = findWaterBucket();
+        if (waterSlot != -1) {
+            ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(waterSlot);
+            ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+            state = ClutchState.ARMED_WATER;
+        } else {
+            reset();
+        }
+    }
+
+    private boolean waterPlacedBelow(ClientPlayerEntity p) {
+        // Check a small area below the player for water
+        BlockPos pos = p.getBlockPos();
+        for (int x = -1; x <= 1; x++) {
+            for (int z = -1; z <= 1; z++) {
+                if (p.getWorld().getFluidState(pos.add(x, -1, z)).isOf(Fluids.WATER)) return true;
+                if (p.getWorld().getFluidState(pos.add(x, -2, z)).isOf(Fluids.WATER)) return true;
+            }
+        }
+        return false;
+    }
+
     private void attemptPlacement(ClientPlayerEntity p, Direction face) {
-        // Use 0.0f for tickDelta to use exact current position during high-speed fall
         HitResult hit = p.raycast(TutorialMod.CONFIG.clutchMaxReach, 0.0f, false);
         if (hit.getType() != HitResult.Type.BLOCK) return;
 
@@ -134,8 +161,7 @@ public class ClutchModule {
         BlockState blockState = mc.world.getBlockState(bhr.getBlockPos());
 
         // Auto-sneak for interactable blocks
-        boolean interactable = isInteractable(blockState);
-        if (interactable) {
+        if (isInteractable(blockState)) {
             mc.options.sneakKey.setPressed(true);
         }
 
@@ -153,7 +179,7 @@ public class ClutchModule {
         }
     }
 
-    private void endClutch() {
+    private void reset() {
         if (mc.player != null) {
             if (originalSlot != -1) {
                 ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(originalSlot);
@@ -162,7 +188,7 @@ public class ClutchModule {
             mc.options.sneakKey.setPressed(isManualSneakPressed());
         }
         originalSlot = -1;
-        clutchTicks = 0;
+        execTicks = 0;
         state = ClutchState.IDLE;
     }
 
