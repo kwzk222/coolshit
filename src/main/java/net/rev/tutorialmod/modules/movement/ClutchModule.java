@@ -5,7 +5,9 @@ import net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor;
 import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.fluid.Fluids;
+import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.math.BlockPos;
@@ -17,6 +19,8 @@ public class ClutchModule {
     private enum ClutchState {
         IDLE,
         PREARMED,
+        DANGER_PLACE_BLOCK,
+        DANGER_PLACE_WATER,
         LANDED,
         RECOVERING,
         FINISHING
@@ -65,12 +69,58 @@ public class ClutchModule {
                     return;
                 }
 
-                // TRUE spam — every tick, no cooldown, full pipeline
-                spamUse();
+                if (isDangerModePressed()) {
+                    state = ClutchState.DANGER_PLACE_BLOCK;
+                } else {
+                    // TRUE spam — every tick, no cooldown, full pipeline
+                    spamUse();
+                }
 
                 // early-detect server placement
                 if (waterPlacedBelow(p)) {
                     tickCounter = 0;
+                    state = ClutchState.LANDED;
+                }
+            }
+
+            case DANGER_PLACE_BLOCK -> {
+                if (p.isOnGround()) {
+                    state = ClutchState.FINISHING;
+                    return;
+                }
+
+                int blockSlot = findPlaceableBlock();
+                if (blockSlot == -1) {
+                    state = ClutchState.PREARMED;
+                    return;
+                }
+
+                setSlot(blockSlot);
+                spamUse();
+
+                // detect block placement by checking beneath player
+                BlockPos below = p.getBlockPos().down();
+                if (!mc.world.getBlockState(below).isAir()) {
+                    state = ClutchState.DANGER_PLACE_WATER;
+                }
+            }
+
+            case DANGER_PLACE_WATER -> {
+                if (p.isOnGround()) {
+                    state = ClutchState.LANDED;
+                    return;
+                }
+
+                int waterSlot = findWaterBucket();
+                if (waterSlot == -1) {
+                    state = ClutchState.FINISHING;
+                    return;
+                }
+
+                setSlot(waterSlot);
+                spamUse();
+
+                if (waterPlacedBelow(p)) {
                     state = ClutchState.LANDED;
                 }
             }
@@ -160,5 +210,24 @@ public class ClutchModule {
                 return i;
         }
         return -1;
+    }
+
+    private int findPlaceableBlock() {
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.player.getInventory().getStack(i);
+            if (stack.getItem() instanceof BlockItem) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isDangerModePressed() {
+        try {
+            return InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+                    InputUtil.fromTranslationKey(TutorialMod.CONFIG.clutchDangerModeHotkey).getCode());
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

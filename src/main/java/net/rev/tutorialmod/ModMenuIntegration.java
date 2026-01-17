@@ -211,6 +211,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to toggle the Clutch module."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchHotkey = newValue)
                     .build());
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Bridge Assist Hotkey"), TutorialMod.CONFIG.bridgeAssistHotkey)
+                    .setDefaultValue("key.keyboard.left.control")
+                    .setTooltip(Text.literal("The hotkey to hold to activate the Bridge Assist module."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistHotkey = newValue)
+                    .build());
             hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey)
                     .setDefaultValue("key.keyboard.n")
                     .setTooltip(Text.literal("The hotkey to toggle between Hold and Toggle sprint modes."))
@@ -312,6 +317,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(60)
                     .setTooltip(Text.literal("Minimum pitch (looking down) to trigger clutch. Default: 60"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue())
+                    .build());
+            clutchSub.add(entryBuilder.startStrField(Text.literal("Danger Mode Hotkey"), TutorialMod.CONFIG.clutchDangerModeHotkey)
+                    .setDefaultValue("key.keyboard.left.alt")
+                    .setTooltip(Text.literal("Hold this key while falling to place a block before water (Danger Mode)."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchDangerModeHotkey = newValue)
                     .build());
             movement.addEntry(clutchSub.build());
 

@@ -89,7 +89,8 @@ public class ModConfig {
     public String toggleOverlayHotkey = "key.keyboard.h";
     public String parkourHotkey = "key.keyboard.p";
     public String clutchHotkey = "key.keyboard.j";
-    public String bridgeAssistHotkey = "key.keyboard.left.alt";
+    public String clutchDangerModeHotkey = "key.keyboard.left.alt";
+    public String bridgeAssistHotkey = "key.keyboard.left.control";
     public String sprintModeHotkey = "key.keyboard.n";
     public String sneakModeHotkey = "key.keyboard.b";
     public boolean activeInInventory = false;
