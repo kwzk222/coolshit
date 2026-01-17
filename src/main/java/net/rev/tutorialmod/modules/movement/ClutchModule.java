@@ -11,7 +11,6 @@ import net.minecraft.fluid.Fluids;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -20,92 +19,154 @@ public class ClutchModule {
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
 
-    private boolean clutching = false;
+    private enum ClutchState {
+        IDLE,
+        FALLING,
+        PLACING_BLOCK,
+        PLACING_WATER,
+        LANDED,
+        RECOVERING,
+        COOLDOWN
+    }
+
+    private ClutchState state = ClutchState.IDLE;
     private int originalSlot = -1;
-    private boolean blockPlaced = false;
+    private BlockPos targetPos = null;
+    private int tickCounter = 0;
     private boolean isSneaking = false;
+
+    private static final int RECOVERY_DELAY = 20; // Ticks after landing to wait before picking up water
+    private static final int MAX_RECOVERY_TIME = 60; // Max ticks to try recovering
 
     public void tick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.clutchEnabled) {
-            if (clutching) reset();
+            if (state != ClutchState.IDLE) reset();
             return;
         }
 
         var p = mc.player;
 
-        // Reset when grounded
-        if (p.isOnGround()) {
-            if (clutching) reset();
-            return;
-        }
-
-        // Trigger: fall distance + look down
-        if (p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
-            if (!clutching) {
-                clutching = true;
-                originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
-                blockPlaced = false;
-            }
-
-            BlockHitResult hit = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
-            if (hit == null) {
-                stopUsing();
-                return;
-            }
-
-            BlockState targetState = mc.world.getBlockState(hit.getBlockPos());
-            boolean waterloggable = isWaterloggableWhitelist(targetState);
-
-            if (waterloggable && !blockPlaced) {
-                // PHASE A: Block placement
-                int blockSlot = findPlaceableBlock();
-                if (blockSlot != -1) {
-                    ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(blockSlot);
-                    ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
-
-                    updateSneakState(targetState);
-                    startUsing();
-
-                    // Check if block was placed (space above target is no longer replaceable)
-                    if (!mc.world.getBlockState(hit.getBlockPos().up()).isReplaceable()) {
-                        blockPlaced = true;
-                        stopUsing(); // Stop block usage to switch to water
-                    }
-                } else {
-                    blockPlaced = true; // Fallback
+        switch (state) {
+            case IDLE -> {
+                if (!p.isOnGround() && p.fallDistance >= TutorialMod.CONFIG.clutchMinFallDistance && p.getPitch() >= TutorialMod.CONFIG.clutchActivationPitch) {
+                    state = ClutchState.FALLING;
+                    originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
                 }
-            } else {
-                // PHASE B: Water placement
-                int waterSlot = findWaterBucket();
-                if (waterSlot != -1) {
-                    ((PlayerInventoryMixin) p.getInventory()).setSelectedSlot(waterSlot);
-                    ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+            }
 
-                    updateSneakState(targetState);
-                    startUsing();
+            case FALLING -> {
+                if (p.isOnGround()) {
+                    reset();
+                    return;
+                }
 
-                    // Success detection for water
+                BlockHitResult hit = getTargetBlock(TutorialMod.CONFIG.clutchMaxReach);
+                if (hit != null) {
+                    targetPos = hit.getBlockPos();
+                    BlockState targetState = mc.world.getBlockState(targetPos);
+
+                    if (isWaterloggableWhitelist(targetState)) {
+                        state = ClutchState.PLACING_BLOCK;
+                    } else {
+                        state = ClutchState.PLACING_WATER;
+                    }
+                }
+            }
+
+            case PLACING_BLOCK -> {
+                if (p.isOnGround()) {
+                    reset();
+                    return;
+                }
+
+                int blockSlot = findPlaceableBlock();
+                if (blockSlot == -1) {
+                    state = ClutchState.PLACING_WATER; // Fallback to water if no blocks
+                    return;
+                }
+
+                setSlot(blockSlot);
+                updateSneakState(mc.world.getBlockState(targetPos));
+                mc.options.useKey.setPressed(true);
+
+                // Detect if block was placed (check space above target)
+                if (!mc.world.getBlockState(targetPos.up()).isReplaceable()) {
+                    mc.options.useKey.setPressed(false);
+                    state = ClutchState.PLACING_WATER;
+                }
+            }
+
+            case PLACING_WATER -> {
+                if (p.isOnGround()) {
                     if (waterPlacedBelow(p)) {
+                        mc.options.useKey.setPressed(false);
+                        tickCounter = 0;
+                        state = ClutchState.LANDED;
+                    } else {
+                        reset();
+                    }
+                    return;
+                }
+
+                int waterSlot = findWaterBucket();
+                if (waterSlot == -1) {
+                    // Landed check will catch it next tick
+                    return;
+                }
+
+                setSlot(waterSlot);
+                updateSneakState(mc.world.getBlockState(targetPos));
+                mc.options.useKey.setPressed(true);
+            }
+
+            case LANDED -> {
+                tickCounter++;
+                if (tickCounter >= RECOVERY_DELAY) {
+                    tickCounter = 0;
+                    state = ClutchState.RECOVERING;
+                }
+            }
+
+            case RECOVERING -> {
+                tickCounter++;
+                if (tickCounter >= MAX_RECOVERY_TIME) {
+                    reset();
+                    return;
+                }
+
+                int bucketSlot = findEmptyBucket();
+                if (bucketSlot == -1) {
+                    // Check if current slot is the bucket (even if it's the water bucket slot)
+                    for (int i = 0; i < 9; i++) {
+                        if (p.getInventory().getStack(i).isOf(Items.BUCKET)) {
+                            bucketSlot = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (bucketSlot != -1) {
+                    setSlot(bucketSlot);
+                    mc.options.useKey.setPressed(true);
+
+                    // Success when bucket is full again (water bucket)
+                    if (p.getInventory().getStack(bucketSlot).isOf(Items.WATER_BUCKET)) {
                         reset();
                     }
                 } else {
                     reset();
                 }
             }
-        } else {
-            // Not triggered yet or conditions lost
-            if (clutching) {
-                // Keep clutching if we already started, until ground
-            }
+
+            case COOLDOWN -> reset();
         }
     }
 
-    private void startUsing() {
-        mc.options.useKey.setPressed(true);
-    }
-
-    private void stopUsing() {
-        mc.options.useKey.setPressed(isManualUsePressed());
+    private void setSlot(int slot) {
+        if (mc.player != null && ((PlayerInventoryMixin) mc.player.getInventory()).getSelectedSlot() != slot) {
+            ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(slot);
+            ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+        }
     }
 
     private void updateSneakState(BlockState targetState) {
@@ -120,29 +181,24 @@ public class ClutchModule {
 
     private boolean waterPlacedBelow(net.minecraft.client.network.ClientPlayerEntity p) {
         BlockPos pos = p.getBlockPos();
-        for (int y = 0; y >= -2; y--) {
-            for (int x = -1; x <= 1; x++) {
-                for (int z = -1; z <= 1; z++) {
-                    if (p.getWorld().getFluidState(pos.add(x, y, z)).isOf(Fluids.WATER)) return true;
-                }
-            }
-        }
-        return false;
+        return mc.world.getFluidState(pos).isOf(Fluids.WATER) ||
+               mc.world.getFluidState(pos.down()).isOf(Fluids.WATER) ||
+               mc.world.getFluidState(pos.up()).isOf(Fluids.WATER);
     }
 
     private void reset() {
-        stopUsing();
+        mc.options.useKey.setPressed(isManualUsePressed());
         if (isSneaking) {
             mc.options.sneakKey.setPressed(isManualSneakPressed());
             isSneaking = false;
         }
         if (originalSlot != -1 && mc.player != null) {
-            ((PlayerInventoryMixin) mc.player.getInventory()).setSelectedSlot(originalSlot);
-            ((ClientPlayerInteractionManagerAccessor) mc.interactionManager).invokeSyncSelectedSlot();
+            setSlot(originalSlot);
             originalSlot = -1;
         }
-        clutching = false;
-        blockPlaced = false;
+        state = ClutchState.IDLE;
+        tickCounter = 0;
+        targetPos = null;
     }
 
     private BlockHitResult getTargetBlock(double reach) {
@@ -158,7 +214,7 @@ public class ClutchModule {
         if (block instanceof LeavesBlock) return true;
         if (block instanceof StairsBlock) return true;
         if (block instanceof SlabBlock && state.contains(SlabBlock.TYPE)) {
-            return state.get(SlabBlock.TYPE) == SlabType.TOP;
+            return state.get(SlabBlock.TYPE) != SlabType.BOTTOM;
         }
         if (block instanceof TrapdoorBlock && state.contains(TrapdoorBlock.HALF) && state.contains(TrapdoorBlock.OPEN)) {
             return state.get(TrapdoorBlock.HALF) == BlockHalf.TOP && !state.get(TrapdoorBlock.OPEN);
@@ -203,6 +259,14 @@ public class ClutchModule {
     private int findWaterBucket() {
         for (int i = 0; i < 9; i++) {
             if (mc.player.getInventory().getStack(i).isOf(Items.WATER_BUCKET))
+                return i;
+        }
+        return -1;
+    }
+
+    private int findEmptyBucket() {
+        for (int i = 0; i < 9; i++) {
+            if (mc.player.getInventory().getStack(i).isOf(Items.BUCKET))
                 return i;
         }
         return -1;
