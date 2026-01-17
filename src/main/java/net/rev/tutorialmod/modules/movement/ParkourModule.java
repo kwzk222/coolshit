@@ -16,8 +16,11 @@ public class ParkourModule {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.parkourEnabled) return;
             if (client.currentScreen != null) return;
-            // Disable if Bridge Assist key (Left Alt) is held
-            if (InputUtil.isKeyPressed(client.getWindow().getHandle(), GLFW.GLFW_KEY_LEFT_ALT)) return;
+            // Disable if Bridge Assist key is held
+            try {
+                if (InputUtil.isKeyPressed(client.getWindow().getHandle(),
+                    InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode())) return;
+            } catch (Exception ignored) {}
             tick();
         });
     }

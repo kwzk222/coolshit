@@ -6,7 +6,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import org.lwjgl.glfw.GLFW;
 
 public class BridgeAssistModule {
 
@@ -22,9 +21,14 @@ public class BridgeAssistModule {
     private void tick() {
         if (mc.player == null || mc.world == null) return;
 
-        // Hardcoded Left Alt activation
-        boolean altPressed = InputUtil.isKeyPressed(mc.getWindow().getHandle(), GLFW.GLFW_KEY_LEFT_ALT);
-        boolean active = altPressed && TutorialMod.CONFIG.masterEnabled && mc.currentScreen == null;
+        // Configurable hotkey activation
+        boolean keyPressed = false;
+        try {
+            keyPressed = InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+                InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode());
+        } catch (Exception ignored) {}
+
+        boolean active = keyPressed && TutorialMod.CONFIG.masterEnabled && mc.currentScreen == null;
 
         if (!active) {
             if (lastAutoSneak) {
@@ -53,19 +57,24 @@ public class BridgeAssistModule {
             return;
         }
 
-        Vec3d direction = new Vec3d(velocity.x, 0, velocity.z).normalize();
+        Vec3d moveDir = new Vec3d(velocity.x, 0, velocity.z).normalize();
         Box box = player.getBoundingBox();
-        double halfWidth = 0.3; // player half-width
+        double half = 0.3; // player half-width
 
-        // Front edge points: center, left corner, right corner
-        Vec3d center = new Vec3d((box.minX + box.maxX) / 2, box.minY, (box.minZ + box.maxZ) / 2);
-        Vec3d frontCenter = center.add(direction.multiply(TutorialMod.CONFIG.bridgeAssistPredict));
-        Vec3d perpendicular = new Vec3d(-direction.z, 0, direction.x).normalize();
+        // Project the sampling points onto the leading edge of the movement
+        Vec3d edgeCenter = new Vec3d(
+            (box.minX + box.maxX) / 2,
+            box.minY,
+            (box.minZ + box.maxZ) / 2
+        ).add(moveDir.multiply(half + TutorialMod.CONFIG.bridgeAssistPredict));
 
+        Vec3d lateral = new Vec3d(-moveDir.z, 0, moveDir.x).normalize();
+
+        // Sample along the edge, but tucked in from the corners (0.15 instead of 0.3) to avoid side edges
         Vec3d[] samplePoints = new Vec3d[] {
-                frontCenter,
-                frontCenter.add(perpendicular.multiply(halfWidth)),
-                frontCenter.subtract(perpendicular.multiply(halfWidth))
+            edgeCenter,
+            edgeCenter.add(lateral.multiply(0.15)),
+            edgeCenter.subtract(lateral.multiply(0.15))
         };
 
         // Check the maximum drop among the sample points
