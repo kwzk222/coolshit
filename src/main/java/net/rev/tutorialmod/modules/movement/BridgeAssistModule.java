@@ -2,16 +2,30 @@ package net.rev.tutorialmod.modules.movement;
 
 import net.rev.tutorialmod.TutorialMod;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
+import org.lwjgl.glfw.GLFW;
 
 public class BridgeAssistModule {
 
     private static final MinecraftClient mc = MinecraftClient.getInstance();
+    public static KeyBinding BRIDGE_KEY;
+
     private boolean lastAutoSneak = false;
     private int sneakHoldCounter = 0;
+
+    public static void registerKey() {
+        BRIDGE_KEY = KeyBindingHelper.registerKeyBinding(
+            new KeyBinding("key.tutorialmod.bridge_assist",
+                           InputUtil.Type.KEYSYM,
+                           GLFW.GLFW_KEY_LEFT_CONTROL,
+                           "category.tutorialmod.movement")
+        );
+    }
 
     public void init() {
         // Use START_CLIENT_TICK to affect current tick's movement
@@ -21,16 +35,12 @@ public class BridgeAssistModule {
     private void tick() {
         if (mc.player == null || mc.world == null) return;
 
-        // Configurable hotkey activation
-        boolean keyPressed = false;
-        try {
-            keyPressed = InputUtil.isKeyPressed(mc.getWindow().getHandle(),
-                InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode());
-        } catch (Exception ignored) {}
-
-        boolean active = keyPressed && TutorialMod.CONFIG.masterEnabled && mc.currentScreen == null;
+        // activation conditions
+        boolean activeKey = BRIDGE_KEY != null && BRIDGE_KEY.isPressed();
+        boolean active = activeKey && TutorialMod.CONFIG.masterEnabled && mc.currentScreen == null;
 
         if (!active) {
+            // restore manual sneak only if we forced it previously
             if (lastAutoSneak) {
                 mc.options.sneakKey.setPressed(isManualSneakPressed());
                 lastAutoSneak = false;
@@ -41,7 +51,7 @@ public class BridgeAssistModule {
 
         var player = mc.player;
 
-        // Must be on ground
+        // If not on ground, bail out but keep state safely restored
         if (!player.isOnGround()) {
             if (lastAutoSneak) {
                 mc.options.sneakKey.setPressed(isManualSneakPressed());
@@ -51,46 +61,45 @@ public class BridgeAssistModule {
         }
 
         Vec3d velocity = player.getVelocity();
-        // Ignore if not moving horizontally
-        if (velocity.horizontalLengthSquared() < 1.0E-6) {
-            // Keep current sneak state while stationary to avoid falling
+        if (velocity.horizontalLengthSquared() < 1e-6) {
+            // If nearly stationary, don't toggle sneak; keep existing state
             return;
         }
 
         Vec3d moveDir = new Vec3d(velocity.x, 0, velocity.z).normalize();
+        if (moveDir.lengthSquared() < 1e-9) return;
+
         Box box = player.getBoundingBox();
-        double half = 0.3; // player half-width
+        double half = 0.3;
 
-        // Project the sampling points onto the leading edge of the movement
-        Vec3d edgeCenter = new Vec3d(
-            (box.minX + box.maxX) / 2,
-            box.minY,
-            (box.minZ + box.maxZ) / 2
-        ).add(moveDir.multiply(half + TutorialMod.CONFIG.bridgeAssistPredict));
+        // center of player's footprint at ground level
+        Vec3d footprintCenter = new Vec3d((box.minX + box.maxX) * 0.5, box.minY, (box.minZ + box.maxZ) * 0.5);
 
+        // sample points projected along movement-facing edge (inset from corners)
+        Vec3d edgeCenter = footprintCenter.add(moveDir.multiply(half + TutorialMod.CONFIG.bridgeAssistPredict));
         Vec3d lateral = new Vec3d(-moveDir.z, 0, moveDir.x).normalize();
 
-        // Sample along the edge, but tucked in from the corners (0.15 instead of 0.3) to avoid side edges
+        // Sample along the edge, but tucked in from the corners (0.15) to avoid side edges
         Vec3d[] samplePoints = new Vec3d[] {
             edgeCenter,
             edgeCenter.add(lateral.multiply(0.15)),
             edgeCenter.subtract(lateral.multiply(0.15))
         };
 
-        // Check the maximum drop among the sample points
-        double maxDrop = 0;
+        // compute max drop among sample points (using box.minY as starting Y)
+        double maxDrop = 0.0;
         for (Vec3d pt : samplePoints) {
-            double drop = computeDropDistance(pt);
+            double drop = computeDropDistance(pt, box.minY);
             if (drop > maxDrop) maxDrop = drop;
         }
 
         boolean shouldSneak = lastAutoSneak;
 
         if (!lastAutoSneak && maxDrop > TutorialMod.CONFIG.bridgeAssistStartSneakHeight) {
-            // Check if there's REALLY no ground support at any of the sample points
+            // ensure no ground at ANY sample point (small collision check)
             boolean anyGround = false;
             for (Vec3d pt : samplePoints) {
-                Box groundCheck = new Box(pt.x, box.minY - 0.01, pt.z, pt.x + 0.001, box.minY, pt.z + 0.001);
+                Box groundCheck = new Box(pt.x, box.minY - 0.02, pt.z, pt.x + 0.001, box.minY + 0.001, pt.z + 0.001);
                 if (mc.world.getBlockCollisions(player, groundCheck).iterator().hasNext()) {
                     anyGround = true;
                     break;
@@ -119,11 +128,11 @@ public class BridgeAssistModule {
         }
     }
 
-    private double computeDropDistance(Vec3d point) {
-        if (mc.world == null || mc.player == null) return Double.MAX_VALUE;
-        double y = mc.player.getY();
-        for (double d = 0; d <= 1.2; d += 0.05) {
-            Box testBox = new Box(point.x, y - d, point.z, point.x + 0.001, y - d + 0.01, point.z + 0.001);
+    private double computeDropDistance(Vec3d point, double startY) {
+        if (mc.world == null) return Double.MAX_VALUE;
+        for (double d = 0.0; d <= 1.5; d += 0.05) {
+            // tiny test box at the sample x/z at height (startY - d)
+            Box testBox = new Box(point.x, startY - d, point.z, point.x + 0.001, startY - d + 0.02, point.z + 0.001);
             boolean collides = mc.world.getBlockCollisions(mc.player, testBox).iterator().hasNext();
             if (collides) return d;
         }
@@ -132,6 +141,7 @@ public class BridgeAssistModule {
 
     private boolean isManualSneakPressed() {
         try {
+            // Check physical key state to avoid getting stuck when auto-sneak is active
             return InputUtil.isKeyPressed(mc.getWindow().getHandle(),
                 InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
         } catch (Exception e) {
