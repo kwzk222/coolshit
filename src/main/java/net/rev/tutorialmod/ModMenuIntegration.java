@@ -5,6 +5,7 @@ import com.terraformersmc.modmenu.api.ModMenuApi;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
+import me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -253,7 +254,7 @@ public class ModMenuIntegration implements ModMenuApi {
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
 
             // Parkour
-            me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder parkourSub = entryBuilder.startSubCategory(Text.literal("Parkour"));
+            SubCategoryBuilder parkourSub = entryBuilder.startSubCategory(Text.literal("Parkour"));
             parkourSub.add(entryBuilder.startBooleanToggle(Text.literal("Parkour Enabled"), TutorialMod.CONFIG.parkourEnabled)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Automatically jump when about to lose ground support."))
@@ -272,7 +273,7 @@ public class ModMenuIntegration implements ModMenuApi {
             movement.addEntry(parkourSub.build());
 
             // Bridge Assist
-            me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder bridgeAssistSub = entryBuilder.startSubCategory(Text.literal("Bridge Assist"));
+            SubCategoryBuilder bridgeAssistSub = entryBuilder.startSubCategory(Text.literal("Bridge Assist"));
             bridgeAssistSub.add(entryBuilder.startLongSlider(Text.literal("Bridge Assist Prediction"), (long)(TutorialMod.CONFIG.bridgeAssistPredict * 100), 0, 50)
                     .setDefaultValue(16)
                     .setTooltip(Text.literal("How far ahead to predict ground loss for Bridge Assist. Default: 0.16 (16 on slider)"))
@@ -296,7 +297,7 @@ public class ModMenuIntegration implements ModMenuApi {
             movement.addEntry(bridgeAssistSub.build());
 
             // Clutch
-            me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder clutchSub = entryBuilder.startSubCategory(Text.literal("Clutch"));
+            SubCategoryBuilder clutchSub = entryBuilder.startSubCategory(Text.literal("Clutch"));
             clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Clutch"), TutorialMod.CONFIG.clutchEnabled)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Automatically clutch with water or blocks when falling."))
