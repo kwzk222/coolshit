@@ -449,6 +449,24 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchMineMaxDelay = newValue)
                     .build());
 
+            // Misc Category
+            ConfigCategory misc = builder.getOrCreateCategory(Text.literal("Misc"));
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Enable or disable the Click Spam feature."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue)
+                    .build());
+            misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam CPS"), TutorialMod.CONFIG.clickSpamCps, 1, 20)
+                    .setDefaultValue(12)
+                    .setTooltip(Text.literal("Spam rate for LMB/RMB while holding the modifier key. Default: 12"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue)
+                    .build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey)
+                    .setDefaultValue("key.keyboard.apostrophe")
+                    .setTooltip(Text.literal("The key to hold to enable click spamming. Use translation key (e.g., 'key.keyboard.apostrophe')."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue)
+                    .build());
+
             // Trigger Bot Category
             ConfigCategory triggerBot = builder.getOrCreateCategory(Text.literal("Trigger Bot"));
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Trigger Bot"), TutorialMod.CONFIG.triggerBotEnabled)

@@ -52,6 +52,11 @@ public class ModConfig {
     public boolean clutchRestoreOriginalSlot = true;
     public boolean clutchAutoSwitch = true;
 
+    // --- Click Spam ---
+    public boolean clickSpamEnabled = false;
+    public int clickSpamCps = 12;
+    public String clickSpamModifierKey = "key.keyboard.apostrophe";
+
     // --- General ---
     public boolean masterEnabled = true;
     public int bowCooldown = 100;

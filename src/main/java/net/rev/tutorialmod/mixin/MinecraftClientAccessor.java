@@ -12,4 +12,7 @@ public interface MinecraftClientAccessor {
 
     @Accessor("itemUseCooldown")
     void setItemUseCooldown(int itemUseCooldown);
+
+    @Invoker("doAttack")
+    boolean invokeDoAttack();
 }

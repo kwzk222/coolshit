@@ -40,6 +40,7 @@ import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.TriggerBot;
+import net.rev.tutorialmod.modules.misc.ClickSpamModule;
 import net.rev.tutorialmod.modules.movement.BridgeAssistModule;
 import net.rev.tutorialmod.modules.movement.ClutchModule;
 import net.rev.tutorialmod.modules.movement.ParkourModule;
@@ -219,6 +220,8 @@ public class TutorialModClient implements ClientModInitializer {
         if (clutchModule != null) {
             clutchModule.tick();
         }
+
+        ClickSpamModule.onTick();
     }
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
