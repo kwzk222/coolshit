@@ -9,6 +9,7 @@ import net.minecraft.block.*;
 import net.minecraft.block.enums.BlockHalf;
 import net.minecraft.block.enums.SlabType;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.fluid.Fluids;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Items;
@@ -22,10 +23,10 @@ public class ClutchModule {
 
     private enum ClutchState {
         IDLE,
-        ARMING,          // Detected fall, selecting first item
-        PLACING_BLOCK,   // Spamming block placement
-        PLACING_WATER,   // Spamming water placement
-        LANDED,          // On ground, waiting to recover
+        ARMING,          // Detected fall, pre-selecting bucket
+        PLACING_BLOCK,   // Falling on waterloggable, placing block first
+        PLACING_WATER,   // Placing water (direct or after block)
+        LANDED,          // On ground, buffer for lag
         RECOVERING,      // Picking up water
         FINISHING        // Restoring slot
     }
@@ -36,7 +37,8 @@ public class ClutchModule {
     private int spamTickCounter = 0;
     private boolean forcedSneaking = false;
 
-    private static final int MAX_SPAM_TICKS = 20;
+    private static final int MAX_SPAM_TICKS = 30;
+    private static final double CLUTCH_REACH = 4.0;
 
     public void tick() {
         if (mc.player == null || mc.world == null) {
@@ -52,12 +54,15 @@ public class ClutchModule {
             return;
         }
 
-        // Always check for interactable under us to sneak
-        handleInteractableSneak(p);
+        // Fix random sneaking: only handle interactables if we are in a clutch sequence
+        if (state != ClutchState.IDLE) {
+            handleInteractableSneak(p);
+        }
 
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.fallDistance >= config.clutchMinFallDistance && p.getPitch() >= config.clutchActivationPitch) {
+                    originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
                     tickCounter = 0;
                     state = ClutchState.ARMING;
                 }
@@ -66,46 +71,37 @@ public class ClutchModule {
             case ARMING -> {
                 if (p.isOnGround()) { reset(); return; }
 
+                // PRE-ARM: Switch to water bucket immediately
+                if (config.clutchAutoSwitch) {
+                    int waterSlot = findWaterBucket();
+                    if (waterSlot != -1) setSlot(waterSlot);
+                }
+
                 tickCounter++;
                 if (tickCounter >= config.clutchSwitchDelay) {
-                    if (originalSlot == -1) originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
-
-                    HitResult hit = p.raycast(3.2, 1.0f, false);
+                    // Check target to see if we need to switch to block (logic inversion per review)
+                    HitResult hit = p.raycast(CLUTCH_REACH, 1.0f, false);
                     if (hit.getType() == HitResult.Type.BLOCK) {
-                        BlockPos pos = ((BlockHitResult) hit).getBlockPos();
-                        BlockState blockState = mc.world.getBlockState(pos);
+                        BlockState targetState = mc.world.getBlockState(((BlockHitResult) hit).getBlockPos());
 
-                        if (isWaterloggable(blockState)) {
-                            if (config.clutchAutoSwitch) {
-                                int waterSlot = findWaterBucket();
-                                if (waterSlot != -1) setSlot(waterSlot);
-                            }
-                            state = ClutchState.PLACING_WATER;
-                        } else {
-                            if (config.clutchAutoSwitch) {
-                                int blockSlot = findBlock();
-                                if (blockSlot != -1) {
-                                    setSlot(blockSlot);
-                                    state = ClutchState.PLACING_BLOCK;
-                                } else {
-                                    // No block found, try water anyway as a last resort
-                                    int waterSlot = findWaterBucket();
-                                    if (waterSlot != -1) {
-                                        setSlot(waterSlot);
-                                        state = ClutchState.PLACING_WATER;
-                                    } else {
-                                        reset();
-                                    }
-                                }
-                            } else {
-                                // Manual switch mode, just proceed to whatever we are holding
+                        // IF target is waterloggable -> place block FIRST (to avoid waterlogging)
+                        if (isWaterloggable(targetState)) {
+                            int blockSlot = findBlock();
+                            if (blockSlot != -1) {
+                                if (config.clutchAutoSwitch) setSlot(blockSlot);
                                 state = ClutchState.PLACING_BLOCK;
+                            } else {
+                                state = ClutchState.PLACING_WATER;
                             }
+                        } else {
+                            state = ClutchState.PLACING_WATER;
                         }
                         spamTickCounter = 0;
                         tickCounter = 0;
                     }
                 }
+
+                // Removed 40-tick timeout to support high falls
             }
 
             case PLACING_BLOCK -> {
@@ -118,15 +114,16 @@ public class ClutchModule {
                 spamUse();
                 spamTickCounter++;
 
-                // Check if we successfully placed a block
-                HitResult hit = p.raycast(3.2, 1.0f, false);
+                // Success check: block placed at offset position
+                HitResult hit = p.raycast(CLUTCH_REACH, 1.0f, false);
                 if (hit.getType() == HitResult.Type.BLOCK) {
-                    BlockPos pos = ((BlockHitResult) hit).getBlockPos();
-                    if (mc.world.getBlockState(pos).getBlock() != Blocks.AIR) {
-                        // Success placing block, now move to water
+                    BlockHitResult bhr = (BlockHitResult) hit;
+                    BlockPos placedPos = bhr.getBlockPos().offset(bhr.getSide());
+                    if (!mc.world.getBlockState(placedPos).isAir()) {
+                        // Success! Now switch to water
                         int waterSlot = findWaterBucket();
                         if (waterSlot != -1) {
-                            setSlot(waterSlot);
+                            if (config.clutchAutoSwitch) setSlot(waterSlot);
                             state = ClutchState.PLACING_WATER;
                             spamTickCounter = 0;
                         }
@@ -142,7 +139,7 @@ public class ClutchModule {
                         state = ClutchState.LANDED;
                         tickCounter = 0;
                     } else {
-                        // Small buffer for lag
+                        // Success buffer
                         tickCounter++;
                         if (tickCounter > 3) reset();
                     }
@@ -197,21 +194,16 @@ public class ClutchModule {
     }
 
     private void handleInteractableSneak(net.minecraft.client.network.ClientPlayerEntity p) {
-        HitResult hit = p.raycast(3.2, 1.0f, false);
+        HitResult hit = p.raycast(CLUTCH_REACH, 1.0f, false);
         if (hit.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = ((BlockHitResult) hit).getBlockPos();
             BlockState state = mc.world.getBlockState(pos);
             if (isInteractable(state)) {
                 mc.options.sneakKey.setPressed(true);
                 forcedSneaking = true;
-            } else if (forcedSneaking && state.isAir()) { // Only release if we move to air or non-interactable
-                // Actually keep sneaking if we are in the middle of a clutch
-                if (this.state == ClutchState.IDLE) {
-                   mc.options.sneakKey.setPressed(isManualSneakPressed());
-                   forcedSneaking = false;
-                }
             }
-        } else if (forcedSneaking && this.state == ClutchState.IDLE) {
+        } else if (forcedSneaking) {
+            // Only release if we moved off the interactable
             mc.options.sneakKey.setPressed(isManualSneakPressed());
             forcedSneaking = false;
         }
@@ -273,8 +265,8 @@ public class ClutchModule {
 
     private boolean isManualSneakPressed() {
         try {
-            return net.minecraft.client.util.InputUtil.isKeyPressed(mc.getWindow().getHandle(),
-                net.minecraft.client.util.InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
+            return InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+                InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
         } catch (Exception e) {
             return false;
         }
