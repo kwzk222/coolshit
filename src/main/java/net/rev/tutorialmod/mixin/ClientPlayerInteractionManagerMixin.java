@@ -16,6 +16,7 @@ import net.minecraft.util.math.Direction;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import net.rev.tutorialmod.event.AttackEntityCallback;
+import java.util.Random;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -27,6 +28,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class ClientPlayerInteractionManagerMixin {
 
     @Shadow private int blockBreakingCooldown;
+    @Shadow private float currentBreakingProgress;
+    @Shadow private BlockPos currentBreakingPos;
+
+    private static final Random tutorialmod$random = new Random();
+    private BlockPos tutorialmod$lastResetPos = null;
 
     @Inject(at = @At("HEAD"), method = "attackEntity(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/entity/Entity;)V", cancellable = true)
     private void onAttackEntity(PlayerEntity player, Entity target, CallbackInfo info) {
@@ -46,13 +52,32 @@ public abstract class ClientPlayerInteractionManagerMixin {
         }
     }
 
-    @Inject(method = "updateBlockBreakingProgress", at = @At("HEAD"), require = 0)
+    @Inject(method = "updateBlockBreakingProgress", at = @At("HEAD"), cancellable = true, require = 0)
     private void onUpdateBlockBreakingProgress(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
         TutorialMod.getAutoToolSwitch().onBlockBreak(pos);
 
-        if (TutorialMod.CONFIG.masterEnabled && TutorialMod.CONFIG.miningResetEnabled) {
-            // Skip the cooldown (e.g. from a previous block)
-            if (blockBreakingCooldown > 0) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.miningResetEnabled) {
+            return;
+        }
+
+        // Early Release Simulation
+        if (TutorialMod.CONFIG.miningResetSimulateStops) {
+            if (pos.equals(currentBreakingPos) && !pos.equals(tutorialmod$lastResetPos)) {
+                float threshold = (float) TutorialMod.CONFIG.miningResetThreshold;
+                if (currentBreakingProgress >= threshold && currentBreakingProgress < 1.0f) {
+                    if (tutorialmod$random.nextInt(100) < TutorialMod.CONFIG.miningResetChance) {
+                        ((ClientPlayerInteractionManager)(Object)this).cancelBlockBreaking();
+                        tutorialmod$lastResetPos = pos;
+                        cir.setReturnValue(false);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Skip the cooldown (e.g. from a previous block)
+        if (blockBreakingCooldown > 0) {
+            if (tutorialmod$random.nextInt(100) < TutorialMod.CONFIG.miningResetChance) {
                 blockBreakingCooldown = 0;
             }
         }
@@ -63,7 +88,9 @@ public abstract class ClientPlayerInteractionManagerMixin {
         if (cir.getReturnValue() != null && cir.getReturnValue()) {
             // Reset cooldown here to skip the 5-tick delay between blocks
             if (TutorialMod.CONFIG.masterEnabled && TutorialMod.CONFIG.miningResetEnabled) {
-                blockBreakingCooldown = 0;
+                if (tutorialmod$random.nextInt(100) < TutorialMod.CONFIG.miningResetChance) {
+                    blockBreakingCooldown = 0;
+                }
             }
         }
     }

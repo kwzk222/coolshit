@@ -41,6 +41,7 @@ public class OverlayManager {
 
                     Socket socket = new Socket("127.0.0.1", PORT);
                     socketWriter = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
+                    sendConfig();
                     System.out.println("[TutorialMod] Connected to overlay app.");
                 } catch (Exception e) {
                     System.err.println("[TutorialMod] Could not connect to overlay app: " + e.getMessage());
@@ -73,6 +74,13 @@ public class OverlayManager {
     public void update(String coords) {
         if (socketWriter != null) {
             socketWriter.println(coords);
+        }
+    }
+
+    public void sendConfig() {
+        if (socketWriter != null) {
+            socketWriter.println("CONFIG FONT_SIZE " + TutorialMod.CONFIG.overlayFontSize);
+            socketWriter.println("CONFIG OPACITY " + TutorialMod.CONFIG.overlayBackgroundOpacity);
         }
     }
 

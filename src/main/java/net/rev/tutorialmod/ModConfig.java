@@ -64,6 +64,9 @@ public class ModConfig {
     public int clickSpamCps = 12;
     public String clickSpamModifierKey = "key.keyboard.apostrophe";
     public boolean miningResetEnabled = false;
+    public int miningResetChance = 100;
+    public boolean miningResetSimulateStops = false;
+    public double miningResetThreshold = 0.92;
 
     // --- General ---
     public boolean masterEnabled = true;
@@ -139,6 +142,8 @@ public class ModConfig {
     public boolean showEntityCount = false;
     public boolean showSprintModeOverlay = true;
     public boolean showSneakModeOverlay = true;
+    public int overlayFontSize = 20;
+    public int overlayBackgroundOpacity = 128;
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;
@@ -169,6 +174,10 @@ public class ModConfig {
     public void save() {
         try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
             GSON.toJson(this, writer);
+            // Update overlay config if it's running
+            if (TutorialModClient.getInstance() != null && TutorialModClient.getOverlayManager() != null) {
+                TutorialModClient.getOverlayManager().sendConfig();
+            }
         } catch (IOException e) {
             TutorialMod.LOGGER.error("Error saving config", e);
         }

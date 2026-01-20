@@ -417,6 +417,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Show the current sneak mode (Hold/Toggle) in the overlay."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.showSneakModeOverlay = newValue)
                     .build());
+            overlay.addEntry(entryBuilder.startIntSlider(Text.literal("Overlay Font Size"), TutorialMod.CONFIG.overlayFontSize, 8, 40)
+                    .setDefaultValue(20)
+                    .setTooltip(Text.literal("The font size of the text in the overlay."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayFontSize = newValue)
+                    .build());
+            overlay.addEntry(entryBuilder.startIntSlider(Text.literal("Overlay Background Opacity"), TutorialMod.CONFIG.overlayBackgroundOpacity, 0, 255)
+                    .setDefaultValue(128)
+                    .setTooltip(Text.literal("The opacity of the overlay's background (0-255)."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayBackgroundOpacity = newValue)
+                    .build());
 
             // Enemy Info SubCategory
             me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder enemyInfoSubCategory = entryBuilder.startSubCategory(Text.literal("Enemy Info"));
@@ -501,6 +511,21 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Automatically skips the 5-tick mining cooldown by briefly releasing and re-pressing the attack key when a block is broken."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetEnabled = newValue)
+                    .build());
+            misc.addEntry(entryBuilder.startIntSlider(Text.literal("Mining Reset Chance (%)"), TutorialMod.CONFIG.miningResetChance, 0, 100)
+                    .setDefaultValue(100)
+                    .setTooltip(Text.literal("The chance (%) for the mining reset to trigger on each block."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetChance = newValue)
+                    .build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Simulate Stops (Early Release)"), TutorialMod.CONFIG.miningResetSimulateStops)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Simulates releasing the attack key just before the block breaks. More realistic but potentially slower if misconfigured."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetSimulateStops = newValue)
+                    .build());
+            misc.addEntry(entryBuilder.startLongSlider(Text.literal("Early Release Threshold"), (long)(TutorialMod.CONFIG.miningResetThreshold * 100), 50, 99)
+                    .setDefaultValue(92)
+                    .setTooltip(Text.literal("The progress threshold at which to perform the early release reset. Default: 0.92 (92 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetThreshold = newValue / 100.0)
                     .build());
 
             // Trigger Bot Category

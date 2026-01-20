@@ -30,7 +30,9 @@ public class OverlayApp {
                 protected void paintComponent(Graphics g) {
                     super.paintComponent(g);
                     Graphics2D g2d = (Graphics2D) g;
-                    g2d.setColor(new Color(0, 0, 0, 128)); // black 50% opacity
+                    Object opacityObj = frame.getRootPane().getClientProperty("opacity");
+                    int opacity = (opacityObj instanceof Integer) ? (Integer) opacityObj : 128;
+                    g2d.setColor(new Color(0, 0, 0, opacity)); // black with configurable opacity
                     g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
                 }
             };
@@ -99,7 +101,30 @@ public class OverlayApp {
                 while ((line = reader.readLine()) != null) {
                     final String content = line;
                     SwingUtilities.invokeLater(() -> {
-                        if (content.trim().isEmpty()) {
+                        if (content.startsWith("CONFIG ")) {
+                            String[] parts = content.split(" ");
+                            if (parts.length >= 3) {
+                                String key = parts[1];
+                                String value = parts[2];
+                                switch (key) {
+                                    case "FONT_SIZE":
+                                        try {
+                                            int size = Integer.parseInt(value);
+                                            infoLabel.setFont(new Font("Consolas", Font.BOLD, size));
+                                            frame.pack();
+                                        } catch (Exception ignored) {}
+                                        break;
+                                    case "OPACITY":
+                                        try {
+                                            int opacity = Integer.parseInt(value);
+                                            // The panel's paintComponent uses this indirectly if we store it
+                                            frame.getRootPane().putClientProperty("opacity", opacity);
+                                            frame.repaint();
+                                        } catch (Exception ignored) {}
+                                        break;
+                                }
+                            }
+                        } else if (content.trim().isEmpty()) {
                             frame.setVisible(false);
                         } else {
                             String htmlContent = content.replace("\\n", "<br>");
