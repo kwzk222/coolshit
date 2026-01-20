@@ -9,7 +9,4 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface ClientPlayerInteractionManagerAccessor {
     @Invoker("syncSelectedSlot")
     void invokeSyncSelectedSlot();
-
-    @Accessor("currentBreakingProgress")
-    float getCurrentBreakingProgress();
 }

@@ -10,19 +10,23 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ClientPlayerInteractionManager.class)
-public class ClientPlayerInteractionManagerMixin {
+public abstract class ClientPlayerInteractionManagerMixin {
+
+    @Shadow private int blockBreakingCooldown;
 
     @Inject(at = @At("HEAD"), method = "attackEntity(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/entity/Entity;)V", cancellable = true)
     private void onAttackEntity(PlayerEntity player, Entity target, CallbackInfo info) {
@@ -45,12 +49,22 @@ public class ClientPlayerInteractionManagerMixin {
     @Inject(method = "updateBlockBreakingProgress", at = @At("HEAD"), require = 0)
     private void onUpdateBlockBreakingProgress(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
         TutorialMod.getAutoToolSwitch().onBlockBreak(pos);
+
+        if (TutorialMod.CONFIG.masterEnabled && TutorialMod.CONFIG.miningResetEnabled) {
+            // Skip the cooldown (e.g. from a previous block)
+            if (blockBreakingCooldown > 0) {
+                blockBreakingCooldown = 0;
+            }
+        }
     }
 
     @Inject(method = "updateBlockBreakingProgress", at = @At("RETURN"), require = 0)
     private void onUpdateBlockBreakingProgressReturn(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValue() != null && cir.getReturnValue()) {
-            TutorialMod.getMiningResetModule().onBlockBroken();
+            // Reset cooldown here to skip the 5-tick delay between blocks
+            if (TutorialMod.CONFIG.masterEnabled && TutorialMod.CONFIG.miningResetEnabled) {
+                blockBreakingCooldown = 0;
+            }
         }
     }
 }

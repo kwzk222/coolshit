@@ -229,8 +229,6 @@ public class TutorialModClient implements ClientModInitializer {
             clutchModule.tick();
         }
 
-        TutorialMod.getMiningResetModule().tick();
-
         ClickSpamModule.onTick();
     }
 
