@@ -44,6 +44,8 @@ public class ModConfig {
 
     // --- Clutch ---
     public boolean clutchEnabled = false;
+    public boolean waterClutchEnabled = true;
+    public boolean windClutchEnabled = true;
     public double clutchMinFallDistance = 3.0;
     public double clutchActivationPitch = 60.0;
     public int clutchRecoveryDelay = 20;
@@ -51,6 +53,10 @@ public class ModConfig {
     public int clutchRestoreDelay = 5;
     public boolean clutchRestoreOriginalSlot = true;
     public boolean clutchAutoSwitch = true;
+    public double windClutchMinFallDistance = 8.0;
+    public int windClutchFireTicks = 6;
+    public int windClutchMaxRetries = 2;
+    public double windClutchSuccessVyDelta = 0.5;
 
     // --- Click Spam ---
     public boolean clickSpamEnabled = false;

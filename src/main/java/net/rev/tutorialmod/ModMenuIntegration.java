@@ -303,14 +303,24 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // Clutch
             SubCategoryBuilder clutchSub = entryBuilder.startSubCategory(Text.literal("Clutch"));
-            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Clutch"), TutorialMod.CONFIG.clutchEnabled)
+            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Clutch Module"), TutorialMod.CONFIG.clutchEnabled)
                     .setDefaultValue(false)
-                    .setTooltip(Text.literal("Automatically clutch with water or blocks when falling."))
+                    .setTooltip(Text.literal("Master toggle for the clutch module."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.clutchMinFallDistance * 10), 0, 100)
+            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Water Clutch Enabled"), TutorialMod.CONFIG.waterClutchEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Whether to use water buckets for clutching."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Wind Clutch Enabled"), TutorialMod.CONFIG.windClutchEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Whether to use wind charges for clutching."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchEnabled = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance (Water)"), (long)(TutorialMod.CONFIG.clutchMinFallDistance * 10), 0, 100)
                     .setDefaultValue(30)
-                    .setTooltip(Text.literal("Minimum fall distance to trigger clutch. Default: 3.0 (30 on slider)"))
+                    .setTooltip(Text.literal("Minimum fall distance to trigger water clutch. Default: 3.0 (30 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue / 10.0)
                     .build());
             clutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90)
@@ -342,6 +352,26 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Whether to automatically switch to the water bucket."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchAutoSwitch = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance (Wind)"), (long)(TutorialMod.CONFIG.windClutchMinFallDistance * 10), 0, 200)
+                    .setDefaultValue(80)
+                    .setTooltip(Text.literal("Minimum fall distance for Wind Charge clutch. Default: 8.0 (80 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchMinFallDistance = newValue / 10.0)
+                    .build());
+            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Wind Clutch Fire Ticks"), TutorialMod.CONFIG.windClutchFireTicks, 1, 20)
+                    .setDefaultValue(6)
+                    .setTooltip(Text.literal("Fire when estimated ticks-to-impact <= this. Default: 6"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchFireTicks = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Wind Clutch Max Retries"), TutorialMod.CONFIG.windClutchMaxRetries, 0, 5)
+                    .setDefaultValue(2)
+                    .setTooltip(Text.literal("Retry attempts if first fire didn't succeed. Default: 2"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchMaxRetries = newValue)
+                    .build());
+            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Wind Clutch Success Vy Delta"), (long)(TutorialMod.CONFIG.windClutchSuccessVyDelta * 100), 0, 200)
+                    .setDefaultValue(50)
+                    .setTooltip(Text.literal("Upward velocity increase indicating success. Default: 0.5 (50 on slider)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchSuccessVyDelta = newValue / 100.0)
                     .build());
             movement.addEntry(clutchSub.build());
 
