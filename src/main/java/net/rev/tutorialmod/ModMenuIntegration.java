@@ -308,10 +308,10 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Whether to use water buckets for clutching."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue)
                     .build());
-            waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance (Water)"), (long)(TutorialMod.CONFIG.clutchMinFallDistance * 10), 0, 100)
-                    .setDefaultValue(30)
-                    .setTooltip(Text.literal("Minimum fall distance to trigger water clutch. Default: 3.0 (30 on slider)"))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue / 10.0)
+            waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance (Water)"), (long)(TutorialMod.CONFIG.clutchMinFallDistance), 0, 100)
+                    .setDefaultValue(3)
+                    .setTooltip(Text.literal("Minimum fall distance to trigger water clutch. Default: 3 blocks"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue.doubleValue())
                     .build());
             waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90)
                     .setDefaultValue(60)

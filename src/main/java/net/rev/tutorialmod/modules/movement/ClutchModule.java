@@ -65,28 +65,33 @@ public class ClutchModule {
             return;
         }
 
-        // Fix random sneaking: only handle interactables if we are in a water clutch sequence
-        if (state == ClutchState.ARMING || state == ClutchState.PLACING_BLOCK || state == ClutchState.PLACING_WATER) {
+        // Fix random sneaking: handle interactables during water clutch sequence and recovery
+        if (state == ClutchState.ARMING || state == ClutchState.PLACING_BLOCK || state == ClutchState.PLACING_WATER ||
+            state == ClutchState.LANDED || state == ClutchState.RECOVERING || state == ClutchState.FINISHING) {
             handleInteractableSneak(p);
         }
 
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.getPitch() >= config.clutchActivationPitch) {
-                    // Prioritize Water Clutch
-                    boolean canWaterClutch = config.waterClutchEnabled && p.fallDistance >= config.clutchMinFallDistance;
-                    if (canWaterClutch) {
-                        if (config.clutchAutoSwitch) {
-                            if (findWaterBucket() == -1) canWaterClutch = false;
-                        } else {
-                            if (!isHoldingWater()) canWaterClutch = false;
-                        }
-                    }
+                    // Prioritize Water Clutch (or Block Clutch fallback)
+                    boolean hasBucket = config.clutchAutoSwitch ? (findWaterBucket() != -1) : isHoldingWater();
+                    boolean hasBlock = findBlock() != -1;
+
+                    boolean canWaterClutch = config.waterClutchEnabled && p.fallDistance >= config.clutchMinFallDistance && (hasBucket || hasBlock);
 
                     if (canWaterClutch) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
                         tickCounter = 0;
                         state = ClutchState.ARMING;
+
+                        // Immediate first tick of arming/switching
+                        if (config.clutchAutoSwitch) {
+                            int waterSlot = findWaterBucket();
+                            if (waterSlot != -1) setSlot(waterSlot);
+                        }
+                        tickCounter++;
+                        handleArming(p, config);
                     }
                     // Fallback to Wind Charge Clutch
                     else if (config.windClutchEnabled && p.fallDistance >= config.windClutchMinFallDistance) {
@@ -107,37 +112,14 @@ public class ClutchModule {
             case ARMING -> {
                 if (p.isOnGround()) { reset(); return; }
 
-                // PRE-ARM: Switch to water bucket immediately
+                // Continuous pre-arm switch in case of inventory changes
                 if (config.clutchAutoSwitch) {
                     int waterSlot = findWaterBucket();
                     if (waterSlot != -1) setSlot(waterSlot);
                 }
 
                 tickCounter++;
-                if (tickCounter >= config.clutchSwitchDelay) {
-                    // Check target to see if we need to switch to block (logic inversion per review)
-                    HitResult hit = p.raycast(CLUTCH_REACH, 1.0f, false);
-                    if (hit.getType() == HitResult.Type.BLOCK) {
-                        BlockState targetState = mc.world.getBlockState(((BlockHitResult) hit).getBlockPos());
-
-                        // IF target is waterloggable -> place block FIRST (to avoid waterlogging)
-                        if (isWaterloggable(targetState)) {
-                            int blockSlot = findBlock();
-                            if (blockSlot != -1) {
-                                if (config.clutchAutoSwitch) setSlot(blockSlot);
-                                state = ClutchState.PLACING_BLOCK;
-                            } else {
-                                state = ClutchState.PLACING_WATER;
-                            }
-                        } else {
-                            state = ClutchState.PLACING_WATER;
-                        }
-                        spamTickCounter = 0;
-                        tickCounter = 0;
-                    }
-                }
-
-                // Removed 40-tick timeout to support high falls
+                handleArming(p, config);
             }
 
             case PLACING_BLOCK -> {
@@ -326,6 +308,34 @@ public class ClutchModule {
         return mc.world.getFluidState(pos).isOf(Fluids.WATER) ||
                mc.world.getFluidState(pos.down()).isOf(Fluids.WATER) ||
                mc.world.getFluidState(pos.up()).isOf(Fluids.WATER);
+    }
+
+    private void handleArming(net.minecraft.client.network.ClientPlayerEntity p, ModConfig config) {
+        if (tickCounter >= config.clutchSwitchDelay) {
+            // Check target with increased reach (10.0) to transition early
+            HitResult hit = p.raycast(10.0, 1.0f, false);
+            if (hit.getType() == HitResult.Type.BLOCK) {
+                BlockState targetState = mc.world.getBlockState(((BlockHitResult) hit).getBlockPos());
+
+                // IF target is waterloggable -> place block FIRST (to avoid waterlogging)
+                if (isWaterloggable(targetState)) {
+                    int blockSlot = findBlock();
+                    if (blockSlot != -1) {
+                        if (config.clutchAutoSwitch) setSlot(blockSlot);
+                        state = ClutchState.PLACING_BLOCK;
+                        spamUse(); // Save a tick
+                    } else {
+                        state = ClutchState.PLACING_WATER;
+                        spamUse(); // Save a tick
+                    }
+                } else {
+                    state = ClutchState.PLACING_WATER;
+                    spamUse(); // Save a tick
+                }
+                spamTickCounter = 0;
+                tickCounter = 0;
+            }
+        }
     }
 
     private void reset() {
