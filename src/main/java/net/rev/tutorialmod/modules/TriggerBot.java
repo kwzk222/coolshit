@@ -11,9 +11,14 @@ import net.rev.tutorialmod.modules.filters.TargetFilters;
 
 import java.util.Random;
 
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.MaceItem;
+import net.minecraft.registry.tag.ItemTags;
+
 public class TriggerBot {
 
     private Entity targetToAttack = null;
+    private int reactionDelayTicks = 0;
     private int attackDelayTicks = 0;
     private final Random random = new Random();
 
@@ -37,6 +42,7 @@ public class TriggerBot {
                     }
                 }
                 targetToAttack = null; // Reset target after action
+                reactionDelayTicks = 0;
             }
             return; // Don't look for new targets while in delay
         }
@@ -69,8 +75,14 @@ public class TriggerBot {
             return;
         }
 
-        // We are not in an attack delay, so we can look for a new target.
-        targetToAttack = null;
+        // Weapon Check
+        if (TutorialMod.CONFIG.triggerBotWeaponOnly) {
+            var stack = client.player.getMainHandStack();
+            if (!stack.isIn(ItemTags.SWORDS) && !stack.isIn(ItemTags.AXES) && !(stack.getItem() instanceof MaceItem)) {
+                reactionDelayTicks = 0;
+                return;
+            }
+        }
 
         HitResult crosshairTarget = client.crosshairTarget;
         if (crosshairTarget != null && crosshairTarget.getType() == HitResult.Type.ENTITY) {
@@ -80,6 +92,7 @@ public class TriggerBot {
             if (TargetFilters.isValidTarget(target)) {
                 if (TutorialMod.CONFIG.attackOnCrit) {
                     if (client.player.getVelocity().y > 0) {
+                        reactionDelayTicks = 0;
                         return;
                     }
                 }
@@ -88,25 +101,47 @@ public class TriggerBot {
 
                 if (distance <= 4.5) {
                     // Cooldown Check
-                    if (client.player.getAttackCooldownProgress(0.5f) == 1.0f) {
-                        // Initiate attack sequence
-                        int minDelay = TutorialMod.CONFIG.triggerBotMinDelay;
-                        int maxDelay = TutorialMod.CONFIG.triggerBotMaxDelay;
-                        this.attackDelayTicks = minDelay + (maxDelay > minDelay ? random.nextInt(maxDelay - minDelay + 1) : 0);
-                        this.targetToAttack = target;
+                    float charge = client.player.getAttackCooldownProgress(0.5f);
+                    if (charge >= (float)(TutorialMod.CONFIG.triggerBotMinCharge / 100.0)) {
 
-                        // If delay is 0, attack immediately
-                        if (this.attackDelayTicks == 0) {
-                             if (client.interactionManager != null) {
-                                client.interactionManager.attackEntity(client.player, targetToAttack);
-                                client.player.swingHand(Hand.MAIN_HAND);
-                                this.targetToAttack = null; // Reset
+                        // Increment reaction timer
+                        reactionDelayTicks++;
+
+                        int minReaction = TutorialMod.CONFIG.triggerBotReactionMinDelay;
+                        int maxReaction = TutorialMod.CONFIG.triggerBotReactionMaxDelay;
+                        int requiredReaction = minReaction + (maxReaction > minReaction ? random.nextInt(maxReaction - minReaction + 1) : 0);
+
+                        if (reactionDelayTicks >= requiredReaction) {
+                            // Reaction time met, initiate attack sequence (post-cooldown delay)
+                            int minAttack = TutorialMod.CONFIG.triggerBotAttackMinDelay;
+                            int maxAttack = TutorialMod.CONFIG.triggerBotAttackMaxDelay;
+                            this.attackDelayTicks = minAttack + (maxAttack > minAttack ? random.nextInt(maxAttack - minAttack + 1) : 0);
+                            this.targetToAttack = target;
+
+                            // If delay is 0, attack immediately
+                            if (this.attackDelayTicks == 0) {
+                                if (client.interactionManager != null) {
+                                    client.interactionManager.attackEntity(client.player, targetToAttack);
+                                    client.player.swingHand(Hand.MAIN_HAND);
+                                    this.targetToAttack = null; // Reset
+                                    reactionDelayTicks = 0;
+                                }
                             }
                         }
+                    } else {
+                        // Not charged enough, but still looking at target?
+                        // Keep reaction delay or reset? Typically reaction time starts when target is in crosshair regardless of charge.
+                        // But user said: "time a valid entity needs to be intercepted by the crosshair(and within range) for the triggerbot to fire"
+                        // I'll keep it simple and increment as long as we are looking.
+                        reactionDelayTicks++;
                     }
+                    return;
                 }
             }
         }
+
+        // If we reach here, we are not looking at a valid target in range
+        reactionDelayTicks = 0;
     }
 
     private boolean isTargetStillValid(MinecraftClient client, Entity target) {

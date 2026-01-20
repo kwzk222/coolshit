@@ -56,12 +56,16 @@ public class OverlayApp {
             panel.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mousePressed(MouseEvent e) {
+                    Object lockedObj = frame.getRootPane().getClientProperty("locked");
+                    if (lockedObj instanceof Boolean && (Boolean) lockedObj) return;
                     initialClick = e.getPoint();
                 }
             });
             panel.addMouseMotionListener(new MouseAdapter() {
                 @Override
                 public void mouseDragged(MouseEvent e) {
+                    Object lockedObj = frame.getRootPane().getClientProperty("locked");
+                    if (lockedObj instanceof Boolean && (Boolean) lockedObj) return;
                     int thisX = frame.getLocation().x;
                     int thisY = frame.getLocation().y;
                     int xMoved = e.getX() - initialClick.x;
@@ -112,7 +116,6 @@ public class OverlayApp {
                                             int size = Integer.parseInt(value);
                                             String fontName = infoLabel.getFont().getName();
                                             infoLabel.setFont(new Font(fontName, Font.BOLD, size));
-                                            if (frame.isVisible() && !infoLabel.getText().isEmpty()) frame.pack();
                                         } catch (Exception ignored) {}
                                         break;
                                     case "FONT_NAME":
@@ -120,7 +123,6 @@ public class OverlayApp {
                                             String fontName = value.replace("_", " ");
                                             int fontSize = infoLabel.getFont().getSize();
                                             infoLabel.setFont(new Font(fontName, Font.BOLD, fontSize));
-                                            if (frame.isVisible() && !infoLabel.getText().isEmpty()) frame.pack();
                                         } catch (Exception ignored) {}
                                         break;
                                     case "ALIGNMENT":
@@ -170,10 +172,6 @@ public class OverlayApp {
                             infoLabel.setText("<html><div style='text-align: " + textAlign + ";'>" + htmlContent + "</div></html>");
                             if (!frame.isVisible()) {
                                 frame.setVisible(true);
-                                // If it was microscopic, this might fix it on showing
-                                if (frame.getWidth() < 50 || frame.getHeight() < 20) {
-                                    loadWindowBounds();
-                                }
                             }
                         }
                     });

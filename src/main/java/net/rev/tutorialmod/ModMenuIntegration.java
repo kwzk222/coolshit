@@ -30,6 +30,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             builder.setSavingRunnable(TutorialMod.CONFIG::save);
 
+
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
             // Attribute Swapping Category
@@ -600,15 +601,35 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Whether the Trigger Bot should be active while you are in an inventory screen."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotActiveInInventory = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Min Delay (ticks)"), TutorialMod.CONFIG.triggerBotMinDelay, 0, 100)
+            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Reaction Min Delay (ticks)"), TutorialMod.CONFIG.triggerBotReactionMinDelay, 0, 20)
                     .setDefaultValue(0)
-                    .setTooltip(Text.literal("The minimum delay in ticks before attacking."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMinDelay = newValue)
+                    .setTooltip(Text.literal("Minimum time the crosshair must be over the target before firing."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotReactionMinDelay = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Max Delay (ticks)"), TutorialMod.CONFIG.triggerBotMaxDelay, 0, 100)
+            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Reaction Max Delay (ticks)"), TutorialMod.CONFIG.triggerBotReactionMaxDelay, 0, 20)
                     .setDefaultValue(0)
-                    .setTooltip(Text.literal("The maximum delay in ticks before attacking."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMaxDelay = newValue)
+                    .setTooltip(Text.literal("Maximum time the crosshair must be over the target before firing."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotReactionMaxDelay = newValue)
+                    .build());
+            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Attack Min Delay (ticks)"), TutorialMod.CONFIG.triggerBotAttackMinDelay, 0, 20)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("Extra minimum delay after weapon is charged before attacking."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackMinDelay = newValue)
+                    .build());
+            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Attack Max Delay (ticks)"), TutorialMod.CONFIG.triggerBotAttackMaxDelay, 0, 20)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("Extra maximum delay after weapon is charged before attacking."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackMaxDelay = newValue)
+                    .build());
+            triggerBot.addEntry(entryBuilder.startLongSlider(Text.literal("Minimum Charge (%)"), (long)TutorialMod.CONFIG.triggerBotMinCharge, 0, 100)
+                    .setDefaultValue(100)
+                    .setTooltip(Text.literal("Required weapon charge percentage to fire."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMinCharge = newValue.doubleValue())
+                    .build());
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapon Only"), TutorialMod.CONFIG.triggerBotWeaponOnly)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Only fire if holding a sword, axe, or mace."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotWeaponOnly = newValue)
                     .build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit"), TutorialMod.CONFIG.attackOnCrit)
                     .setDefaultValue(false)
@@ -616,20 +637,7 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue)
                     .build());
 
-            Screen screen = builder.build();
-            if (screen instanceof AbstractConfigScreen configScreen) {
-                Map<Text, List<AbstractConfigEntry<?>>> categorizedEntries = configScreen.getCategorizedEntries();
-                if (categorizedEntries != null) {
-                    List<Text> categories = new ArrayList<>(categorizedEntries.keySet());
-                    for (int i = 0; i < categories.size(); i++) {
-                        if (categories.get(i).getString().equals(TutorialMod.CONFIG.lastCategory)) {
-                            configScreen.selectedCategoryIndex = i;
-                            break;
-                        }
-                    }
-                }
-            }
-            return screen;
+            return builder.build();
         };
     }
 }
