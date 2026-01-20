@@ -301,93 +301,96 @@ public class ModMenuIntegration implements ModMenuApi {
                     .build());
             movement.addEntry(bridgeAssistSub.build());
 
-            // Clutch
-            SubCategoryBuilder clutchSub = entryBuilder.startSubCategory(Text.literal("Clutch"));
-            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Clutch Module"), TutorialMod.CONFIG.clutchEnabled)
-                    .setDefaultValue(false)
-                    .setTooltip(Text.literal("Master toggle for the clutch module."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue)
-                    .build());
-            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Water Clutch Enabled"), TutorialMod.CONFIG.waterClutchEnabled)
+            // Clutch (Water)
+            SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water)"));
+            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Water Clutch"), TutorialMod.CONFIG.waterClutchEnabled)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Whether to use water buckets for clutching."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Wind Clutch Enabled"), TutorialMod.CONFIG.windClutchEnabled)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("Whether to use wind charges for clutching."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchEnabled = newValue)
-                    .build());
-            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance (Water)"), (long)(TutorialMod.CONFIG.clutchMinFallDistance * 10), 0, 100)
+            waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance (Water)"), (long)(TutorialMod.CONFIG.clutchMinFallDistance * 10), 0, 100)
                     .setDefaultValue(30)
                     .setTooltip(Text.literal("Minimum fall distance to trigger water clutch. Default: 3.0 (30 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue / 10.0)
                     .build());
-            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90)
+            waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90)
                     .setDefaultValue(60)
                     .setTooltip(Text.literal("Minimum pitch (looking down) to trigger clutch. Default: 60"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue())
                     .build());
-            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Switch Delay (ticks)"), TutorialMod.CONFIG.clutchSwitchDelay, 0, 40)
+            waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Switch Delay (ticks)"), TutorialMod.CONFIG.clutchSwitchDelay, 0, 40)
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("Time to wait after fall confirmation before switching to bucket. Default: 0"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchSwitchDelay = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Recovery Delay (ticks)"), TutorialMod.CONFIG.clutchRecoveryDelay, 0, 100)
+            waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Recovery Delay (ticks)"), TutorialMod.CONFIG.clutchRecoveryDelay, 0, 100)
                     .setDefaultValue(20)
                     .setTooltip(Text.literal("Time to wait after landing before picking up water. Default: 20"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRecoveryDelay = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay (ticks)"), TutorialMod.CONFIG.clutchRestoreDelay, 0, 100)
+            waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay (ticks)"), TutorialMod.CONFIG.clutchRestoreDelay, 0, 100)
                     .setDefaultValue(5)
                     .setTooltip(Text.literal("Time to wait after recovery before switching back to original slot. Default: 5"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreDelay = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Restore Original Slot"), TutorialMod.CONFIG.clutchRestoreOriginalSlot)
+            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Restore Original Slot"), TutorialMod.CONFIG.clutchRestoreOriginalSlot)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Whether to switch back to the original slot after clutching."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreOriginalSlot = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Bucket Switch"), TutorialMod.CONFIG.clutchAutoSwitch)
+            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Bucket Switch"), TutorialMod.CONFIG.clutchAutoSwitch)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Whether to automatically switch to the water bucket."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchAutoSwitch = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance (Wind)"), (long)(TutorialMod.CONFIG.windClutchMinFallDistance * 10), 0, 200)
-                    .setDefaultValue(80)
-                    .setTooltip(Text.literal("Minimum fall distance for Wind Charge clutch. Default: 8.0 (80 on slider)"))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchMinFallDistance = newValue / 10.0)
+            movement.addEntry(waterClutchSub.build());
+
+            // Clutch (Wind Charge)
+            SubCategoryBuilder windClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Wind Charge)"));
+            windClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Wind Clutch"), TutorialMod.CONFIG.windClutchEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Whether to use wind charges for clutching."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchEnabled = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Wind Clutch Fire Ticks"), TutorialMod.CONFIG.windClutchFireTicks, 1, 20)
+            windClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance (Wind)"), (long)(TutorialMod.CONFIG.windClutchMinFallDistance), 0, 200)
+                    .setDefaultValue(8)
+                    .setTooltip(Text.literal("Minimum fall distance for Wind Charge clutch. Default: 8 blocks"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchMinFallDistance = newValue.doubleValue())
+                    .build());
+            windClutchSub.add(entryBuilder.startIntSlider(Text.literal("Wind Clutch Fire Ticks"), TutorialMod.CONFIG.windClutchFireTicks, 1, 20)
                     .setDefaultValue(6)
                     .setTooltip(Text.literal("Fire when estimated ticks-to-impact <= this. Default: 6"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchFireTicks = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startIntSlider(Text.literal("Wind Clutch Max Retries"), TutorialMod.CONFIG.windClutchMaxRetries, 0, 5)
+            windClutchSub.add(entryBuilder.startIntSlider(Text.literal("High Fall Fire Ticks"), TutorialMod.CONFIG.windClutchHighFallFireTicks, 1, 20)
+                    .setDefaultValue(3)
+                    .setTooltip(Text.literal("Fire ticks used when falling from more than 170 blocks. Default: 3"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchHighFallFireTicks = newValue)
+                    .build());
+            windClutchSub.add(entryBuilder.startIntSlider(Text.literal("Wind Clutch Max Retries"), TutorialMod.CONFIG.windClutchMaxRetries, 0, 5)
                     .setDefaultValue(2)
                     .setTooltip(Text.literal("Retry attempts if first fire didn't succeed. Default: 2"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchMaxRetries = newValue)
                     .build());
-            clutchSub.add(entryBuilder.startLongSlider(Text.literal("Wind Clutch Success Vy Delta"), (long)(TutorialMod.CONFIG.windClutchSuccessVyDelta * 100), 0, 200)
+            windClutchSub.add(entryBuilder.startLongSlider(Text.literal("Wind Clutch Success Vy Delta"), (long)(TutorialMod.CONFIG.windClutchSuccessVyDelta * 100), 0, 200)
                     .setDefaultValue(50)
                     .setTooltip(Text.literal("Upward velocity increase indicating success. Default: 0.5 (50 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchSuccessVyDelta = newValue / 100.0)
                     .build());
-            movement.addEntry(clutchSub.build());
+            movement.addEntry(windClutchSub.build());
+
+            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Clutch Module Toggle"), TutorialMod.CONFIG.clutchEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Master toggle for all clutch features."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue)
+                    .build());
 
             // Overlay Category
             ConfigCategory overlay = builder.getOrCreateCategory(Text.literal("Overlay"));
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Coords Overlay"), TutorialMod.CONFIG.showCoordsOverlay)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Shows a separate window with your coordinates."))
-                    .setSaveConsumer(newValue -> {
-                        TutorialMod.CONFIG.showCoordsOverlay = newValue;
-                        if (newValue) {
-                            TutorialModClient.getOverlayManager().start();
-                        } else if (!TutorialMod.CONFIG.showEnemyInfo) {
-                            TutorialModClient.getOverlayManager().stop();
-                        }
-                    })
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showCoordsOverlay = newValue)
                     .build());
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Accurate Coordinates"), TutorialMod.CONFIG.showAccurateCoordinates)
                     .setDefaultValue(false)
@@ -415,14 +418,7 @@ public class ModMenuIntegration implements ModMenuApi {
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show Enemy Info"), TutorialMod.CONFIG.showEnemyInfo)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("Shows information about the player you are looking at."))
-                    .setSaveConsumer(newValue -> {
-                        TutorialMod.CONFIG.showEnemyInfo = newValue;
-                        if (newValue) {
-                            TutorialModClient.getOverlayManager().start();
-                        } else if (!TutorialMod.CONFIG.showCoordsOverlay) {
-                            TutorialModClient.getOverlayManager().stop();
-                        }
-                    })
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showEnemyInfo = newValue)
                     .build());
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show HP Decimals"), TutorialMod.CONFIG.showHpDecimals)
                     .setDefaultValue(false)

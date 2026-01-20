@@ -20,6 +20,7 @@ public class OverlayApp {
             frame = new JFrame();
             frame.setUndecorated(true); // no border
             frame.setAlwaysOnTop(true);
+            frame.setFocusableWindowState(false);
             frame.setBackground(new Color(0, 0, 0, 0)); // fully transparent background
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -36,7 +37,7 @@ public class OverlayApp {
             panel.setOpaque(false);
             panel.setLayout(new BorderLayout());
 
-            infoLabel = new JLabel("Waiting for data...", SwingConstants.LEFT);
+            infoLabel = new JLabel("", SwingConstants.LEFT);
             infoLabel.setFont(new Font("Consolas", Font.BOLD, 20));
             infoLabel.setForeground(Color.WHITE);
             infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10)); // Add padding
@@ -47,7 +48,7 @@ public class OverlayApp {
             // Load saved window position + size
             loadWindowBounds();
 
-            frame.setVisible(true);
+            frame.setVisible(false);
 
             // Make draggable
             panel.addMouseListener(new MouseAdapter() {
@@ -96,9 +97,17 @@ public class OverlayApp {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    final String htmlContent = line.replace("\\n", "<br>");
+                    final String content = line;
                     SwingUtilities.invokeLater(() -> {
-                        infoLabel.setText("<html><div style='text-align: left;'>" + htmlContent + "</div></html>");
+                        if (content.trim().isEmpty()) {
+                            frame.setVisible(false);
+                        } else {
+                            String htmlContent = content.replace("\\n", "<br>");
+                            infoLabel.setText("<html><div style='text-align: left;'>" + htmlContent + "</div></html>");
+                            if (!frame.isVisible()) {
+                                frame.setVisible(true);
+                            }
+                        }
                     });
                 }
             } catch (Exception e) {

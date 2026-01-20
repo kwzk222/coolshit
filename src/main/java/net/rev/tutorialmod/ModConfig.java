@@ -55,6 +55,7 @@ public class ModConfig {
     public boolean clutchAutoSwitch = true;
     public double windClutchMinFallDistance = 8.0;
     public int windClutchFireTicks = 6;
+    public int windClutchHighFallFireTicks = 3;
     public int windClutchMaxRetries = 2;
     public double windClutchSuccessVyDelta = 0.5;
 

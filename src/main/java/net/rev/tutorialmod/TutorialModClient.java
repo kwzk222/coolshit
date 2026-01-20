@@ -189,6 +189,13 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         // --- Centralized Overlay Logic ---
+        boolean shouldOverlayBeRunning = TutorialMod.CONFIG.showCoordsOverlay || TutorialMod.CONFIG.showEnemyInfo;
+        if (shouldOverlayBeRunning && !overlayManager.isRunning() && client.player != null) {
+            overlayManager.start();
+        } else if ((!shouldOverlayBeRunning || client.player == null) && overlayManager.isRunning()) {
+            overlayManager.stop();
+        }
+
         if (overlayManager.isRunning() && client.player != null) {
             String enemyInfoString = TutorialMod.CONFIG.showEnemyInfo ? enemyInfo.getFormattedEnemyInfo() : null;
             if (enemyInfoString != null) {
@@ -196,7 +203,7 @@ public class TutorialModClient implements ClientModInitializer {
             } else if (TutorialMod.CONFIG.showCoordsOverlay) {
                 overlayManager.update(formatCoordsForOverlay(client));
             } else {
-                overlayManager.update(""); // Clear overlay
+                overlayManager.update(""); // Clear/Hide overlay
             }
         }
 

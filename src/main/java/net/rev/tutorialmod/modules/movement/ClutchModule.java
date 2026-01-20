@@ -89,7 +89,7 @@ public class ClutchModule {
                         state = ClutchState.ARMING;
                     }
                     // Fallback to Wind Charge Clutch
-                    else if (config.windClutchEnabled && (p.fallDistance >= Math.max(8.0, config.windClutchMinFallDistance) || p.getVelocity().y < -0.08)) {
+                    else if (config.windClutchEnabled && p.fallDistance >= config.windClutchMinFallDistance) {
                         int slot = findWindChargeSlot();
                         if (slot != -1) {
                             originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
@@ -232,7 +232,8 @@ public class ClutchModule {
                 if (p.getVelocity().y < -3.8) { reset(); return; } // Abort if too fast (terminal)
 
                 double ticksToImpact = estimateTicksToImpact(p);
-                if (ticksToImpact <= config.windClutchFireTicks) {
+                int fireTicks = p.fallDistance > 170 ? config.windClutchHighFallFireTicks : config.windClutchFireTicks;
+                if (ticksToImpact <= fireTicks) {
                     state = ClutchState.WIND_READY_TO_FIRE;
                 }
             }
