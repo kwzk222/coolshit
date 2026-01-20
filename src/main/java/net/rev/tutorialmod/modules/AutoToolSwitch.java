@@ -69,6 +69,10 @@ public class AutoToolSwitch {
     }
 
     public void onStoppedMining() {
+        if (TutorialMod.getMiningResetModule().isForcedRelease()) {
+            return;
+        }
+
         if (!isMining) {
             if (miningDelayTicks != -1) {
                 reset();

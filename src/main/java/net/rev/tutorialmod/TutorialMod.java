@@ -3,6 +3,7 @@ package net.rev.tutorialmod;
 import net.fabricmc.api.ModInitializer;
 
 import net.rev.tutorialmod.modules.AutoToolSwitch;
+import net.rev.tutorialmod.modules.misc.MiningResetModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +16,7 @@ public class TutorialMod implements ModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static ModConfig CONFIG;
 	private static final AutoToolSwitch autoToolSwitch = new AutoToolSwitch();
+	private static final MiningResetModule miningResetModule = new MiningResetModule();
 
 	@Override
 	public void onInitialize() {
@@ -27,6 +29,10 @@ public class TutorialMod implements ModInitializer {
 
 	public static AutoToolSwitch getAutoToolSwitch() {
 		return autoToolSwitch;
+	}
+
+	public static MiningResetModule getMiningResetModule() {
+		return miningResetModule;
 	}
 }
 

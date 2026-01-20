@@ -46,4 +46,9 @@ public class ClientPlayerInteractionManagerMixin {
     private void onUpdateBlockBreakingProgress(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
         TutorialMod.getAutoToolSwitch().onBlockBreak(pos);
     }
+
+    @Inject(method = "updateBlockBreakingProgress", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerInteractionManager;breakBlock(Lnet/minecraft/util/math/BlockPos;)Z"))
+    private void onBreakBlock(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
+        TutorialMod.getMiningResetModule().onBlockBroken();
+    }
 }

@@ -216,6 +216,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The hotkey to hold to activate the Bridge Assist module."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistHotkey = newValue)
                     .build());
+            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Mining Reset Toggle Hotkey"), TutorialMod.CONFIG.miningResetHotkey)
+                    .setDefaultValue("key.keyboard.unknown")
+                    .setTooltip(Text.literal("The hotkey to toggle the Mining Reset module."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetHotkey = newValue)
+                    .build());
             hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey)
                     .setDefaultValue("key.keyboard.n")
                     .setTooltip(Text.literal("The hotkey to toggle between Hold and Toggle sprint modes."))
@@ -491,6 +496,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue("key.keyboard.apostrophe")
                     .setTooltip(Text.literal("The key to hold to enable click spamming. Use translation key (e.g., 'key.keyboard.apostrophe')."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue)
+                    .build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Mining Reset Enabled"), TutorialMod.CONFIG.miningResetEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Automatically skips the 5-tick mining cooldown by briefly releasing and re-pressing the attack key when a block is broken."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetEnabled = newValue)
                     .build());
 
             // Trigger Bot Category

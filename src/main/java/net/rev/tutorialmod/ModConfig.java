@@ -63,6 +63,7 @@ public class ModConfig {
     public boolean clickSpamEnabled = false;
     public int clickSpamCps = 12;
     public String clickSpamModifierKey = "key.keyboard.apostrophe";
+    public boolean miningResetEnabled = false;
 
     // --- General ---
     public boolean masterEnabled = true;
@@ -107,6 +108,7 @@ public class ModConfig {
     public String parkourHotkey = "key.keyboard.p";
     public String clutchHotkey = "key.keyboard.j";
     public String bridgeAssistHotkey = "key.keyboard.left.alt";
+    public String miningResetHotkey = "key.keyboard.unknown";
     public String sprintModeHotkey = "key.keyboard.n";
     public String sneakModeHotkey = "key.keyboard.b";
     public boolean activeInInventory = false;

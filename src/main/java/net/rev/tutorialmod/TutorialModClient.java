@@ -87,6 +87,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean overlayToggleWasPressed = false;
     private boolean parkourToggleWasPressed = false;
     private boolean clutchToggleWasPressed = false;
+    private boolean miningResetWasPressed = false;
     private boolean sprintModeWasPressed = false;
     private boolean sneakModeWasPressed = false;
 
@@ -228,6 +229,8 @@ public class TutorialModClient implements ClientModInitializer {
             clutchModule.tick();
         }
 
+        TutorialMod.getMiningResetModule().tick();
+
         ClickSpamModule.onTick();
     }
 
@@ -295,6 +298,21 @@ public class TutorialModClient implements ClientModInitializer {
                 client.setScreen(new ModMenuIntegration().getModConfigScreenFactory().create(client.currentScreen));
             }
             openSettingsWasPressed = isOpenSettingsPressed;
+        } catch (IllegalArgumentException e) {
+            // Invalid key
+        }
+
+        // --- Toggle Mining Reset Hotkey ---
+        try {
+            boolean isMiningResetTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.miningResetHotkey).getCode());
+            if (isMiningResetTogglePressed && !miningResetWasPressed) {
+                TutorialMod.CONFIG.miningResetEnabled = !TutorialMod.CONFIG.miningResetEnabled;
+                TutorialMod.CONFIG.save();
+                if (!TutorialMod.CONFIG.disableModChatUpdates) {
+                    client.player.sendMessage(Text.of("Mining Reset: " + (TutorialMod.CONFIG.miningResetEnabled ? "ON" : "OFF")), false);
+                }
+            }
+            miningResetWasPressed = isMiningResetTogglePressed;
         } catch (IllegalArgumentException e) {
             // Invalid key
         }
