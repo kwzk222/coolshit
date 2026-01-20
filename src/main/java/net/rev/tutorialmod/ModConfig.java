@@ -67,6 +67,7 @@ public class ModConfig {
     public int miningResetChance = 100;
     public boolean miningResetSimulateStops = false;
     public double miningResetThreshold = 0.92;
+    public int miningResetDelay = 0;
 
     // --- General ---
     public boolean masterEnabled = true;
@@ -144,6 +145,8 @@ public class ModConfig {
     public boolean showSneakModeOverlay = true;
     public int overlayFontSize = 20;
     public int overlayBackgroundOpacity = 128;
+    public String overlayAlignment = "Left";
+    public String overlayFontName = "Consolas";
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;

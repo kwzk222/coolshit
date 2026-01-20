@@ -76,9 +76,9 @@ public abstract class ClientPlayerInteractionManagerMixin {
         }
 
         // Skip the cooldown (e.g. from a previous block)
-        if (blockBreakingCooldown > 0) {
+        if (blockBreakingCooldown > TutorialMod.CONFIG.miningResetDelay) {
             if (tutorialmod$random.nextInt(100) < TutorialMod.CONFIG.miningResetChance) {
-                blockBreakingCooldown = 0;
+                blockBreakingCooldown = TutorialMod.CONFIG.miningResetDelay;
             }
         }
     }
@@ -89,7 +89,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
             // Reset cooldown here to skip the 5-tick delay between blocks
             if (TutorialMod.CONFIG.masterEnabled && TutorialMod.CONFIG.miningResetEnabled) {
                 if (tutorialmod$random.nextInt(100) < TutorialMod.CONFIG.miningResetChance) {
-                    blockBreakingCooldown = 0;
+                    blockBreakingCooldown = TutorialMod.CONFIG.miningResetDelay;
                 }
             }
         }

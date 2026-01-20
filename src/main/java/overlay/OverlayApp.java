@@ -110,8 +110,38 @@ public class OverlayApp {
                                     case "FONT_SIZE":
                                         try {
                                             int size = Integer.parseInt(value);
-                                            infoLabel.setFont(new Font("Consolas", Font.BOLD, size));
-                                            frame.pack();
+                                            String fontName = infoLabel.getFont().getName();
+                                            infoLabel.setFont(new Font(fontName, Font.BOLD, size));
+                                            if (frame.isVisible() && !infoLabel.getText().isEmpty()) frame.pack();
+                                        } catch (Exception ignored) {}
+                                        break;
+                                    case "FONT_NAME":
+                                        try {
+                                            String fontName = value.replace("_", " ");
+                                            int fontSize = infoLabel.getFont().getSize();
+                                            infoLabel.setFont(new Font(fontName, Font.BOLD, fontSize));
+                                            if (frame.isVisible() && !infoLabel.getText().isEmpty()) frame.pack();
+                                        } catch (Exception ignored) {}
+                                        break;
+                                    case "ALIGNMENT":
+                                        try {
+                                            String align = value.toLowerCase();
+                                            int swingAlign = SwingConstants.LEFT;
+                                            String cssAlign = "left";
+                                            if (align.equals("center") || align.equals("middle")) {
+                                                swingAlign = SwingConstants.CENTER;
+                                                cssAlign = "center";
+                                            } else if (align.equals("right")) {
+                                                swingAlign = SwingConstants.RIGHT;
+                                                cssAlign = "right";
+                                            }
+                                            infoLabel.setHorizontalAlignment(swingAlign);
+                                            frame.getRootPane().putClientProperty("textAlign", cssAlign);
+                                            // Force update of current text if any
+                                            String currentHtml = infoLabel.getText();
+                                            if (currentHtml.startsWith("<html>")) {
+                                                infoLabel.setText(currentHtml.replaceFirst("text-align: [a-z]+;", "text-align: " + cssAlign + ";"));
+                                            }
                                         } catch (Exception ignored) {}
                                         break;
                                     case "OPACITY":
@@ -126,11 +156,18 @@ public class OverlayApp {
                             }
                         } else if (content.trim().isEmpty()) {
                             frame.setVisible(false);
+                            infoLabel.setText("");
                         } else {
                             String htmlContent = content.replace("\\n", "<br>");
-                            infoLabel.setText("<html><div style='text-align: left;'>" + htmlContent + "</div></html>");
+                            Object textAlignObj = frame.getRootPane().getClientProperty("textAlign");
+                            String textAlign = (textAlignObj instanceof String) ? (String) textAlignObj : "left";
+                            infoLabel.setText("<html><div style='text-align: " + textAlign + ";'>" + htmlContent + "</div></html>");
                             if (!frame.isVisible()) {
                                 frame.setVisible(true);
+                                // If it was microscopic, this might fix it on showing
+                                if (frame.getWidth() < 50 || frame.getHeight() < 20) {
+                                    loadWindowBounds();
+                                }
                             }
                         }
                     });

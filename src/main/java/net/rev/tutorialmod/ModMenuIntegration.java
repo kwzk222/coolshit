@@ -427,6 +427,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The opacity of the overlay's background (0-255)."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayBackgroundOpacity = newValue)
                     .build());
+            overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Alignment"), TutorialMod.CONFIG.overlayAlignment)
+                    .setDefaultValue("Left")
+                    .setTooltip(Text.literal("Text alignment in the overlay: Left, Center, or Right."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayAlignment = newValue)
+                    .build());
+            overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Font Name"), TutorialMod.CONFIG.overlayFontName)
+                    .setDefaultValue("Consolas")
+                    .setTooltip(Text.literal("The font to use in the overlay (e.g., Consolas, Arial, Serif)."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayFontName = newValue)
+                    .build());
 
             // Enemy Info SubCategory
             me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder enemyInfoSubCategory = entryBuilder.startSubCategory(Text.literal("Enemy Info"));
@@ -526,6 +536,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(92)
                     .setTooltip(Text.literal("The progress threshold at which to perform the early release reset. Default: 0.92 (92 on slider)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetThreshold = newValue / 100.0)
+                    .build());
+            misc.addEntry(entryBuilder.startIntSlider(Text.literal("Mining Reset Delay (ticks)"), TutorialMod.CONFIG.miningResetDelay, 0, 5)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The cooldown to set after a reset. 0 is fastest, 5 is vanilla. Default: 0"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetDelay = newValue)
                     .build());
 
             // Trigger Bot Category

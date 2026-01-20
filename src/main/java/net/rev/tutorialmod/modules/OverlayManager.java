@@ -81,6 +81,8 @@ public class OverlayManager {
         if (socketWriter != null) {
             socketWriter.println("CONFIG FONT_SIZE " + TutorialMod.CONFIG.overlayFontSize);
             socketWriter.println("CONFIG OPACITY " + TutorialMod.CONFIG.overlayBackgroundOpacity);
+            socketWriter.println("CONFIG ALIGNMENT " + TutorialMod.CONFIG.overlayAlignment);
+            socketWriter.println("CONFIG FONT_NAME " + TutorialMod.CONFIG.overlayFontName.replace(" ", "_"));
         }
     }
 
