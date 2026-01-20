@@ -144,6 +144,12 @@ public class OverlayApp {
                                             }
                                         } catch (Exception ignored) {}
                                         break;
+                                    case "LOCKED":
+                                        try {
+                                            boolean locked = Boolean.parseBoolean(value);
+                                            frame.getRootPane().putClientProperty("locked", locked);
+                                        } catch (Exception ignored) {}
+                                        break;
                                     case "OPACITY":
                                         try {
                                             int opacity = Integer.parseInt(value);

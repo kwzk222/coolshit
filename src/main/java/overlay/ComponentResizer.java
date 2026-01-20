@@ -63,6 +63,14 @@ public class ComponentResizer extends MouseAdapter {
     @Override
     public void mouseMoved(MouseEvent e) {
         source = e.getComponent();
+        Window window = SwingUtilities.getWindowAncestor(source);
+        if (window instanceof javax.swing.JFrame frame) {
+            Object lockedObj = frame.getRootPane().getClientProperty("locked");
+            if (lockedObj instanceof Boolean && (Boolean) lockedObj) {
+                source.setCursor(Cursor.getDefaultCursor());
+                return;
+            }
+        }
         Point location = e.getPoint();
         direction = 0;
 
@@ -84,6 +92,12 @@ public class ComponentResizer extends MouseAdapter {
 
     @Override
     public void mousePressed(MouseEvent e) {
+        source = e.getComponent();
+        Window window = SwingUtilities.getWindowAncestor(source);
+        if (window instanceof javax.swing.JFrame frame) {
+            Object lockedObj = frame.getRootPane().getClientProperty("locked");
+            if (lockedObj instanceof Boolean && (Boolean) lockedObj) return;
+        }
         if (direction != 0) {
             resizing = true;
             source = e.getComponent();

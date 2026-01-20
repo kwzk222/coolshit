@@ -148,6 +148,7 @@ public class ModConfig {
     public int overlayBackgroundOpacity = 128;
     public String overlayAlignment = "Left";
     public String overlayFontName = "Consolas";
+    public boolean overlayLocked = false;
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;

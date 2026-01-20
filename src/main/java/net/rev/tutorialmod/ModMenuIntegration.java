@@ -30,21 +30,6 @@ public class ModMenuIntegration implements ModMenuApi {
 
             builder.setSavingRunnable(TutorialMod.CONFIG::save);
 
-            builder.setAfterInitConsumer(screen -> {
-                if (screen instanceof AbstractConfigScreen configScreen) {
-                    Map<Text, List<AbstractConfigEntry<?>>> categorizedEntries = configScreen.getCategorizedEntries();
-                    if (categorizedEntries != null) {
-                        List<Text> categories = new ArrayList<>(categorizedEntries.keySet());
-                        for (int i = 0; i < categories.size(); i++) {
-                            if (categories.get(i).getString().equals(TutorialMod.CONFIG.lastCategory)) {
-                                configScreen.selectedCategoryIndex = i;
-                                break;
-                            }
-                        }
-                    }
-                }
-            });
-
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
             // Attribute Swapping Category
@@ -457,6 +442,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The font to use in the overlay (e.g., Consolas, Arial, Serif)."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayFontName = newValue)
                     .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lock Overlay"), TutorialMod.CONFIG.overlayLocked)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("If enabled, the overlay cannot be moved or resized manually."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayLocked = newValue)
+                    .build());
 
             // Enemy Info SubCategory
             me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder enemyInfoSubCategory = entryBuilder.startSubCategory(Text.literal("Enemy Info"));
@@ -626,7 +616,20 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue)
                     .build());
 
-            return builder.build();
+            Screen screen = builder.build();
+            if (screen instanceof AbstractConfigScreen configScreen) {
+                Map<Text, List<AbstractConfigEntry<?>>> categorizedEntries = configScreen.getCategorizedEntries();
+                if (categorizedEntries != null) {
+                    List<Text> categories = new ArrayList<>(categorizedEntries.keySet());
+                    for (int i = 0; i < categories.size(); i++) {
+                        if (categories.get(i).getString().equals(TutorialMod.CONFIG.lastCategory)) {
+                            configScreen.selectedCategoryIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            return screen;
         };
     }
 }

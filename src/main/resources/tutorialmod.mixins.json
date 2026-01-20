@@ -14,7 +14,7 @@
 		"MinecraftClientMixin",
 		"MinecraftClientAccessor",
 		"GameOptionsAccessor",
-		"AbstractConfigScreenMixin"
+		"ScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
