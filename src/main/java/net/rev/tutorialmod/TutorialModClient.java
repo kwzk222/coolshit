@@ -300,20 +300,6 @@ public class TutorialModClient implements ClientModInitializer {
             // Invalid key
         }
 
-        // --- Toggle Mining Reset Hotkey ---
-        try {
-            boolean isMiningResetTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.miningResetHotkey).getCode());
-            if (isMiningResetTogglePressed && !miningResetWasPressed) {
-                TutorialMod.CONFIG.miningResetEnabled = !TutorialMod.CONFIG.miningResetEnabled;
-                TutorialMod.CONFIG.save();
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    client.player.sendMessage(Text.of("Mining Reset: " + (TutorialMod.CONFIG.miningResetEnabled ? "ON" : "OFF")), false);
-                }
-            }
-            miningResetWasPressed = isMiningResetTogglePressed;
-        } catch (IllegalArgumentException e) {
-            // Invalid key
-        }
 
         // --- Toggle Clutch Hotkey ---
         try {

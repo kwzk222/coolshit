@@ -13,7 +13,8 @@
 		"HandledScreenAccessor",
 		"MinecraftClientMixin",
 		"MinecraftClientAccessor",
-		"GameOptionsAccessor"
+		"GameOptionsAccessor",
+		"AbstractConfigScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

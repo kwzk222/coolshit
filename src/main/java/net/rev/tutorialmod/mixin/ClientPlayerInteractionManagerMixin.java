@@ -11,12 +11,14 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import java.util.Random;
+import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -60,6 +62,10 @@ public abstract class ClientPlayerInteractionManagerMixin {
             return;
         }
 
+        if (!tutorialmod$isMiningResetHotkeyDown()) {
+            return;
+        }
+
         // Early Release Simulation
         if (TutorialMod.CONFIG.miningResetSimulateStops) {
             if (pos.equals(currentBreakingPos) && !pos.equals(tutorialmod$lastResetPos)) {
@@ -88,10 +94,27 @@ public abstract class ClientPlayerInteractionManagerMixin {
         if (cir.getReturnValue() != null && cir.getReturnValue()) {
             // Reset cooldown here to skip the 5-tick delay between blocks
             if (TutorialMod.CONFIG.masterEnabled && TutorialMod.CONFIG.miningResetEnabled) {
-                if (tutorialmod$random.nextInt(100) < TutorialMod.CONFIG.miningResetChance) {
-                    blockBreakingCooldown = TutorialMod.CONFIG.miningResetDelay;
+                if (tutorialmod$isMiningResetHotkeyDown()) {
+                    if (tutorialmod$random.nextInt(100) < TutorialMod.CONFIG.miningResetChance) {
+                        blockBreakingCooldown = TutorialMod.CONFIG.miningResetDelay;
+                    }
                 }
             }
+        }
+    }
+
+    private boolean tutorialmod$isMiningResetHotkeyDown() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        try {
+            InputUtil.Key key = InputUtil.fromTranslationKey(TutorialMod.CONFIG.miningResetHotkey);
+            long handle = mc.getWindow().getHandle();
+            if (key.getCategory() == InputUtil.Type.MOUSE) {
+                return GLFW.glfwGetMouseButton(handle, key.getCode()) == GLFW.GLFW_PRESS;
+            } else {
+                return InputUtil.isKeyPressed(handle, key.getCode());
+            }
+        } catch (Exception e) {
+            return false;
         }
     }
 }

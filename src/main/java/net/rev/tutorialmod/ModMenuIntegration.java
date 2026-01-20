@@ -2,15 +2,20 @@ package net.rev.tutorialmod;
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
+import me.shedaniel.clothconfig2.api.AbstractConfigEntry;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
+import me.shedaniel.clothconfig2.gui.AbstractConfigScreen;
 import me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class ModMenuIntegration implements ModMenuApi {
@@ -20,10 +25,25 @@ public class ModMenuIntegration implements ModMenuApi {
         return parent -> {
             ConfigBuilder builder = ConfigBuilder.create()
                     .setParentScreen(parent)
-                    .setTitle(Text.literal("Attribute Swapping"))
+                    .setTitle(Text.literal("TutorialMod Settings"))
                     .setDefaultBackgroundTexture(Identifier.ofVanilla("textures/gui/options_background.png"));
 
             builder.setSavingRunnable(TutorialMod.CONFIG::save);
+
+            builder.setAfterInitConsumer(screen -> {
+                if (screen instanceof AbstractConfigScreen configScreen) {
+                    Map<Text, List<AbstractConfigEntry<?>>> categorizedEntries = configScreen.getCategorizedEntries();
+                    if (categorizedEntries != null) {
+                        List<Text> categories = new ArrayList<>(categorizedEntries.keySet());
+                        for (int i = 0; i < categories.size(); i++) {
+                            if (categories.get(i).getString().equals(TutorialMod.CONFIG.lastCategory)) {
+                                configScreen.selectedCategoryIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 

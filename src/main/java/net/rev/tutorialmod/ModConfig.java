@@ -104,6 +104,7 @@ public class ModConfig {
 
     // --- Hotkeys ---
     public String openSettingsHotkey = "key.keyboard.right.shift";
+    public String lastCategory = "Attribute Swapping";
     public String masterToggleHotkey = "key.keyboard.m";
     public String teammateHotkey = "key.keyboard.g";
     public String triggerBotToggleHotkey = "key.keyboard.k";

@@ -8,7 +8,6 @@ import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
 
 public class ClickSpamModule {
     private static final MinecraftClient mc = MinecraftClient.getInstance();
-    private static double leftAccumulator = 0;
     private static double rightAccumulator = 0;
 
     public static void onTick() {
@@ -20,17 +19,6 @@ public class ClickSpamModule {
         if (!modifierHeld) return;
 
         double delay = 20.0 / Math.max(1, config.clickSpamCps);
-
-        // Left Click
-        if (mc.options.attackKey.isPressed()) {
-            leftAccumulator++;
-            while (leftAccumulator >= delay) {
-                ((MinecraftClientAccessor) mc).invokeDoAttack();
-                leftAccumulator -= delay;
-            }
-        } else {
-            leftAccumulator = delay; // Ready for next press
-        }
 
         // Right Click
         if (mc.options.useKey.isPressed()) {
