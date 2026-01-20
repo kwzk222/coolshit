@@ -2,37 +2,35 @@ package overlay;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Properties;
 
 public class OverlayApp {
+    private static JFrame frame;
     private static JLabel infoLabel;
     private static Point initialClick;
-    private static JFrame frame;
-    private static final File CONFIG_FILE = new File("overlay.properties");
+    private static final File CONFIG_FILE = new File("overlay_config.properties");
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            frame = new JFrame();
-            frame.setUndecorated(true); // no border
+            frame = new JFrame("TutorialMod Overlay");
+            frame.setUndecorated(true);
             frame.setAlwaysOnTop(true);
-            frame.setFocusableWindowState(false);
-            frame.setBackground(new Color(0, 0, 0, 0)); // fully transparent background
+            frame.setBackground(new Color(0, 0, 0, 0));
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setFocusableWindowState(false);
 
-            // Transparent panel with semi-transparent background
             JPanel panel = new JPanel() {
                 @Override
                 protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
                     Graphics2D g2d = (Graphics2D) g;
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     Object opacityObj = frame.getRootPane().getClientProperty("opacity");
                     int opacity = (opacityObj instanceof Integer) ? (Integer) opacityObj : 128;
-                    g2d.setColor(new Color(0, 0, 0, opacity)); // black with configurable opacity
+                    g2d.setColor(new Color(0, 0, 0, opacity));
                     g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
                 }
             };
@@ -42,147 +40,139 @@ public class OverlayApp {
             infoLabel = new JLabel("", SwingConstants.LEFT);
             infoLabel.setFont(new Font("Consolas", Font.BOLD, 20));
             infoLabel.setForeground(Color.WHITE);
-            infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10)); // Add padding
+            infoLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
 
             panel.add(infoLabel, BorderLayout.CENTER);
             frame.setContentPane(panel);
 
-            // Load saved window position + size
             loadWindowBounds();
-
             frame.setVisible(false);
 
-            // Make draggable
-            panel.addMouseListener(new MouseAdapter() {
+            // Dragging logic
+            MouseAdapter dragListener = new MouseAdapter() {
                 @Override
                 public void mousePressed(MouseEvent e) {
-                    Object lockedObj = frame.getRootPane().getClientProperty("locked");
-                    if (lockedObj instanceof Boolean && (Boolean) lockedObj) return;
+                    if (isLocked()) return;
                     initialClick = e.getPoint();
                 }
-            });
-            panel.addMouseMotionListener(new MouseAdapter() {
+
                 @Override
                 public void mouseDragged(MouseEvent e) {
-                    Object lockedObj = frame.getRootPane().getClientProperty("locked");
-                    if (lockedObj instanceof Boolean && (Boolean) lockedObj) return;
+                    if (isLocked() || initialClick == null) return;
                     int thisX = frame.getLocation().x;
                     int thisY = frame.getLocation().y;
                     int xMoved = e.getX() - initialClick.x;
                     int yMoved = e.getY() - initialClick.y;
                     frame.setLocation(thisX + xMoved, thisY + yMoved);
                 }
-            });
-
-            // Allow resizing by dragging edges
-            frame.getRootPane().setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-            frame.addComponentListener(new java.awt.event.ComponentAdapter() {
-                @Override
-                public void componentResized(java.awt.event.ComponentEvent e) {
-                    saveWindowBounds();
-                }
 
                 @Override
-                public void componentMoved(java.awt.event.ComponentEvent e) {
-                    saveWindowBounds();
+                public void mouseReleased(MouseEvent e) {
+                    if (!isLocked()) saveWindowBounds();
                 }
-            });
+            };
+            panel.addMouseListener(dragListener);
+            panel.addMouseMotionListener(dragListener);
+            infoLabel.addMouseListener(dragListener);
+            infoLabel.addMouseMotionListener(dragListener);
 
-            // Add resizing
+            // Resizing logic
             ComponentResizer cr = new ComponentResizer();
             cr.registerComponent(panel);
         });
 
-        // Socket listener thread
+        startServer();
+    }
+
+    private static boolean isLocked() {
+        Object lockedObj = frame.getRootPane().getClientProperty("locked");
+        return (lockedObj instanceof Boolean && (Boolean) lockedObj);
+    }
+
+    private static void startServer() {
         new Thread(() -> {
             try (ServerSocket server = new ServerSocket(25566)) {
-                System.out.println("[OverlayApp] Listening on port 25566...");
-                Socket client = server.accept();
-                System.out.println("[OverlayApp] Connected!");
-
-                BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    final String content = line;
-                    SwingUtilities.invokeLater(() -> {
-                        if (content.startsWith("CONFIG ")) {
-                            String[] parts = content.split(" ");
-                            if (parts.length >= 3) {
-                                String key = parts[1];
-                                String value = parts[2];
-                                switch (key) {
-                                    case "FONT_SIZE":
-                                        try {
-                                            int size = Integer.parseInt(value);
-                                            String fontName = infoLabel.getFont().getName();
-                                            infoLabel.setFont(new Font(fontName, Font.BOLD, size));
-                                        } catch (Exception ignored) {}
-                                        break;
-                                    case "FONT_NAME":
-                                        try {
-                                            String fontName = value.replace("_", " ");
-                                            int fontSize = infoLabel.getFont().getSize();
-                                            infoLabel.setFont(new Font(fontName, Font.BOLD, fontSize));
-                                        } catch (Exception ignored) {}
-                                        break;
-                                    case "ALIGNMENT":
-                                        try {
-                                            String align = value.toLowerCase();
-                                            int swingAlign = SwingConstants.LEFT;
-                                            String cssAlign = "left";
-                                            if (align.equals("center") || align.equals("middle")) {
-                                                swingAlign = SwingConstants.CENTER;
-                                                cssAlign = "center";
-                                            } else if (align.equals("right")) {
-                                                swingAlign = SwingConstants.RIGHT;
-                                                cssAlign = "right";
-                                            }
-                                            infoLabel.setHorizontalAlignment(swingAlign);
-                                            frame.getRootPane().putClientProperty("textAlign", cssAlign);
-                                            // Force update of current text if any
-                                            String currentHtml = infoLabel.getText();
-                                            if (currentHtml.startsWith("<html>")) {
-                                                infoLabel.setText(currentHtml.replaceFirst("text-align: [a-z]+;", "text-align: " + cssAlign + ";"));
-                                            }
-                                        } catch (Exception ignored) {}
-                                        break;
-                                    case "LOCKED":
-                                        try {
-                                            boolean locked = Boolean.parseBoolean(value);
-                                            frame.getRootPane().putClientProperty("locked", locked);
-                                        } catch (Exception ignored) {}
-                                        break;
-                                    case "OPACITY":
-                                        try {
-                                            int opacity = Integer.parseInt(value);
-                                            // The panel's paintComponent uses this indirectly if we store it
-                                            frame.getRootPane().putClientProperty("opacity", opacity);
-                                            frame.repaint();
-                                        } catch (Exception ignored) {}
-                                        break;
-                                }
-                            }
-                        } else if (content.trim().isEmpty()) {
-                            frame.setVisible(false);
-                            infoLabel.setText("");
-                        } else {
-                            String htmlContent = content.replace("\\n", "<br>");
-                            Object textAlignObj = frame.getRootPane().getClientProperty("textAlign");
-                            String textAlign = (textAlignObj instanceof String) ? (String) textAlignObj : "left";
-                            infoLabel.setText("<html><div style='text-align: " + textAlign + ";'>" + htmlContent + "</div></html>");
-                            if (!frame.isVisible()) {
-                                frame.setVisible(true);
-                            }
+                while (true) {
+                    try (Socket client = server.accept();
+                         BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            final String content = line;
+                            SwingUtilities.invokeLater(() -> handleMessage(content));
                         }
-                    });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
-            } catch (Exception e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }).start();
+    }
 
-        // Save window bounds on shutdown
-        Runtime.getRuntime().addShutdownHook(new Thread(OverlayApp::saveWindowBounds));
+    private static void handleMessage(String content) {
+        if (content.startsWith("CONFIG ")) {
+            String[] parts = content.split(" ", 3);
+            if (parts.length >= 3) {
+                String key = parts[1];
+                String value = parts[2];
+                switch (key) {
+                    case "FONT_SIZE":
+                        try {
+                            int size = Integer.parseInt(value);
+                            infoLabel.setFont(new Font(infoLabel.getFont().getName(), Font.BOLD, size));
+                        } catch (Exception ignored) {}
+                        break;
+                    case "FONT_NAME":
+                        try {
+                            String fontName = value.replace("_", " ");
+                            infoLabel.setFont(new Font(fontName, Font.BOLD, infoLabel.getFont().getSize()));
+                        } catch (Exception ignored) {}
+                        break;
+                    case "ALIGNMENT":
+                        String align = value.toLowerCase();
+                        int swingAlign = SwingConstants.LEFT;
+                        String cssAlign = "left";
+                        if (align.equals("center") || align.equals("middle")) {
+                            swingAlign = SwingConstants.CENTER;
+                            cssAlign = "center";
+                        } else if (align.equals("right")) {
+                            swingAlign = SwingConstants.RIGHT;
+                            cssAlign = "right";
+                        }
+                        infoLabel.setHorizontalAlignment(swingAlign);
+                        frame.getRootPane().putClientProperty("textAlign", cssAlign);
+                        updateText(infoLabel.getText()); // Refresh alignment in HTML
+                        break;
+                    case "LOCKED":
+                        frame.getRootPane().putClientProperty("locked", Boolean.parseBoolean(value));
+                        break;
+                    case "OPACITY":
+                        try {
+                            frame.getRootPane().putClientProperty("opacity", Integer.parseInt(value));
+                            frame.repaint();
+                        } catch (Exception ignored) {}
+                        break;
+                }
+            }
+        } else if (content.trim().isEmpty()) {
+            frame.setVisible(false);
+            infoLabel.setText("");
+        } else {
+            updateText(content);
+            if (!frame.isVisible()) frame.setVisible(true);
+        }
+    }
+
+    private static void updateText(String text) {
+        if (text == null || text.isEmpty()) return;
+        String rawContent = text.startsWith("<html>") ?
+            text.replaceAll("<html><div style='text-align: [a-z]+;'>", "").replaceAll("</div></html>", "") :
+            text.replace("\\n", "<br>");
+
+        Object textAlignObj = frame.getRootPane().getClientProperty("textAlign");
+        String textAlign = (textAlignObj instanceof String) ? (String) textAlignObj : "left";
+        infoLabel.setText("<html><div style='text-align: " + textAlign + ";'>" + rawContent + "</div></html>");
     }
 
     private static void loadWindowBounds() {
@@ -191,38 +181,30 @@ public class OverlayApp {
             frame.setLocationRelativeTo(null);
             return;
         }
-
         try (FileInputStream in = new FileInputStream(CONFIG_FILE)) {
             Properties props = new Properties();
             props.load(in);
-
             int x = Integer.parseInt(props.getProperty("x", "100"));
             int y = Integer.parseInt(props.getProperty("y", "100"));
             int w = Integer.parseInt(props.getProperty("width", "260"));
             int h = Integer.parseInt(props.getProperty("height", "80"));
-
-            frame.setBounds(x, y, w, h);
+            frame.setBounds(x, y, Math.max(w, 50), Math.max(h, 20));
         } catch (Exception e) {
-            e.printStackTrace();
             frame.setSize(260, 80);
             frame.setLocationRelativeTo(null);
         }
     }
 
     private static void saveWindowBounds() {
-        if (frame == null) return;
-
+        if (frame == null || isLocked()) return;
         Properties props = new Properties();
         Rectangle bounds = frame.getBounds();
         props.setProperty("x", String.valueOf(bounds.x));
         props.setProperty("y", String.valueOf(bounds.y));
         props.setProperty("width", String.valueOf(bounds.width));
         props.setProperty("height", String.valueOf(bounds.height));
-
         try (FileOutputStream out = new FileOutputStream(CONFIG_FILE)) {
-            props.store(out, "OverlayApp Window Bounds");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            props.store(out, "Overlay Window Bounds");
+        } catch (IOException ignored) {}
     }
 }

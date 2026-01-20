@@ -181,7 +181,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Handle TriggerBot separately, as it may have its own master toggle.
         if (triggerBot != null) {
-            triggerBot.onTick(client);
+            triggerBot.onTick();
         }
 
         // Handle Enemy Info Ticks

@@ -2,168 +2,192 @@ package net.rev.tutorialmod.modules;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.decoration.EndCrystalEntity;
+import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.AxeItem;
+import net.minecraft.item.MaceItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.tag.ItemTags;
+import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.Hand;
 import net.rev.tutorialmod.TutorialMod;
-import net.rev.tutorialmod.modules.filters.TargetFilters;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.Random;
 
-import net.minecraft.item.AxeItem;
-import net.minecraft.item.MaceItem;
-import net.minecraft.registry.tag.ItemTags;
-
 public class TriggerBot {
-
-    private Entity targetToAttack = null;
-    private int reactionDelayTicks = 0;
-    private int attackDelayTicks = 0;
+    private final MinecraftClient mc = MinecraftClient.getInstance();
     private final Random random = new Random();
 
-    public void onTick(MinecraftClient client) {
-        if (client.player == null || client.world == null) {
-            // Clean up state if player leaves world
-            targetToAttack = null;
-            attackDelayTicks = 0;
+    private long lastAttackTime = 0;
+    private Entity lastTarget = null;
+    private int currentReactionDelay = -1;
+    private int currentAttackDelay = -1;
+    private int reactionTicks = 0;
+    private int postChargeTicks = 0;
+
+    public void onTick() {
+        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled) {
+            reset();
             return;
         }
 
-        // --- Handle Attack Delay ---
-        if (attackDelayTicks > 0) {
-            attackDelayTicks--;
-            if (attackDelayTicks == 0 && targetToAttack != null) {
-                // Verify target is still valid before attacking
-                if (isTargetStillValid(client, targetToAttack)) {
-                    if (client.interactionManager != null) {
-                        client.interactionManager.attackEntity(client.player, targetToAttack);
-                        client.player.swingHand(Hand.MAIN_HAND);
-                    }
-                }
-                targetToAttack = null; // Reset target after action
-                reactionDelayTicks = 0;
-            }
-            return; // Don't look for new targets while in delay
-        }
-
-
-        // --- Pre-computation checks ---
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled || !TutorialMod.CONFIG.triggerBotToggledOn) {
+        if (!TutorialMod.CONFIG.triggerBotToggledOn) {
+            reset();
             return;
         }
 
-        // Hotkey Check
-        try {
-            String hotkey = TutorialMod.CONFIG.triggerBotHotkey;
-            if (hotkey != null && !hotkey.equals("key.keyboard.unknown")) {
-                long windowHandle = client.getWindow().getHandle();
-                int keyCode = InputUtil.fromTranslationKey(hotkey).getCode();
-                if (!InputUtil.isKeyPressed(windowHandle, keyCode)) {
-                    // Hotkey is set and not pressed, so we do nothing.
-                    targetToAttack = null;
-                    attackDelayTicks = 0;
-                    return;
-                }
-            }
-        } catch (IllegalArgumentException e) {
-            // Invalid key configured, just ignore and continue as if no hotkey was set.
-        }
-
-        // Check if a GUI is open
-        if (client.currentScreen != null && !TutorialMod.CONFIG.triggerBotActiveInInventory) {
-            return;
-        }
-
-        // Weapon Check
-        if (TutorialMod.CONFIG.triggerBotWeaponOnly) {
-            var stack = client.player.getMainHandStack();
-            if (!stack.isIn(ItemTags.SWORDS) && !stack.isIn(ItemTags.AXES) && !(stack.getItem() instanceof MaceItem)) {
-                reactionDelayTicks = 0;
+        // Check hotkey
+        if (!TutorialMod.CONFIG.triggerBotHotkey.equals("key.keyboard.unknown")) {
+            long handle = mc.getWindow().getHandle();
+            int keyCode = getKeyCode(TutorialMod.CONFIG.triggerBotHotkey);
+            if (keyCode != -1 && !InputUtil.isKeyPressed(handle, keyCode)) {
+                reset();
                 return;
             }
         }
 
-        HitResult crosshairTarget = client.crosshairTarget;
-        if (crosshairTarget != null && crosshairTarget.getType() == HitResult.Type.ENTITY) {
-            Entity target = ((EntityHitResult) crosshairTarget).getEntity();
+        if (mc.currentScreen != null && !TutorialMod.CONFIG.triggerBotActiveInInventory) {
+            reset();
+            return;
+        }
 
-            // --- Target Validation ---
-            if (TargetFilters.isValidTarget(target)) {
-                if (TutorialMod.CONFIG.attackOnCrit) {
-                    if (client.player.getVelocity().y > 0) {
-                        reactionDelayTicks = 0;
-                        return;
-                    }
+        HitResult hitResult = mc.crosshairTarget;
+        if (hitResult instanceof EntityHitResult entityHitResult) {
+            Entity entity = entityHitResult.getEntity();
+            if (shouldAttack(entity)) {
+                if (entity != lastTarget) {
+                    lastTarget = entity;
+                    reactionTicks = 0;
+                    currentReactionDelay = getRandomDelay(TutorialMod.CONFIG.triggerBotReactionMinDelay, TutorialMod.CONFIG.triggerBotReactionMaxDelay);
                 }
-                // Range Check
-                double distance = client.player.distanceTo(target);
 
-                if (distance <= 4.5) {
-                    // Cooldown Check
-                    float charge = client.player.getAttackCooldownProgress(0.5f);
-                    if (charge >= (float)(TutorialMod.CONFIG.triggerBotMinCharge / 100.0)) {
+                reactionTicks++;
+                if (reactionTicks >= currentReactionDelay) {
+                    if (canAttack()) {
+                        if (currentAttackDelay == -1) {
+                            currentAttackDelay = getRandomDelay(TutorialMod.CONFIG.triggerBotAttackMinDelay, TutorialMod.CONFIG.triggerBotAttackMaxDelay);
+                            postChargeTicks = 0;
+                        }
 
-                        // Increment reaction timer
-                        reactionDelayTicks++;
-
-                        int minReaction = TutorialMod.CONFIG.triggerBotReactionMinDelay;
-                        int maxReaction = TutorialMod.CONFIG.triggerBotReactionMaxDelay;
-                        int requiredReaction = minReaction + (maxReaction > minReaction ? random.nextInt(maxReaction - minReaction + 1) : 0);
-
-                        if (reactionDelayTicks >= requiredReaction) {
-                            // Reaction time met, initiate attack sequence (post-cooldown delay)
-                            int minAttack = TutorialMod.CONFIG.triggerBotAttackMinDelay;
-                            int maxAttack = TutorialMod.CONFIG.triggerBotAttackMaxDelay;
-                            this.attackDelayTicks = minAttack + (maxAttack > minAttack ? random.nextInt(maxAttack - minAttack + 1) : 0);
-                            this.targetToAttack = target;
-
-                            // If delay is 0, attack immediately
-                            if (this.attackDelayTicks == 0) {
-                                if (client.interactionManager != null) {
-                                    client.interactionManager.attackEntity(client.player, targetToAttack);
-                                    client.player.swingHand(Hand.MAIN_HAND);
-                                    this.targetToAttack = null; // Reset
-                                    reactionDelayTicks = 0;
-                                }
-                            }
+                        postChargeTicks++;
+                        if (postChargeTicks >= currentAttackDelay) {
+                            attack(entity);
+                            resetAttackDelays();
                         }
                     } else {
-                        // Not charged enough, but still looking at target?
-                        // Keep reaction delay or reset? Typically reaction time starts when target is in crosshair regardless of charge.
-                        // But user said: "time a valid entity needs to be intercepted by the crosshair(and within range) for the triggerbot to fire"
-                        // I'll keep it simple and increment as long as we are looking.
-                        reactionDelayTicks++;
+                        // Not charged yet, reset attack delay so it recalculates once charged
+                        currentAttackDelay = -1;
                     }
-                    return;
                 }
+            } else {
+                reset();
             }
+        } else {
+            reset();
         }
-
-        // If we reach here, we are not looking at a valid target in range
-        reactionDelayTicks = 0;
     }
 
-    private boolean isTargetStillValid(MinecraftClient client, Entity target) {
-        if (target == null || !target.isAlive() || client.player == null) {
-            return false;
-        }
-        // Re-run the same checks as before the delay
-        if (!TargetFilters.isValidTarget(target)) {
-            return false;
-        }
-        double distance = client.player.distanceTo(target);
-        // We don't re-randomize range here, just check against the absolute max.
-        // This prevents the target from becoming invalid just due to a new random roll.
-        if (distance > 4.5) {
-            return false;
-        }
-        // Make sure we are still looking at the target
-        HitResult crosshairTarget = client.crosshairTarget;
-        if (crosshairTarget == null || crosshairTarget.getType() != HitResult.Type.ENTITY || !((EntityHitResult) crosshairTarget).getEntity().equals(target)) {
-            return false;
+    private void reset() {
+        lastTarget = null;
+        reactionTicks = 0;
+        currentReactionDelay = -1;
+        resetAttackDelays();
+    }
+
+    private void resetAttackDelays() {
+        currentAttackDelay = -1;
+        postChargeTicks = 0;
+    }
+
+    private int getRandomDelay(int min, int max) {
+        if (min >= max) return min;
+        return min + random.nextInt(max - min + 1);
+    }
+
+    private boolean shouldAttack(Entity entity) {
+        if (!(entity instanceof LivingEntity) && !(entity instanceof EndCrystalEntity)) return false;
+        if (entity instanceof LivingEntity living && !living.isAlive()) return false;
+        if (entity == mc.player) return false;
+
+        if (entity instanceof PlayerEntity player) {
+            if (!TutorialMod.CONFIG.triggerBotIncludePlayers) return false;
+            if (TutorialMod.CONFIG.triggerBotExcludeTeammates && TutorialMod.CONFIG.teammates.contains(player.getName().getString())) return false;
+        } else if (entity instanceof VillagerEntity) {
+            if (TutorialMod.CONFIG.triggerBotExcludeVillagers) return false;
+            if (!TutorialMod.CONFIG.triggerBotIncludePassives) return false;
+        } else if (entity instanceof EndCrystalEntity) {
+            if (!TutorialMod.CONFIG.triggerBotIncludeCrystals) return false;
+        } else if (entity instanceof LivingEntity) {
+            // Check if hostile or passive
+            boolean isHostile = isHostile(entity);
+            if (isHostile && !TutorialMod.CONFIG.triggerBotIncludeHostiles) return false;
+            if (!isHostile && !TutorialMod.CONFIG.triggerBotIncludePassives) return false;
         }
 
         return true;
+    }
+
+    private boolean isHostile(Entity entity) {
+        String name = entity.getType().getTranslationKey();
+        return name.contains("zombie") || name.contains("skeleton") || name.contains("spider") ||
+               name.contains("creeper") || name.contains("slime") || name.contains("enderman") ||
+               name.contains("blaze") || name.contains("ghast") || name.contains("witch") ||
+               name.contains("guardian") || name.contains("hoglin") || name.contains("piglin") ||
+               name.contains("pillager") || name.contains("ravager") || name.contains("vex") ||
+               name.contains("vindicator") || name.contains("warden") || name.contains("wither");
+    }
+
+    private boolean canAttack() {
+        if (mc.player == null) return false;
+
+        // Weapon check
+        if (TutorialMod.CONFIG.triggerBotWeaponOnly) {
+            ItemStack stack = mc.player.getMainHandStack();
+            if (!stack.isIn(ItemTags.SWORDS) && !stack.isIn(ItemTags.AXES) && !(stack.getItem() instanceof MaceItem)) {
+                return false;
+            }
+        }
+
+        // Charge check
+        float cooldown = mc.player.getAttackCooldownProgress(0.5f);
+        if (cooldown < (TutorialMod.CONFIG.triggerBotMinCharge / 100.0)) return false;
+
+        // Crit check
+        if (TutorialMod.CONFIG.attackOnCrit) {
+            if (mc.player.isOnGround() || mc.player.isClimbing() || mc.player.isTouchingWater()) {
+                // Not ideal for crits
+            } else if (mc.player.getVelocity().y < 0) {
+                // Falling
+            } else {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void attack(Entity entity) {
+        if (mc.interactionManager == null || mc.player == null) return;
+        mc.interactionManager.attackEntity(mc.player, entity);
+        mc.player.swingHand(Hand.MAIN_HAND);
+        lastAttackTime = System.currentTimeMillis();
+    }
+
+    private int getKeyCode(String translationKey) {
+        if (translationKey == null || translationKey.isEmpty() || translationKey.equals("key.keyboard.unknown")) return -1;
+        try {
+            if (translationKey.startsWith("key.keyboard.")) {
+                String keyName = translationKey.substring("key.keyboard.".length()).toUpperCase();
+                return GLFW.class.getField("GLFW_KEY_" + keyName).getInt(null);
+            }
+        } catch (Exception e) {
+            return -1;
+        }
+        return -1;
     }
 }

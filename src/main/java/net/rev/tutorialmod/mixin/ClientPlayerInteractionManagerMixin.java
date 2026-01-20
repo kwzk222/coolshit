@@ -68,7 +68,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
 
         // Early Release Simulation
         if (TutorialMod.CONFIG.miningResetSimulateStops) {
-            if (pos.equals(currentBreakingPos) && !pos.equals(tutorialmod$lastResetPos)) {
+            if (currentBreakingPos != null && pos.equals(currentBreakingPos) && !pos.equals(tutorialmod$lastResetPos)) {
                 float threshold = (float) TutorialMod.CONFIG.miningResetThreshold;
                 if (currentBreakingProgress >= threshold && currentBreakingProgress < 1.0f) {
                     if (tutorialmod$random.nextInt(100) < TutorialMod.CONFIG.miningResetChance) {
