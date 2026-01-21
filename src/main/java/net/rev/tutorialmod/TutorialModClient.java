@@ -112,6 +112,9 @@ public class TutorialModClient implements ClientModInitializer {
     public static int awaitingRailConfirmationCooldown = -1;
     public static int awaitingMinecartConfirmationCooldown = -1;
 
+    private int pointingTickCounter = 0;
+    private String lastLongCoordsInfo = null;
+
 
     @Override
     public void onInitializeClient() {
@@ -825,10 +828,16 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         if (TutorialMod.CONFIG.showLongCoords) {
-            String longCoords = getLongCoordsInfo(client);
-            if (longCoords != null) {
-                result.append("\\n").append(longCoords);
+            pointingTickCounter++;
+            if (pointingTickCounter % 2 == 0 || lastLongCoordsInfo == null) {
+                lastLongCoordsInfo = getLongCoordsInfo(client);
             }
+            if (lastLongCoordsInfo != null) {
+                result.append("\\n").append(lastLongCoordsInfo);
+            }
+        } else {
+            lastLongCoordsInfo = null;
+            pointingTickCounter = 0;
         }
 
         if (TutorialMod.CONFIG.showSprintModeOverlay || TutorialMod.CONFIG.showSneakModeOverlay) {
@@ -946,25 +955,25 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (yaw >= 337.5 || yaw < 22.5) {
             cardinal = "S";
-            quadrant = "(+)";
+            quadrant = "(_+)";
         } else if (yaw >= 22.5 && yaw < 67.5) {
             cardinal = "SW";
             quadrant = "(-+)";
         } else if (yaw >= 67.5 && yaw < 112.5) {
             cardinal = "W";
-            quadrant = "(-)";
+            quadrant = "(-_)";
         } else if (yaw >= 112.5 && yaw < 157.5) {
             cardinal = "NW";
             quadrant = "(--)";
         } else if (yaw >= 157.5 && yaw < 202.5) {
             cardinal = "N";
-            quadrant = "(-)";
+            quadrant = "(_-)";
         } else if (yaw >= 202.5 && yaw < 247.5) {
             cardinal = "NE";
             quadrant = "(+-)";
         } else if (yaw >= 247.5 && yaw < 292.5) {
             cardinal = "E";
-            quadrant = "(+)";
+            quadrant = "(+_)";
         } else {
             cardinal = "SE";
             quadrant = "(++)";

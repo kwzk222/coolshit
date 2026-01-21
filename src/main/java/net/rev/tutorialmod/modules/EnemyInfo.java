@@ -20,6 +20,7 @@ public class EnemyInfo {
     private int tickCounter = 0;
     private static final int UPDATE_INTERVAL = 5; // 20 ticks per second / 4 updates per second = 5 ticks
     private String lastEnemyInfo = null;
+    private int lingerTicks = 0;
 
     public void onTick(MinecraftClient client) {
         tickCounter++;
@@ -32,6 +33,7 @@ public class EnemyInfo {
     private void updateEnemyInfo(MinecraftClient client) {
         if (client.player == null || client.world == null) {
             lastEnemyInfo = null;
+            lingerTicks = 0;
             return;
         }
 
@@ -39,8 +41,13 @@ public class EnemyInfo {
         PlayerEntity target = getPlayerLookingAt(client, maxDistance);
         if (target != null) {
             lastEnemyInfo = formatEnemyInfo(target);
+            lingerTicks = 10; // Linger for 10 ticks (0.5s) after target is lost
         } else {
-            lastEnemyInfo = null;
+            if (lingerTicks > 0) {
+                lingerTicks--;
+            } else {
+                lastEnemyInfo = null;
+            }
         }
     }
 

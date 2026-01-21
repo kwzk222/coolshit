@@ -9,8 +9,10 @@ import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import me.shedaniel.clothconfig2.gui.AbstractConfigScreen;
 import me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.rev.tutorialmod.mixin.ScreenAccessor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,9 +31,26 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultBackgroundTexture(Identifier.ofVanilla("textures/gui/options_background.png"));
 
             builder.setSavingRunnable(TutorialMod.CONFIG::save);
+            builder.setDoesConfirmSave(false); // We want direct save
 
+            builder.setAfterInitConsumer(screen -> {
+                // Add a "Save" button to the bottom right area
+                int buttonWidth = 60;
+                int buttonHeight = 20;
+                int x = screen.width - buttonWidth - 10;
+                int y = screen.height - 26;
+
+                ButtonWidget saveButton = ButtonWidget.builder(Text.literal("Save"), button -> {
+                    TutorialMod.CONFIG.save();
+                    TutorialMod.sendUpdateMessage("Settings saved successfully.");
+                }).dimensions(x, y, buttonWidth, buttonHeight).build();
+
+                // Use accessor to call protected addDrawableChild
+                ((ScreenAccessor) screen).invokeAddDrawableChild(saveButton);
+            });
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
+
 
             // Attribute Swapping Category
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
