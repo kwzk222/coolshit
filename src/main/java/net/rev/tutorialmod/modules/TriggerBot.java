@@ -32,6 +32,9 @@ public class TriggerBot {
     private static final float MIN_ATTACK_CHARGE = 0.88f;
     private static final float MAX_ATTACK_CHARGE = 0.98f;
 
+    private static final double CRIT_MIN_FALL_VELOCITY = -0.08;
+    private static final double CRIT_MAX_FALL_VELOCITY = -0.25;
+
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled) {
             reset();
@@ -145,14 +148,23 @@ public class TriggerBot {
             }
         }
 
-        // Crit check
-        if (TutorialMod.CONFIG.attackOnCrit && !mc.player.isOnGround()) {
-            if (!isCrit()) return false;
-        }
-
-        // Cooldown check
         float cooldown = mc.player.getAttackCooldownProgress(0.0f);
 
+        // Crit-only mode logic
+        if (TutorialMod.CONFIG.attackOnCrit) {
+            // Only attempt crits if airborne. If grounded, we treat it as normal triggerbot but only at high charge.
+            if (!mc.player.isOnGround()) {
+                if (!isCritWindow()) return false;
+
+                // CRIT-SAFE cooldown range: desync-resistant timing
+                return cooldown >= 0.82f && cooldown <= 0.95f;
+            } else {
+                // If grounded but attackOnCrit is enabled, we still want to be safe
+                return cooldown >= 0.95f;
+            }
+        }
+
+        // Normal triggerbot (no crit requirement)
         if (cooldown < MIN_ATTACK_CHARGE) {
             return false; // too early -> prevents spam
         }
@@ -162,20 +174,18 @@ public class TriggerBot {
         }
 
         // Between min & max -> add randomness
-        return random.nextFloat() < 0.5f;
+        return random.nextFloat() < 0.4f;
     }
 
-    private boolean isCrit() {
+    private boolean isCritWindow() {
         if (mc.player == null) return false;
-        // Vanilla crit requirements:
-        // 1. Not on ground
-        // 2. Falling (velocity.y < 0 and fallDistance > 0)
-        // 3. Not climbing (ladder/vines)
-        // 4. Not in water
-        // 5. Not blind
-        // 6. Not riding
-        return !mc.player.isOnGround() &&
-               mc.player.getVelocity().y < -0.01 &&
+        if (mc.player.isOnGround()) return false;
+
+        double vy = mc.player.getVelocity().y;
+
+        // Vanilla crit requirements + Fall velocity window
+        return vy < CRIT_MIN_FALL_VELOCITY &&
+               vy > CRIT_MAX_FALL_VELOCITY &&
                mc.player.fallDistance > 0.0f &&
                !mc.player.isClimbing() &&
                !mc.player.isTouchingWater() &&
