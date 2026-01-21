@@ -29,6 +29,17 @@ fabricApi {
 	}
 }
 
+sourceSets {
+    overlay {
+        java {
+            srcDirs = ['src/main/java/overlay']
+        }
+        resources {
+            srcDirs = []
+        }
+    }
+}
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -48,22 +59,19 @@ dependencies {
 
 	// GSON
 	implementation("com.google.code.gson:gson:${project.gson_version}")
-}
 
-sourceSets {
-    overlay {
-        java {
-            srcDirs = ['src/main/java/overlay']
-        }
-        resources {
-            srcDirs = []
-        }
-    }
+	// Overlay Dependencies
+	overlayImplementation 'net.java.dev.jna:jna:5.16.0'
+	overlayImplementation 'net.java.dev.jna:jna-platform:5.16.0'
 }
 
 task overlayJar(type: Jar) {
     archiveFileName = 'overlay.jar'
     from sourceSets.overlay.output
+    from {
+        configurations.overlayRuntimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes 'Main-Class': 'overlay.OverlayApp'
     }

@@ -445,7 +445,7 @@ public class ModMenuIntegration implements ModMenuApi {
                     .build());
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lock Overlay"), TutorialMod.CONFIG.overlayLocked)
                     .setDefaultValue(false)
-                    .setTooltip(Text.literal("If enabled, the overlay cannot be moved or resized manually."))
+                    .setTooltip(Text.literal("If enabled, the overlay cannot be moved or resized manually and will be click-through."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayLocked = newValue)
                     .build());
 

@@ -8,6 +8,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Properties;
 
+import com.sun.jna.Native;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef.HWND;
+import com.sun.jna.platform.win32.WinUser;
+
 public class OverlayApp {
     private static JFrame frame;
     private static JLabel infoLabel;
@@ -156,6 +161,9 @@ public class OverlayApp {
                         frame.getRootPane().putClientProperty("locked", locked);
                         // Try to make it non-interactive when locked
                         frame.setFocusable(!locked);
+                        if (frame.isVisible()) {
+                            setClickThrough(locked);
+                        }
                         break;
                     case "OPACITY":
                         try {
@@ -170,7 +178,42 @@ public class OverlayApp {
             infoLabel.setText("");
         } else {
             updateText(content);
-            if (!frame.isVisible()) frame.setVisible(true);
+            if (!frame.isVisible()) {
+                frame.setVisible(true);
+                if (isLocked()) {
+                    setClickThrough(true);
+                }
+            }
+        }
+    }
+
+    private static void setClickThrough(boolean enabled) {
+        if (!System.getProperty("os.name").toLowerCase().contains("win")) return;
+        try {
+            WinClickThrough.setClickThrough(frame, enabled);
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+
+    private static class WinClickThrough {
+        public static void setClickThrough(JFrame frame, boolean enabled) {
+            try {
+                HWND hwnd = new HWND();
+                hwnd.setPointer(Native.getComponentPointer(frame));
+
+                int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
+
+                if (enabled) {
+                    exStyle |= WinUser.WS_EX_TRANSPARENT | WinUser.WS_EX_LAYERED;
+                } else {
+                    exStyle &= ~WinUser.WS_EX_TRANSPARENT;
+                }
+
+                User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
