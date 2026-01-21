@@ -1,0 +1,106 @@
+WIND CHARGE CLUTCH LOGIC DOCUMENTATION
+
+The Wind Charge Clutch is integrated into the unified state machine of the ClutchModule. It uses a predictive algorithm to time the release of a wind charge, ensuring the player receives upward knockback just before impact to negate fall damage.
+
+1. ACTIVATION AND PRE-ARMING
+The module monitors the player's fall state. If water clutching is unavailable or the conditions are met for wind charges, the state machine transitions to WIND_PREARMED:
+
+// In IDLE state
+else if (config.windClutchEnabled && p.fallDistance >= config.windClutchMinFallDistance) {
+    int slot = findWindChargeSlot();
+    if (slot != -1) {
+        originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
+        armedSlot = slot;
+        setSlot(slot);
+        fireAttempts = 0;
+        vyBeforeFire = 0.0;
+        successTickCounter = 0;
+        state = ClutchState.WIND_PREARMED;
+    }
+}
+
+2. PREDICTIVE TIMING (TICKS-TO-IMPACT)
+In the WIND_PREARMED state, the mod calculates how many ticks remain before the player hits the ground using a raycast-based linear estimation:
+
+private double estimateTicksToImpact(net.minecraft.entity.player.PlayerEntity p) {
+    double reach = 256.0;
+    HitResult hr = p.raycast(reach, 1.0f, false);
+    if (hr == null || hr.getType() != HitResult.Type.BLOCK) {
+        double distance = p.getY();
+        double vy = p.getVelocity().y;
+        if (vy >= -0.01) return Double.POSITIVE_INFINITY;
+        return distance / -vy;
+    } else {
+        BlockHitResult bhr = (BlockHitResult) hr;
+        double distance = p.getY() - bhr.getPos().y;
+        double vy = p.getVelocity().y;
+        if (vy >= -0.01) return Double.POSITIVE_INFINITY;
+        return Math.max(0.0, distance / -vy);
+    }
+}
+
+3. DYNAMIC FIRE THRESHOLD
+The fire timing is adjusted based on the fall height. For extremely high falls (above 114 blocks), a lower threshold is used to account for increased velocity:
+
+case WIND_PREARMED -> {
+    if (p.isOnGround()) { reset(); return; }
+    if (p.getVelocity().y < -3.8) { reset(); return; } // Abort if too fast (terminal)
+
+    double ticksToImpact = estimateTicksToImpact(p);
+    int fireTicks = p.fallDistance > 114 ? config.windClutchHighFallFireTicks : config.windClutchFireTicks;
+    if (ticksToImpact <= fireTicks) {
+        state = ClutchState.WIND_READY_TO_FIRE;
+    }
+}
+
+4. FIRING SEQUENCE
+Once within the threshold, the mod switches to the WIND_READY_TO_FIRE state and immediately invokes the item use pipeline:
+
+case WIND_READY_TO_FIRE -> {
+    if (p.isOnGround()) { reset(); return; }
+    doWindFireAttempt();
+    state = ClutchState.WIND_FIRED;
+    vyBeforeFire = p.getVelocity().y;
+    successTickCounter = 0;
+}
+
+private void doWindFireAttempt() {
+    if (mc.player == null) return;
+    if (((PlayerInventoryMixin) mc.player.getInventory()).getSelectedSlot() != armedSlot) {
+        setSlot(armedSlot);
+    }
+    ((MinecraftClientAccessor) mc).setItemUseCooldown(0);
+    ((MinecraftClientAccessor) mc).invokeDoItemUse();
+    fireAttempts++;
+}
+
+5. SUCCESS VERIFICATION AND RETRIES
+After firing, the mod monitors the player's vertical velocity and fall distance. A successful clutch is detected by a significant upward change in velocity (knockback) or a reset of the fall distance counter. If the first attempt fails but the player is still safely above the ground, it may retry:
+
+case WIND_FIRED -> {
+    successTickCounter++;
+    double vyNow = p.getVelocity().y;
+    boolean velocitySuccess = (vyNow - vyBeforeFire) >= config.windClutchSuccessVyDelta;
+    boolean fallDistanceReset = p.fallDistance < Math.max(1.0, config.windClutchMinFallDistance / 2.0);
+
+    if (velocitySuccess || fallDistanceReset) {
+        state = ClutchState.FINISHING;
+        tickCounter = 0;
+        return;
+    }
+
+    // Retry logic
+    if (fireAttempts < config.windClutchMaxRetries && p.getVelocity().y < -0.08 && successTickCounter >= 1) {
+        double ticksToImpact = estimateTicksToImpact(p);
+        if (ticksToImpact > 0.5) {
+            doWindFireAttempt();
+            vyBeforeFire = p.getVelocity().y;
+            successTickCounter = 0;
+        }
+    }
+
+    if (successTickCounter > 8) { reset(); return; }
+}
+
+6. CLEANUP
+Once success is confirmed, the machine enters the FINISHING state to restore the player's original hotbar slot after a configurable delay.
