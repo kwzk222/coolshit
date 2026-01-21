@@ -956,28 +956,28 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (yaw >= 337.5 || yaw < 22.5) {
             cardinal = "S";
-            quadrant = "(_+)";
+            quadrant = "( _ + )";
         } else if (yaw >= 22.5 && yaw < 67.5) {
             cardinal = "SW";
-            quadrant = "(-+)";
+            quadrant = "( - + )";
         } else if (yaw >= 67.5 && yaw < 112.5) {
             cardinal = "W";
-            quadrant = "(-_)";
+            quadrant = "( - _ )";
         } else if (yaw >= 112.5 && yaw < 157.5) {
             cardinal = "NW";
-            quadrant = "(--)";
+            quadrant = "( - - )";
         } else if (yaw >= 157.5 && yaw < 202.5) {
             cardinal = "N";
-            quadrant = "(_-)";
+            quadrant = "( _ - )";
         } else if (yaw >= 202.5 && yaw < 247.5) {
             cardinal = "NE";
-            quadrant = "(+-)";
+            quadrant = "( + - )";
         } else if (yaw >= 247.5 && yaw < 292.5) {
             cardinal = "E";
-            quadrant = "(+_)";
+            quadrant = "( + _ )";
         } else {
             cardinal = "SE";
-            quadrant = "(++)";
+            quadrant = "( + + )";
         }
 
         return cardinal + " " + quadrant;

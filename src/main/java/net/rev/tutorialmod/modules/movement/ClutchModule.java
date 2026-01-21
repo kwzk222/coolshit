@@ -214,7 +214,7 @@ public class ClutchModule {
                 if (p.getVelocity().y < -3.8) { reset(); return; } // Abort if too fast (terminal)
 
                 double ticksToImpact = estimateTicksToImpact(p);
-                int fireTicks = p.fallDistance > 170 ? config.windClutchHighFallFireTicks : config.windClutchFireTicks;
+                int fireTicks = p.fallDistance > 114 ? config.windClutchHighFallFireTicks : config.windClutchFireTicks;
                 if (ticksToImpact <= fireTicks) {
                     state = ClutchState.WIND_READY_TO_FIRE;
                 }
