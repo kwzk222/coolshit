@@ -433,6 +433,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The maximum distance (blocks) to scan for blocks and entities."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.longCoordsMaxDistance = newValue)
                     .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Pointing Distance"), TutorialMod.CONFIG.showLongCoordsDistance)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("If enabled, the distance to the pointing target will be displayed."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showLongCoordsDistance = newValue)
+                    .build());
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Detailed Cardinals"), TutorialMod.CONFIG.showDetailedCardinals)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("If enabled, the overlay will show abbreviated cardinal directions (NW, SE, etc.) and quadrant indicators."))

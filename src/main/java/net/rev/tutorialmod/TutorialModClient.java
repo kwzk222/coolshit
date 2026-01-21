@@ -805,7 +805,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (TutorialMod.CONFIG.showNetherCoords) {
             String converted = getConvertedCoords(client, client.player.getX(), client.player.getY(), client.player.getZ());
             if (converted != null) {
-                result.append("\\n").append(converted);
+                result.append(" ").append(converted);
             }
         }
 
@@ -896,23 +896,29 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         if (closestEntity != null && (hitPos == null || minEntityDist < blockDist)) {
-            String base = String.format("Pointing: %s Distance: %.1f", closestEntity.getName().getString(), minEntityDist);
+            String base = String.format("Pointing: %s", closestEntity.getName().getString());
             if (TutorialMod.CONFIG.showNetherCoords) {
                 String converted = getConvertedCoords(client, closestEntity.getX(), closestEntity.getY(), closestEntity.getZ());
                 if (converted != null) {
-                    base += "\\n" + converted;
+                    base += " " + converted;
                 }
+            }
+            if (TutorialMod.CONFIG.showLongCoordsDistance) {
+                base += String.format(" D: %d", (int)Math.round(minEntityDist));
             }
             return base;
         }
 
         if (hitPos != null) {
-            String base = String.format("Pointing: %d %d %d Distance: %.1f", hitPos.getX(), hitPos.getY(), hitPos.getZ(), blockDist);
+            String base = String.format("Pointing: %d %d %d", hitPos.getX(), hitPos.getY(), hitPos.getZ());
             if (TutorialMod.CONFIG.showNetherCoords) {
                 String converted = getConvertedCoords(client, hitPos.getX(), hitPos.getY(), hitPos.getZ());
                 if (converted != null) {
-                    base += "\\n" + converted;
+                    base += " " + converted;
                 }
+            }
+            if (TutorialMod.CONFIG.showLongCoordsDistance) {
+                base += String.format(" D: %d", (int)Math.round(blockDist));
             }
             return base;
         }
@@ -936,17 +942,33 @@ public class TutorialModClient implements ClientModInitializer {
         if (yaw < 0) yaw += 360;
 
         String cardinal;
-        if (yaw >= 337.5 || yaw < 22.5) cardinal = "S";
-        else if (yaw >= 22.5 && yaw < 67.5) cardinal = "SW";
-        else if (yaw >= 67.5 && yaw < 112.5) cardinal = "W";
-        else if (yaw >= 112.5 && yaw < 157.5) cardinal = "NW";
-        else if (yaw >= 157.5 && yaw < 202.5) cardinal = "N";
-        else if (yaw >= 202.5 && yaw < 247.5) cardinal = "NE";
-        else if (yaw >= 247.5 && yaw < 292.5) cardinal = "E";
-        else cardinal = "SE";
+        String quadrant;
 
-        Vec3d look = player.getRotationVector();
-        String quadrant = "(" + (look.x >= 0 ? "+" : "-") + (look.z >= 0 ? "+" : "-") + ")";
+        if (yaw >= 337.5 || yaw < 22.5) {
+            cardinal = "S";
+            quadrant = "(+)";
+        } else if (yaw >= 22.5 && yaw < 67.5) {
+            cardinal = "SW";
+            quadrant = "(-+)";
+        } else if (yaw >= 67.5 && yaw < 112.5) {
+            cardinal = "W";
+            quadrant = "(-)";
+        } else if (yaw >= 112.5 && yaw < 157.5) {
+            cardinal = "NW";
+            quadrant = "(--)";
+        } else if (yaw >= 157.5 && yaw < 202.5) {
+            cardinal = "N";
+            quadrant = "(-)";
+        } else if (yaw >= 202.5 && yaw < 247.5) {
+            cardinal = "NE";
+            quadrant = "(+-)";
+        } else if (yaw >= 247.5 && yaw < 292.5) {
+            cardinal = "E";
+            quadrant = "(+)";
+        } else {
+            cardinal = "SE";
+            quadrant = "(++)";
+        }
 
         return cardinal + " " + quadrant;
     }
