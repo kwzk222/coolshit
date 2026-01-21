@@ -492,7 +492,15 @@ public class TutorialModClient implements ClientModInitializer {
                     int minecartSlot = findTntMinecartInHotbar(client.player);
                     if (minecartSlot != -1) {
                         inventory.setSelectedSlot(minecartSlot);
-                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        if (railPos != null) {
+                            BlockHitResult bhr = new BlockHitResult(
+                                    new Vec3d(railPos.getX() + 0.5, railPos.getY() + 0.0625, railPos.getZ() + 0.5),
+                                    Direction.UP, railPos, false
+                            );
+                            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
+                        } else {
+                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        }
                         awaitingMinecartConfirmationCooldown = 10; // Wait for server confirmation
                     }
                     railPos = null; // Clear railPos after attempting placement

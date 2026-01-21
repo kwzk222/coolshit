@@ -23,14 +23,14 @@ public class ClientPlayNetworkHandlerMixin {
         TutorialModClient.confirmFirePlacement(packet.getPos(), packet.getState());
     }
 
-    @Inject(method = "onEntitySpawn", at = @At("HEAD"))
+    @Inject(method = "onEntitySpawn", at = @At("TAIL"))
     private void onEntitySpawn(EntitySpawnS2CPacket packet, CallbackInfo ci) {
         if (TutorialModClient.awaitingMinecartConfirmationCooldown > 0) {
             MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world != null) {
-                Entity entity = client.world.getEntityById(packet.getEntityId());
-                if (entity instanceof net.minecraft.entity.vehicle.TntMinecartEntity) {
-                    if (entity.getBlockPos().isWithinDistance(client.player.getBlockPos(), 5)) {
+            if (client.player != null) {
+                if (packet.getEntityType() == net.minecraft.entity.EntityType.TNT_MINECART) {
+                    double distSq = client.player.squaredDistanceTo(packet.getX(), packet.getY(), packet.getZ());
+                    if (distSq <= 25.0) {
                         TutorialModClient.getInstance().startPostMinecartSequence(client);
                         TutorialModClient.awaitingMinecartConfirmationCooldown = -1;
                     }

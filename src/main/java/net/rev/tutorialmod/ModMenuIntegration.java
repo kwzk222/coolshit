@@ -394,7 +394,7 @@ public class ModMenuIntegration implements ModMenuApi {
                     .build());
             windClutchSub.add(entryBuilder.startIntSlider(Text.literal("High Fall Fire Ticks Threshold"), TutorialMod.CONFIG.windClutchHighFallFireTicks, 1, 20)
                     .setDefaultValue(3)
-                    .setTooltip(Text.literal("The fire threshold (ticks) used when falling from more than 170 blocks. Default: 3"))
+                    .setTooltip(Text.literal("The fire threshold (ticks) used when falling from more than 114 blocks. Default: 3"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchHighFallFireTicks = newValue)
                     .build());
             windClutchSub.add(entryBuilder.startIntSlider(Text.literal("Max Retry Attempts"), TutorialMod.CONFIG.windClutchMaxRetries, 0, 5)
