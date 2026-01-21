@@ -307,9 +307,7 @@ public class TutorialModClient implements ClientModInitializer {
             if (isClutchTogglePressed && !clutchToggleWasPressed) {
                 TutorialMod.CONFIG.clutchEnabled = !TutorialMod.CONFIG.clutchEnabled;
                 TutorialMod.CONFIG.save();
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    client.player.sendMessage(Text.of("Clutch: " + (TutorialMod.CONFIG.clutchEnabled ? "ON" : "OFF")), false);
-                }
+                sendUpdateMessage("Clutch set to " + (TutorialMod.CONFIG.clutchEnabled ? "ON" : "OFF"));
             }
             clutchToggleWasPressed = isClutchTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -321,9 +319,7 @@ public class TutorialModClient implements ClientModInitializer {
             if (isMasterTogglePressed && !masterToggleWasPressed) {
                 TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
                 TutorialMod.CONFIG.save();
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    client.player.sendMessage(Text.of("TutorialMod Master Switch: " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF")), false);
-                }
+                sendUpdateMessage("Master Switch set to " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF"));
             }
             masterToggleWasPressed = isMasterTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -345,9 +341,7 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isTriggerBotTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.triggerBotToggleHotkey).getCode());
             if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
                 TutorialMod.CONFIG.triggerBotToggledOn = !TutorialMod.CONFIG.triggerBotToggledOn;
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    client.player.sendMessage(Text.of("TriggerBot: " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF")), false);
-                }
+                sendUpdateMessage("TriggerBot set to " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF"));
             }
             triggerBotToggleWasPressed = isTriggerBotTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -359,7 +353,7 @@ public class TutorialModClient implements ClientModInitializer {
             if (isToggleOverlayPressed && !overlayToggleWasPressed) {
                 TutorialMod.CONFIG.showCoordsOverlay = !TutorialMod.CONFIG.showCoordsOverlay;
                 TutorialMod.CONFIG.save();
-                client.player.sendMessage(Text.of("Coords Overlay: " + (TutorialMod.CONFIG.showCoordsOverlay ? "ON" : "OFF")), false);
+                sendUpdateMessage("Coords Overlay set to " + (TutorialMod.CONFIG.showCoordsOverlay ? "ON" : "OFF"));
                 if (TutorialMod.CONFIG.showCoordsOverlay) {
                     getOverlayManager().start();
                 } else {
@@ -376,9 +370,7 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isParkourTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.parkourHotkey).getCode());
             if (isParkourTogglePressed && !parkourToggleWasPressed) {
                 parkourModule.toggle();
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    client.player.sendMessage(Text.of("Parkour: " + (TutorialMod.CONFIG.parkourEnabled ? "ON" : "OFF")), false);
-                }
+                sendUpdateMessage("Parkour set to " + (TutorialMod.CONFIG.parkourEnabled ? "ON" : "OFF"));
             }
             parkourToggleWasPressed = isParkourTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -397,10 +389,8 @@ public class TutorialModClient implements ClientModInitializer {
                     client.options.sprintKey.setPressed(isKeyCurrentlyPressed(client.options.sprintKey, client));
                 }
                 client.options.write();
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    String mode = newValue ? "Toggle" : "Hold";
-                    client.player.sendMessage(Text.of("Sprint Mode: " + mode), true);
-                }
+                String mode = newValue ? "Toggle" : "Hold";
+                sendUpdateMessage("Sprint Mode set to " + mode);
             }
             sprintModeWasPressed = isSprintModePressed;
         } catch (IllegalArgumentException e) {
@@ -418,10 +408,8 @@ public class TutorialModClient implements ClientModInitializer {
                     client.options.sneakKey.setPressed(isKeyCurrentlyPressed(client.options.sneakKey, client));
                 }
                 client.options.write();
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    String mode = newValue ? "Toggle" : "Hold";
-                    client.player.sendMessage(Text.of("Sneak Mode: " + mode), true);
-                }
+                String mode = newValue ? "Toggle" : "Hold";
+                sendUpdateMessage("Sneak Mode set to " + mode);
             }
             sneakModeWasPressed = isSneakModePressed;
         } catch (IllegalArgumentException e) {
@@ -434,14 +422,10 @@ public class TutorialModClient implements ClientModInitializer {
             String name = target.getName().getString();
             if (TutorialMod.CONFIG.teamManager.isTeammate(name)) {
                 TutorialMod.CONFIG.teamManager.removeTeammate(name);
-                if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                    client.player.sendMessage(Text.of("Removed " + name + " from your team."), false);
-                }
+                sendUpdateMessage("Removed " + name + " from your team.");
             } else {
                 if (TutorialMod.CONFIG.teamManager.addTeammate(name)) {
-                    if (!TutorialMod.CONFIG.disableModChatUpdates) {
-                        client.player.sendMessage(Text.of("Added " + name + " to your team."), false);
-                    }
+                    sendUpdateMessage("Added " + name + " to your team.");
                 }
             }
         }
@@ -806,14 +790,23 @@ public class TutorialModClient implements ClientModInitializer {
         try {
             Direction d = client.player.getHorizontalFacing();
             if (d != null) {
-                // Capitalize first letter
-                facing = d.toString().substring(0, 1).toUpperCase() + d.toString().substring(1).toLowerCase();
+                if (TutorialMod.CONFIG.showDetailedCardinals) {
+                    facing = getDetailedFacing(client.player);
+                } else {
+                    // Capitalize first letter
+                    facing = d.toString().substring(0, 1).toUpperCase() + d.toString().substring(1).toLowerCase();
+                }
             }
         } catch (Exception ignored) {}
 
         StringBuilder result = new StringBuilder();
         result.append("Coords: ").append(coords);
         result.append("\\nFacing: ").append(facing);
+
+        if (TutorialMod.CONFIG.showChunkCount) {
+            int completed = client.worldRenderer.getCompletedChunkCount();
+            result.append(" C: ").append(completed);
+        }
 
         if (TutorialMod.CONFIG.showEntityCount && client.world != null) {
             int entityCount = 0;
@@ -839,5 +832,32 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         return result.toString();
+    }
+
+    private String getDetailedFacing(PlayerEntity player) {
+        float yaw = player.getYaw() % 360;
+        if (yaw < 0) yaw += 360;
+
+        String cardinal;
+        if (yaw >= 337.5 || yaw < 22.5) cardinal = "S";
+        else if (yaw >= 22.5 && yaw < 67.5) cardinal = "SW";
+        else if (yaw >= 67.5 && yaw < 112.5) cardinal = "W";
+        else if (yaw >= 112.5 && yaw < 157.5) cardinal = "NW";
+        else if (yaw >= 157.5 && yaw < 202.5) cardinal = "N";
+        else if (yaw >= 202.5 && yaw < 247.5) cardinal = "NE";
+        else if (yaw >= 247.5 && yaw < 292.5) cardinal = "E";
+        else cardinal = "SE";
+
+        Vec3d look = player.getRotationVector();
+        String quadrant = "(" + (look.x >= 0 ? "+" : "-") + (look.z >= 0 ? "+" : "-") + ")";
+
+        return cardinal + " " + quadrant;
+    }
+
+    private void sendUpdateMessage(String message) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player != null && !TutorialMod.CONFIG.disableModChatUpdates) {
+            client.player.sendMessage(Text.literal("§7[§6TutorialMod§7] §f" + message), false);
+        }
     }
 }
