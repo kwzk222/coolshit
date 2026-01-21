@@ -85,11 +85,10 @@ public class ComponentResizer extends MouseAdapter {
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (resizing) {
+            OverlayApp.saveWindowBounds();
+        }
         resizing = false;
-        // In a real app we'd trigger save here, but OverlayApp handles it via its own listeners for dragging.
-        // For resizing, we can try to call saveWindowBounds via reflection or just rely on the fact that
-        // the user will likely drag it at some point.
-        // Actually, let's just make saveWindowBounds public in OverlayApp.
     }
 
     @Override

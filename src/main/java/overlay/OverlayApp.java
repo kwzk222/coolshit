@@ -13,6 +13,7 @@ public class OverlayApp {
     private static JLabel infoLabel;
     private static Point initialClick;
     private static final File CONFIG_FILE = new File("overlay_config.properties");
+    private static ComponentResizer resizer;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -22,6 +23,7 @@ public class OverlayApp {
             frame.setBackground(new Color(0, 0, 0, 0));
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setFocusableWindowState(false);
+            frame.setType(Window.Type.UTILITY);
 
             JPanel panel = new JPanel() {
                 @Override
@@ -53,12 +55,16 @@ public class OverlayApp {
                 @Override
                 public void mousePressed(MouseEvent e) {
                     if (isLocked()) return;
+                    // Only allow dragging if we are not at an edge (which would be a resize operation)
+                    if (e.getComponent().getCursor().getType() != Cursor.DEFAULT_CURSOR) return;
                     initialClick = e.getPoint();
                 }
 
                 @Override
                 public void mouseDragged(MouseEvent e) {
                     if (isLocked() || initialClick == null) return;
+                    if (e.getComponent().getCursor().getType() != Cursor.DEFAULT_CURSOR) return;
+
                     int thisX = frame.getLocation().x;
                     int thisY = frame.getLocation().y;
                     int xMoved = e.getX() - initialClick.x;
@@ -77,14 +83,15 @@ public class OverlayApp {
             infoLabel.addMouseMotionListener(dragListener);
 
             // Resizing logic
-            ComponentResizer cr = new ComponentResizer();
-            cr.registerComponent(panel);
+            resizer = new ComponentResizer();
+            resizer.registerComponent(panel, infoLabel);
         });
 
         startServer();
     }
 
     private static boolean isLocked() {
+        if (frame == null) return false;
         Object lockedObj = frame.getRootPane().getClientProperty("locked");
         return (lockedObj instanceof Boolean && (Boolean) lockedObj);
     }
@@ -142,10 +149,13 @@ public class OverlayApp {
                         }
                         infoLabel.setHorizontalAlignment(swingAlign);
                         frame.getRootPane().putClientProperty("textAlign", cssAlign);
-                        updateText(infoLabel.getText()); // Refresh alignment in HTML
+                        updateText(infoLabel.getText());
                         break;
                     case "LOCKED":
-                        frame.getRootPane().putClientProperty("locked", Boolean.parseBoolean(value));
+                        boolean locked = Boolean.parseBoolean(value);
+                        frame.getRootPane().putClientProperty("locked", locked);
+                        // Try to make it non-interactive when locked
+                        frame.setFocusable(!locked);
                         break;
                     case "OPACITY":
                         try {
@@ -165,7 +175,10 @@ public class OverlayApp {
     }
 
     private static void updateText(String text) {
-        if (text == null || text.isEmpty()) return;
+        if (text == null || text.isEmpty()) {
+            infoLabel.setText("");
+            return;
+        }
         String rawContent = text.startsWith("<html>") ?
             text.replaceAll("<html><div style='text-align: [a-z]+;'>", "").replaceAll("</div></html>", "") :
             text.replace("\\n", "<br>");
@@ -195,7 +208,7 @@ public class OverlayApp {
         }
     }
 
-    private static void saveWindowBounds() {
+    public static void saveWindowBounds() {
         if (frame == null || isLocked()) return;
         Properties props = new Properties();
         Rectangle bounds = frame.getBounds();

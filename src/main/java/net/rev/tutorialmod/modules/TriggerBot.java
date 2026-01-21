@@ -159,16 +159,27 @@ public class TriggerBot {
 
         // Crit check
         if (TutorialMod.CONFIG.attackOnCrit) {
-            if (mc.player.isOnGround() || mc.player.isClimbing() || mc.player.isTouchingWater()) {
-                // Not ideal for crits
-            } else if (mc.player.getVelocity().y < 0) {
-                // Falling
-            } else {
-                return false;
-            }
+            if (!isCrit()) return false;
         }
 
         return true;
+    }
+
+    private boolean isCrit() {
+        if (mc.player == null) return false;
+        // Vanilla crit requirements:
+        // 1. Not on ground
+        // 2. Falling (velocity.y < 0)
+        // 3. Not climbing (ladder/vines)
+        // 4. Not in water
+        // 5. Not blind
+        // 6. Not riding
+        return !mc.player.isOnGround() &&
+               mc.player.getVelocity().y < -0.01 &&
+               !mc.player.isClimbing() &&
+               !mc.player.isTouchingWater() &&
+               !mc.player.hasVehicle() &&
+               !mc.player.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.BLINDNESS);
     }
 
     private void attack(Entity entity) {
