@@ -26,10 +26,11 @@ public class TriggerBot {
     private long lastAttackTime = 0;
     private Entity lastTarget = null;
     private int currentReactionDelay = -1;
-    private int currentAttackDelay = -1;
     private int reactionTicks = 0;
-    private int postChargeTicks = 0;
     private boolean reactionGatePassed = false;
+
+    private static final float MIN_ATTACK_CHARGE = 0.88f;
+    private static final float MAX_ATTACK_CHARGE = 0.98f;
 
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled) {
@@ -77,19 +78,7 @@ public class TriggerBot {
 
                 if (reactionGatePassed) {
                     if (canAttack()) {
-                        if (currentAttackDelay == -1) {
-                            currentAttackDelay = getRandomDelay(TutorialMod.CONFIG.triggerBotAttackMinDelay, TutorialMod.CONFIG.triggerBotAttackMaxDelay);
-                            postChargeTicks = 0;
-                        }
-
-                        postChargeTicks++;
-                        if (postChargeTicks >= currentAttackDelay) {
-                            attack(entity);
-                            resetAttackDelays();
-                        }
-                    } else {
-                        // Not charged yet, reset attack delay so it recalculates once charged
-                        currentAttackDelay = -1;
+                        attack(entity);
                     }
                 }
             } else {
@@ -105,12 +94,6 @@ public class TriggerBot {
         reactionTicks = 0;
         reactionGatePassed = false;
         currentReactionDelay = -1;
-        resetAttackDelays();
-    }
-
-    private void resetAttackDelays() {
-        currentAttackDelay = -1;
-        postChargeTicks = 0;
     }
 
     private int getRandomDelay(int min, int max) {
@@ -162,13 +145,24 @@ public class TriggerBot {
             }
         }
 
-
         // Crit check
         if (TutorialMod.CONFIG.attackOnCrit && !mc.player.isOnGround()) {
             if (!isCrit()) return false;
         }
 
-        return true;
+        // Cooldown check
+        float cooldown = mc.player.getAttackCooldownProgress(0.0f);
+
+        if (cooldown < MIN_ATTACK_CHARGE) {
+            return false; // too early -> prevents spam
+        }
+
+        if (cooldown > MAX_ATTACK_CHARGE) {
+            return true; // fully charged, always ok
+        }
+
+        // Between min & max -> add randomness
+        return random.nextFloat() < 0.5f;
     }
 
     private boolean isCrit() {

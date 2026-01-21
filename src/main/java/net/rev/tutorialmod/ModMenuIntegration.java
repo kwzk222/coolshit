@@ -660,16 +660,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The maximum duration (ticks) the crosshair must be over a target before the first attack."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotReactionMaxDelay = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Min Attack Delay"), TutorialMod.CONFIG.triggerBotAttackMinDelay, 0, 20)
-                    .setDefaultValue(0)
-                    .setTooltip(Text.literal("The extra minimum delay (ticks) after the weapon is charged before attacking."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackMinDelay = newValue)
-                    .build());
-            triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Max Attack Delay"), TutorialMod.CONFIG.triggerBotAttackMaxDelay, 0, 20)
-                    .setDefaultValue(0)
-                    .setTooltip(Text.literal("The extra maximum delay (ticks) after the weapon is charged before attacking."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackMaxDelay = newValue)
-                    .build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.triggerBotWeaponOnly)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("If enabled, the Trigger Bot will only fire if you are holding a sword, axe, or mace."))
