@@ -47,7 +47,7 @@ public void startRailPlacement(BlockPos pos) {
 }
 
 3. TNT MINECART PLACEMENT
-In the next client tick, 'handlePlacementSequence' executes the 'PLACE_TNT_MINECART' action. It uses 'interactBlock' targeting the specific rail position to ensure the minecart is placed correctly on the rail:
+In the next client tick, 'handlePlacementSequence' executes the 'PLACE_TNT_MINECART' action. To satisfy 1.21.x interaction semantics, it hits the rail's horizontal face (NORTH) with a valid Y-offset and swings the hand:
 
 case PLACE_TNT_MINECART:
     int minecartSlot = findTntMinecartInHotbar(client.player);
@@ -55,16 +55,18 @@ case PLACE_TNT_MINECART:
         inventory.setSelectedSlot(minecartSlot);
         if (railPos != null) {
             BlockHitResult bhr = new BlockHitResult(
-                    new Vec3d(railPos.getX() + 0.5, railPos.getY() + 0.0625, railPos.getZ() + 0.5),
-                    Direction.UP, railPos, false
+                    new Vec3d(railPos.getX() + 0.5, railPos.getY() + 0.6, railPos.getZ() + 0.5),
+                    Direction.NORTH, railPos, false
             );
+            client.player.swingHand(Hand.MAIN_HAND);
             client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
         } else {
+            client.player.swingHand(Hand.MAIN_HAND);
             client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
         }
-        awaitingMinecartConfirmationCooldown = 10; // Wait for server confirmation
+        awaitingMinecartConfirmationCooldown = 20; // Wait for server confirmation
     }
-    railPos = null; // Clear railPos after attempting placement
+    // railPos is NOT cleared here; it persists until confirmation or timeout
     break;
 
 4. POST-PLACEMENT DETECTION
@@ -88,52 +90,23 @@ private void onEntitySpawn(EntitySpawnS2CPacket packet, CallbackInfo ci) {
 }
 
 5. FINAL COMBAT SEQUENCE
-'startPostMinecartSequence' handles the transition to a weapon. It prioritizes a Lava/Crossbow combo if enabled and available, otherwise it switches to a Bow:
+'startPostMinecartSequence' clears the context and handles the transition to a weapon. It prioritizes a Lava/Crossbow combo if enabled and available, otherwise it switches to a Bow:
 
 public void startPostMinecartSequence(MinecraftClient client) {
     if (client.player == null) return;
+    this.railPos = null; // Clear context on success
     PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
     if (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled) {
-        int crossSlot = findLoadedCrossbowInHotbar(client.player);
-        if (crossSlot != -1) {
-            int lavaSlot = findLavaBucketInHotbar(client.player);
-            if (lavaSlot != -1) {
-                this.utilitySlot = lavaSlot;
-                this.crossbowSlot = crossSlot;
-                inventory.setSelectedSlot(lavaSlot);
-                this.actionTimeout = 60;
-                this.placementCooldown = 1;
-                this.nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
-                return;
-            }
-            int flintSlot = findFlintAndSteelInHotbar(client.player);
-            if (flintSlot != -1) {
-                this.utilitySlot = flintSlot;
-                this.crossbowSlot = crossSlot;
-                inventory.setSelectedSlot(flintSlot);
-                this.actionTimeout = 60;
-                this.placementCooldown = 1;
-                this.nextPlacementAction = PlacementAction.AWAITING_FIRE_PLACEMENT;
-                return;
-            }
-        }
-    }
-    if (TutorialMod.CONFIG.bowSequenceEnabled) {
-        long currentTime = client.world.getTime();
-        if (lastBowShotTick == -1 || (currentTime - lastBowShotTick) > TutorialMod.CONFIG.bowCooldown) {
-            int bowSlot = findBowInHotbar(client.player);
-            if (bowSlot != -1) {
-                inventory.setSelectedSlot(bowSlot);
-            }
-        }
+        // ... (sequence logic)
     }
 }
 
-If the Lava combo is chosen, the mod waits for the server to confirm the Lava/Fire placement before finally switching to the Crossbow:
+6. TIMEOUT HANDLING
+If the server does not confirm the minecart placement within 20 ticks, the context is automatically cleared in 'handleConfirmationCooldowns':
 
-// Final transition after Lava/Fire is confirmed
-case SWITCH_TO_CROSSBOW:
-    inventory.setSelectedSlot(crossbowSlot);
-    utilitySlot = -1;
-    crossbowSlot = -1;
-    break;
+if (awaitingMinecartConfirmationCooldown > 0) {
+    awaitingMinecartConfirmationCooldown--;
+    if (awaitingMinecartConfirmationCooldown == 0) {
+        railPos = null;
+    }
+}

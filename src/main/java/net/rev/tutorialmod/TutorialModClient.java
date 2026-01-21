@@ -494,16 +494,17 @@ public class TutorialModClient implements ClientModInitializer {
                         inventory.setSelectedSlot(minecartSlot);
                         if (railPos != null) {
                             BlockHitResult bhr = new BlockHitResult(
-                                    new Vec3d(railPos.getX() + 0.5, railPos.getY() + 0.0625, railPos.getZ() + 0.5),
-                                    Direction.UP, railPos, false
+                                    new Vec3d(railPos.getX() + 0.5, railPos.getY() + 0.6, railPos.getZ() + 0.5),
+                                    Direction.NORTH, railPos, false
                             );
+                            client.player.swingHand(Hand.MAIN_HAND);
                             client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
                         } else {
+                            client.player.swingHand(Hand.MAIN_HAND);
                             client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                         }
-                        awaitingMinecartConfirmationCooldown = 10; // Wait for server confirmation
+                        awaitingMinecartConfirmationCooldown = 20; // Wait for server confirmation
                     }
-                    railPos = null; // Clear railPos after attempting placement
                     break;
                 case AWAITING_LAVA_PLACEMENT:
                 case AWAITING_FIRE_PLACEMENT:
@@ -528,6 +529,12 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleConfirmationCooldowns(MinecraftClient client) {
         if (awaitingRailConfirmationCooldown > 0) {
             awaitingRailConfirmationCooldown--;
+        }
+        if (awaitingMinecartConfirmationCooldown > 0) {
+            awaitingMinecartConfirmationCooldown--;
+            if (awaitingMinecartConfirmationCooldown == 0) {
+                railPos = null;
+            }
         }
     }
 
@@ -576,6 +583,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     public void startPostMinecartSequence(MinecraftClient client) {
         if (client.player == null) return;
+        this.railPos = null;
         PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
         if (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled) {
             int crossSlot = findLoadedCrossbowInHotbar(client.player);
