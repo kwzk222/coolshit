@@ -41,7 +41,7 @@ public class CommandManager {
         dispatcher.register(literal("ta")
                 .then(argument("name", StringArgumentType.word())
                         .suggests((context, builder) -> CommandSource.suggestMatching(
-                                context.getSource().getClient().getNetworkHandler().getPlayerList().stream().map(p -> p.getProfile().getName()),
+                                context.getSource().getClient().getNetworkHandler().getPlayerList().stream().map(p -> p.getProfile().name()),
                                 builder))
                         .executes(context -> {
                             String name = StringArgumentType.getString(context, "name");

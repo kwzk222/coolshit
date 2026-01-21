@@ -25,7 +25,7 @@ public class BridgeAssistModule {
         // Configurable hotkey activation (string-based like before)
         boolean keyPressed = false;
         try {
-            keyPressed = InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+            keyPressed = InputUtil.isKeyPressed(mc.getWindow(),
                 InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode());
         } catch (Exception ignored) {}
 
@@ -133,7 +133,7 @@ public class BridgeAssistModule {
 
     private boolean isManualSneakPressed() {
         try {
-            return InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+            return InputUtil.isKeyPressed(mc.getWindow(),
                 InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
         } catch (Exception e) {
             return false;

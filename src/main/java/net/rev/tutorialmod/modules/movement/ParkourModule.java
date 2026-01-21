@@ -18,7 +18,7 @@ public class ParkourModule {
             if (client.currentScreen != null) return;
             // Disable if Bridge Assist key is held
             try {
-                if (InputUtil.isKeyPressed(client.getWindow().getHandle(),
+                if (InputUtil.isKeyPressed(client.getWindow(),
                     InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode())) return;
             } catch (Exception ignored) {}
             tick();

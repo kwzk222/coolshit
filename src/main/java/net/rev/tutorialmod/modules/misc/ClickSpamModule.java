@@ -39,7 +39,7 @@ public class ClickSpamModule {
             InputUtil.Key key = InputUtil.fromTranslationKey(keyTranslation);
             int code = key.getCode();
             if (code == -1) return true;
-            return InputUtil.isKeyPressed(mc.getWindow().getHandle(), code);
+            return InputUtil.isKeyPressed(mc.getWindow(), code);
         } catch (Exception e) {
             return true;
         }

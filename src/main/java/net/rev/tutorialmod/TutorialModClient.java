@@ -241,8 +241,8 @@ public class TutorialModClient implements ClientModInitializer {
             PlayerEntity attackedPlayer = (PlayerEntity) target;
             boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
 
-            Vec3d selfPos = player.getPos();
-            Vec3d targetPos = attackedPlayer.getPos();
+            Vec3d selfPos = new Vec3d(player.getX(), player.getY(), player.getZ());
+            Vec3d targetPos = new Vec3d(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ());
             Vec3d targetLookVec = attackedPlayer.getRotationVector();
             Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
             boolean isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
@@ -294,7 +294,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // --- Open Settings Hotkey ---
         try {
-            boolean isOpenSettingsPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.openSettingsHotkey).getCode());
+            boolean isOpenSettingsPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.openSettingsHotkey).getCode());
             if (isOpenSettingsPressed && !openSettingsWasPressed) {
                 client.setScreen(new ModMenuIntegration().getModConfigScreenFactory().create(client.currentScreen));
             }
@@ -306,7 +306,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // --- Toggle Clutch Hotkey ---
         try {
-            boolean isClutchTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.clutchHotkey).getCode());
+            boolean isClutchTogglePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.clutchHotkey).getCode());
             if (isClutchTogglePressed && !clutchToggleWasPressed) {
                 TutorialMod.CONFIG.clutchEnabled = !TutorialMod.CONFIG.clutchEnabled;
                 TutorialMod.CONFIG.save();
@@ -318,7 +318,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         try {
-            boolean isMasterTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.masterToggleHotkey).getCode());
+            boolean isMasterTogglePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.masterToggleHotkey).getCode());
             if (isMasterTogglePressed && !masterToggleWasPressed) {
                 TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
                 TutorialMod.CONFIG.save();
@@ -331,7 +331,7 @@ public class TutorialModClient implements ClientModInitializer {
 
 
         try {
-            boolean isTeammateKeyPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.teammateHotkey).getCode());
+            boolean isTeammateKeyPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.teammateHotkey).getCode());
             if (isTeammateKeyPressed && !teammateWasPressed) {
                 handleTeammateKeybind(client);
             }
@@ -341,7 +341,7 @@ public class TutorialModClient implements ClientModInitializer {
 
 
         try {
-            boolean isTriggerBotTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.triggerBotToggleHotkey).getCode());
+            boolean isTriggerBotTogglePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.triggerBotToggleHotkey).getCode());
             if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
                 TutorialMod.CONFIG.triggerBotToggledOn = !TutorialMod.CONFIG.triggerBotToggledOn;
                 TutorialMod.sendUpdateMessage("TriggerBot set to " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF"));
@@ -352,7 +352,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // --- Toggle Overlay Hotkey ---
         try {
-            boolean isToggleOverlayPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleOverlayHotkey).getCode());
+            boolean isToggleOverlayPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleOverlayHotkey).getCode());
             if (isToggleOverlayPressed && !overlayToggleWasPressed) {
                 TutorialMod.CONFIG.showCoordsOverlay = !TutorialMod.CONFIG.showCoordsOverlay;
                 TutorialMod.CONFIG.save();
@@ -370,7 +370,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // --- Toggle Parkour Hotkey ---
         try {
-            boolean isParkourTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.parkourHotkey).getCode());
+            boolean isParkourTogglePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.parkourHotkey).getCode());
             if (isParkourTogglePressed && !parkourToggleWasPressed) {
                 parkourModule.toggle();
                 TutorialMod.sendUpdateMessage("Parkour set to " + (TutorialMod.CONFIG.parkourEnabled ? "ON" : "OFF"));
@@ -382,7 +382,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // --- Toggle Sprint Mode Hotkey ---
         try {
-            boolean isSprintModePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sprintModeHotkey).getCode());
+            boolean isSprintModePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sprintModeHotkey).getCode());
             if (isSprintModePressed && !sprintModeWasPressed) {
                 var sprintToggled = ((GameOptionsAccessor) client.options).getSprintToggled();
                 boolean newValue = !sprintToggled.getValue();
@@ -401,7 +401,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // --- Toggle Sneak Mode Hotkey ---
         try {
-            boolean isSneakModePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sneakModeHotkey).getCode());
+            boolean isSneakModePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sneakModeHotkey).getCode());
             if (isSneakModePressed && !sneakModeWasPressed) {
                 var sneakToggled = ((GameOptionsAccessor) client.options).getSneakToggled();
                 boolean newValue = !sneakToggled.getValue();
@@ -622,7 +622,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     private boolean isKeyCurrentlyPressed(net.minecraft.client.option.KeyBinding keyBinding, MinecraftClient client) {
         try {
-            return InputUtil.isKeyPressed(client.getWindow().getHandle(),
+            return InputUtil.isKeyPressed(client.getWindow(),
                 InputUtil.fromTranslationKey(keyBinding.getBoundKeyTranslationKey()).getCode());
         } catch (Exception e) {
             return false;
@@ -716,7 +716,7 @@ public class TutorialModClient implements ClientModInitializer {
 
             boolean isPressed;
             try {
-                isPressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(macro.hotkey).getCode());
+                isPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(macro.hotkey).getCode());
             } catch (IllegalArgumentException e) {
                 continue; // Invalid key
             }
@@ -735,8 +735,9 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private static String formatCoords(ModConfig cfg) {
-        ClientPlayerEntity player = MinecraftClient.getInstance().player;
-        if (player == null || player.getWorld() == null) return cfg.trigger; // fallback
+        MinecraftClient client = MinecraftClient.getInstance();
+        ClientPlayerEntity player = client.player;
+        if (player == null || client.world == null) return cfg.trigger; // fallback
 
         double x = player.getX();
         double y = player.getY();
@@ -753,7 +754,7 @@ public class TutorialModClient implements ClientModInitializer {
         // Dimension identifier
         String dim = "";
         try {
-            RegistryKey<World> key = player.getWorld().getRegistryKey();
+            RegistryKey<World> key = client.world.getRegistryKey();
             Identifier id = key.getValue();
             if (id != null) {
                 String dimensionName = id.getPath().replace("the_", "");

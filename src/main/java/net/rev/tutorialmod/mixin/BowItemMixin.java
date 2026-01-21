@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class BowItemMixin {
     @Inject(method = "onStoppedUsing", at = @At("TAIL"))
     private void onStoppedUsing(ItemStack stack, World world, LivingEntity user, int remainingUseTicks, CallbackInfoReturnable<ItemStack> info) {
-        if (world.isClient) {
+        if (world.isClient()) {
             TutorialModClient.recordBowUsage();
         }
     }

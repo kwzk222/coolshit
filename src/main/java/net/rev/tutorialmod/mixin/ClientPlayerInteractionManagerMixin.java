@@ -111,7 +111,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
             if (key.getCategory() == InputUtil.Type.MOUSE) {
                 return GLFW.glfwGetMouseButton(handle, key.getCode()) == GLFW.GLFW_PRESS;
             } else {
-                return InputUtil.isKeyPressed(handle, key.getCode());
+                return InputUtil.isKeyPressed(mc.getWindow(), key.getCode());
             }
         } catch (Exception e) {
             return false;

@@ -398,7 +398,7 @@ public class ClutchModule {
 
     private boolean isManualSneakPressed() {
         try {
-            return InputUtil.isKeyPressed(mc.getWindow().getHandle(),
+            return InputUtil.isKeyPressed(mc.getWindow(),
                 InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
         } catch (Exception e) {
             return false;
