@@ -418,6 +418,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, the number of completed chunks will be displayed in the overlay."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.showChunkCount = newValue)
                     .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Long Distance Coordinates"), TutorialMod.CONFIG.showLongCoords)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("If enabled, the overlay will display the coordinates and distance of the block or entity you are currently looking at."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showLongCoords = newValue)
+                    .build());
+            overlay.addEntry(entryBuilder.startIntSlider(Text.literal("Long Distance Range"), TutorialMod.CONFIG.longCoordsMaxDistance, 64, 1024)
+                    .setDefaultValue(512)
+                    .setTooltip(Text.literal("The maximum distance (blocks) to scan for blocks and entities."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.longCoordsMaxDistance = newValue)
+                    .build());
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Detailed Cardinals"), TutorialMod.CONFIG.showDetailedCardinals)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("If enabled, the overlay will show abbreviated cardinal directions (NW, SE, etc.) and quadrant indicators."))
@@ -630,16 +640,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("The extra maximum delay (ticks) after the weapon is charged before attacking."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotAttackMaxDelay = newValue)
-                    .build());
-            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Minimum Charge Enabled"), TutorialMod.CONFIG.triggerBotMinChargeEnabled)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("If enabled, the Trigger Bot will wait for the weapon to reach a certain charge level before attacking."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMinChargeEnabled = newValue)
-                    .build());
-            triggerBot.addEntry(entryBuilder.startLongSlider(Text.literal("Minimum Charge"), (long)TutorialMod.CONFIG.triggerBotMinCharge, 0, 100)
-                    .setDefaultValue(100)
-                    .setTooltip(Text.literal("The required weapon charge percentage (%) to trigger an attack."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMinCharge = newValue.doubleValue())
                     .build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.triggerBotWeaponOnly)
                     .setDefaultValue(true)

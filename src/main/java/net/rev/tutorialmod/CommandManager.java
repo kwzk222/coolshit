@@ -21,9 +21,9 @@ public class CommandManager {
                 .executes(context -> {
                     TeamManager teamManager = TutorialMod.CONFIG.teamManager;
                     if (teamManager.getTeammates().isEmpty()) {
-                        context.getSource().sendFeedback(Text.of("You have no teammates on your list."));
+                        TutorialMod.sendUpdateMessage("Your team list is currently empty.");
                     } else {
-                        context.getSource().sendFeedback(Text.of("Teammates: " + String.join(", ", teamManager.getTeammates())));
+                        TutorialMod.sendUpdateMessage("Teammates: " + String.join(", ", teamManager.getTeammates()));
                     }
                     return 1;
                 }));
@@ -31,9 +31,9 @@ public class CommandManager {
                 .executes(context -> {
                     TeamManager teamManager = TutorialMod.CONFIG.teamManager;
                     if (teamManager.getTeammates().isEmpty()) {
-                        context.getSource().sendFeedback(Text.of("You have no teammates on your list."));
+                        TutorialMod.sendUpdateMessage("Your team list is currently empty.");
                     } else {
-                        context.getSource().sendFeedback(Text.of("Teammates: " + String.join(", ", teamManager.getTeammates())));
+                        TutorialMod.sendUpdateMessage("Teammates: " + String.join(", ", teamManager.getTeammates()));
                     }
                     return 1;
                 }));
@@ -46,7 +46,7 @@ public class CommandManager {
                         .executes(context -> {
                             String name = StringArgumentType.getString(context, "name");
                             if (TutorialMod.CONFIG.teamManager.addTeammate(name)) {
-                                context.getSource().sendFeedback(Text.of("Added " + name + " to your teammates list."));
+                                TutorialMod.sendUpdateMessage("Added " + name + " to your team.");
                             }
                             return 1;
                         })));
@@ -59,13 +59,13 @@ public class CommandManager {
                         .executes(context -> {
                             String name = StringArgumentType.getString(context, "name");
                             TutorialMod.CONFIG.teamManager.removeTeammate(name);
-                            context.getSource().sendFeedback(Text.of("Removed " + name + " from your teammates list."));
+                            TutorialMod.sendUpdateMessage("Removed " + name + " from your team.");
                             return 1;
                         })));
         dispatcher.register(literal("tc")
                 .executes(context -> {
                     TutorialMod.CONFIG.teamManager.clearTeammates();
-                    context.getSource().sendFeedback(Text.of("Teammate list cleared."));
+                    TutorialMod.sendUpdateMessage("Team list has been cleared.");
                     return 1;
                 }));
         dispatcher.register(literal("tm")
@@ -76,7 +76,7 @@ public class CommandManager {
                             for (String teammate : teamManager.getTeammates()) {
                                 context.getSource().getClient().player.networkHandler.sendChatCommand("msg " + teammate + " " + message);
                             }
-                            context.getSource().sendFeedback(Text.of("Message sent to " + teamManager.getTeammates().size() + " teammates."));
+                            TutorialMod.sendUpdateMessage("Sent message to " + teamManager.getTeammates().size() + " teammates.");
                             return 1;
                         })));
     }

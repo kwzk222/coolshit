@@ -93,8 +93,6 @@ public class ModConfig {
     public int triggerBotReactionMaxDelay = 0;
     public int triggerBotAttackMinDelay = 0;
     public int triggerBotAttackMaxDelay = 0;
-    public boolean triggerBotMinChargeEnabled = true;
-    public double triggerBotMinCharge = 100.0;
     public boolean triggerBotWeaponOnly = true;
     public boolean attackOnCrit = false;
     public boolean triggerBotEnabled = true;
@@ -149,6 +147,8 @@ public class ModConfig {
     public boolean showEntityCount = false;
     public boolean showChunkCount = false;
     public boolean showDetailedCardinals = false;
+    public boolean showLongCoords = false;
+    public int longCoordsMaxDistance = 512;
     public boolean showSprintModeOverlay = true;
     public boolean showSneakModeOverlay = true;
     public int overlayFontSize = 20;

@@ -162,11 +162,6 @@ public class TriggerBot {
             }
         }
 
-        // Charge check
-        if (TutorialMod.CONFIG.triggerBotMinChargeEnabled) {
-            float cooldown = mc.player.getAttackCooldownProgress(0.0f);
-            if (cooldown < (TutorialMod.CONFIG.triggerBotMinCharge / 100.0)) return false;
-        }
 
         // Crit check
         if (TutorialMod.CONFIG.attackOnCrit && !mc.player.isOnGround()) {

@@ -307,7 +307,7 @@ public class TutorialModClient implements ClientModInitializer {
             if (isClutchTogglePressed && !clutchToggleWasPressed) {
                 TutorialMod.CONFIG.clutchEnabled = !TutorialMod.CONFIG.clutchEnabled;
                 TutorialMod.CONFIG.save();
-                sendUpdateMessage("Clutch set to " + (TutorialMod.CONFIG.clutchEnabled ? "ON" : "OFF"));
+                TutorialMod.sendUpdateMessage("Clutch set to " + (TutorialMod.CONFIG.clutchEnabled ? "ON" : "OFF"));
             }
             clutchToggleWasPressed = isClutchTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -319,7 +319,7 @@ public class TutorialModClient implements ClientModInitializer {
             if (isMasterTogglePressed && !masterToggleWasPressed) {
                 TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
                 TutorialMod.CONFIG.save();
-                sendUpdateMessage("Master Switch set to " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF"));
+                TutorialMod.sendUpdateMessage("Master Switch set to " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF"));
             }
             masterToggleWasPressed = isMasterTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -341,7 +341,7 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isTriggerBotTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.triggerBotToggleHotkey).getCode());
             if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
                 TutorialMod.CONFIG.triggerBotToggledOn = !TutorialMod.CONFIG.triggerBotToggledOn;
-                sendUpdateMessage("TriggerBot set to " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF"));
+                TutorialMod.sendUpdateMessage("TriggerBot set to " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF"));
             }
             triggerBotToggleWasPressed = isTriggerBotTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -353,7 +353,7 @@ public class TutorialModClient implements ClientModInitializer {
             if (isToggleOverlayPressed && !overlayToggleWasPressed) {
                 TutorialMod.CONFIG.showCoordsOverlay = !TutorialMod.CONFIG.showCoordsOverlay;
                 TutorialMod.CONFIG.save();
-                sendUpdateMessage("Coords Overlay set to " + (TutorialMod.CONFIG.showCoordsOverlay ? "ON" : "OFF"));
+                TutorialMod.sendUpdateMessage("Coords Overlay set to " + (TutorialMod.CONFIG.showCoordsOverlay ? "ON" : "OFF"));
                 if (TutorialMod.CONFIG.showCoordsOverlay) {
                     getOverlayManager().start();
                 } else {
@@ -370,7 +370,7 @@ public class TutorialModClient implements ClientModInitializer {
             boolean isParkourTogglePressed = InputUtil.isKeyPressed(client.getWindow().getHandle(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.parkourHotkey).getCode());
             if (isParkourTogglePressed && !parkourToggleWasPressed) {
                 parkourModule.toggle();
-                sendUpdateMessage("Parkour set to " + (TutorialMod.CONFIG.parkourEnabled ? "ON" : "OFF"));
+                TutorialMod.sendUpdateMessage("Parkour set to " + (TutorialMod.CONFIG.parkourEnabled ? "ON" : "OFF"));
             }
             parkourToggleWasPressed = isParkourTogglePressed;
         } catch (IllegalArgumentException e) {
@@ -390,7 +390,7 @@ public class TutorialModClient implements ClientModInitializer {
                 }
                 client.options.write();
                 String mode = newValue ? "Toggle" : "Hold";
-                sendUpdateMessage("Sprint Mode set to " + mode);
+                TutorialMod.sendUpdateMessage("Sprint Mode set to " + mode);
             }
             sprintModeWasPressed = isSprintModePressed;
         } catch (IllegalArgumentException e) {
@@ -409,7 +409,7 @@ public class TutorialModClient implements ClientModInitializer {
                 }
                 client.options.write();
                 String mode = newValue ? "Toggle" : "Hold";
-                sendUpdateMessage("Sneak Mode set to " + mode);
+                TutorialMod.sendUpdateMessage("Sneak Mode set to " + mode);
             }
             sneakModeWasPressed = isSneakModePressed;
         } catch (IllegalArgumentException e) {
@@ -422,10 +422,10 @@ public class TutorialModClient implements ClientModInitializer {
             String name = target.getName().getString();
             if (TutorialMod.CONFIG.teamManager.isTeammate(name)) {
                 TutorialMod.CONFIG.teamManager.removeTeammate(name);
-                sendUpdateMessage("Removed " + name + " from your team.");
+                TutorialMod.sendUpdateMessage("Removed " + name + " from your team.");
             } else {
                 if (TutorialMod.CONFIG.teamManager.addTeammate(name)) {
-                    sendUpdateMessage("Added " + name + " to your team.");
+                    TutorialMod.sendUpdateMessage("Added " + name + " to your team.");
                 }
             }
         }
@@ -816,6 +816,13 @@ public class TutorialModClient implements ClientModInitializer {
             result.append(" E: ").append(entityCount);
         }
 
+        if (TutorialMod.CONFIG.showLongCoords) {
+            String longCoords = getLongCoordsInfo(client);
+            if (longCoords != null) {
+                result.append("\\n").append(longCoords);
+            }
+        }
+
         if (TutorialMod.CONFIG.showSprintModeOverlay || TutorialMod.CONFIG.showSneakModeOverlay) {
             result.append("\\n");
             if (TutorialMod.CONFIG.showSprintModeOverlay) {
@@ -832,6 +839,70 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         return result.toString();
+    }
+
+    private String getLongCoordsInfo(MinecraftClient client) {
+        if (client.player == null || client.world == null) return null;
+
+        Vec3d origin = client.player.getCameraPosVec(1.0f);
+        Vec3d direction = client.player.getRotationVec(1.0f);
+        double maxDist = TutorialMod.CONFIG.longCoordsMaxDistance;
+
+        // Check entities first
+        Entity closestEntity = null;
+        double minEntityDist = maxDist;
+
+        for (Entity entity : client.world.getEntities()) {
+            if (entity == client.player) continue;
+            net.minecraft.util.math.Box box = entity.getBoundingBox().expand(0.05);
+            java.util.Optional<Vec3d> hit = box.raycast(origin, origin.add(direction.multiply(maxDist)));
+            if (hit.isPresent()) {
+                double dist = origin.distanceTo(hit.get());
+                if (dist < minEntityDist) {
+                    minEntityDist = dist;
+                    closestEntity = entity;
+                }
+            }
+        }
+
+        // March the ray for blocks
+        BlockPos hitPos = null;
+        Direction hitFace = null;
+        double step = 0.25;
+        double blockDist = -1;
+
+        for (double d = 0; d <= maxDist; d += step) {
+            Vec3d point = origin.add(direction.multiply(d));
+            BlockPos pos = BlockPos.ofFloored(point);
+
+            // Manual check for unloaded chunks to avoid lag/ghost blocks
+            if (!client.world.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) {
+                break;
+            }
+
+            BlockState state = client.world.getBlockState(pos);
+            if (!state.isAir() && state.getFluidState().isEmpty()) {
+                hitPos = pos;
+                blockDist = d;
+                // Determine hit face based on position relative to block bounds
+                if (d >= step) {
+                    Vec3d prev = origin.add(direction.multiply(d - step));
+                    hitFace = Direction.getFacing(point.x - prev.x, point.y - prev.y, point.z - prev.z);
+                }
+                break;
+            }
+        }
+
+        if (closestEntity != null && (hitPos == null || minEntityDist < blockDist)) {
+            return String.format("Looking At: %s Distance: %.1f", closestEntity.getName().getString(), minEntityDist);
+        }
+
+        if (hitPos != null) {
+            String faceStr = hitFace != null ? " (" + hitFace.toString().toUpperCase() + ")" : "";
+            return String.format("Looking At: %d %d %d%s Distance: %.1f", hitPos.getX(), hitPos.getY(), hitPos.getZ(), faceStr, blockDist);
+        }
+
+        return "Looking At: None";
     }
 
     private String getDetailedFacing(PlayerEntity player) {
@@ -854,10 +925,4 @@ public class TutorialModClient implements ClientModInitializer {
         return cardinal + " " + quadrant;
     }
 
-    private void sendUpdateMessage(String message) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player != null && !TutorialMod.CONFIG.disableModChatUpdates) {
-            client.player.sendMessage(Text.literal("§7[§6TutorialMod§7] §f" + message), false);
-        }
-    }
 }
