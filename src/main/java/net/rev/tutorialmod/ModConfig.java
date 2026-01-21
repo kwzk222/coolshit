@@ -91,6 +91,8 @@ public class ModConfig {
     // --- TriggerBot ---
     public int triggerBotReactionMinDelay = 0;
     public int triggerBotReactionMaxDelay = 0;
+    public int triggerBotAttackMinDelay = 0;
+    public int triggerBotAttackMaxDelay = 0;
     public boolean triggerBotWeaponOnly = true;
     public boolean attackOnCrit = false;
     public boolean triggerBotEnabled = true;
