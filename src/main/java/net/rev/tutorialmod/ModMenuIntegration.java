@@ -408,6 +408,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, coordinates will be displayed with 3 decimal places."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.showAccurateCoordinates = newValue)
                     .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Nether Coordinates"), TutorialMod.CONFIG.showNetherCoords)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("If enabled, the overlay will show converted coordinates (Nether if in Overworld, and vice-versa)."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showNetherCoords = newValue)
+                    .build());
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Entity Count"), TutorialMod.CONFIG.showEntityCount)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("If enabled, the number of loaded entities will be displayed in the overlay."))

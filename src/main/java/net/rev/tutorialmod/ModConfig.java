@@ -149,6 +149,7 @@ public class ModConfig {
     public boolean showDetailedCardinals = false;
     public boolean showLongCoords = false;
     public int longCoordsMaxDistance = 512;
+    public boolean showNetherCoords = false;
     public boolean showSprintModeOverlay = true;
     public boolean showSneakModeOverlay = true;
     public int overlayFontSize = 20;

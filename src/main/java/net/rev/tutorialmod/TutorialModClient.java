@@ -781,9 +781,9 @@ public class TutorialModClient implements ClientModInitializer {
 
         String coords;
         if (TutorialMod.CONFIG.showAccurateCoordinates) {
-            coords = String.format("%.3f, %.3f, %.3f", client.player.getX(), client.player.getY(), client.player.getZ());
+            coords = String.format("%.3f %.3f %.3f", client.player.getX(), client.player.getY(), client.player.getZ());
         } else {
-            coords = String.format("%d, %d, %d", (int) Math.floor(client.player.getX()), (int) Math.floor(client.player.getY()), (int) Math.floor(client.player.getZ()));
+            coords = String.format("%d %d %d", (int) Math.floor(client.player.getX()), (int) Math.floor(client.player.getY()), (int) Math.floor(client.player.getZ()));
         }
 
         String facing = "";
@@ -801,6 +801,14 @@ public class TutorialModClient implements ClientModInitializer {
 
         StringBuilder result = new StringBuilder();
         result.append("Coords: ").append(coords);
+
+        if (TutorialMod.CONFIG.showNetherCoords) {
+            String converted = getConvertedCoords(client, client.player.getX(), client.player.getY(), client.player.getZ());
+            if (converted != null) {
+                result.append("\\n").append(converted);
+            }
+        }
+
         result.append("\\nFacing: ").append(facing);
 
         if (TutorialMod.CONFIG.showChunkCount) {
@@ -867,7 +875,6 @@ public class TutorialModClient implements ClientModInitializer {
 
         // March the ray for blocks
         BlockPos hitPos = null;
-        Direction hitFace = null;
         double step = 0.25;
         double blockDist = -1;
 
@@ -884,25 +891,44 @@ public class TutorialModClient implements ClientModInitializer {
             if (!state.isAir() && state.getFluidState().isEmpty()) {
                 hitPos = pos;
                 blockDist = d;
-                // Determine hit face based on position relative to block bounds
-                if (d >= step) {
-                    Vec3d prev = origin.add(direction.multiply(d - step));
-                    hitFace = Direction.getFacing(point.x - prev.x, point.y - prev.y, point.z - prev.z);
-                }
                 break;
             }
         }
 
         if (closestEntity != null && (hitPos == null || minEntityDist < blockDist)) {
-            return String.format("Looking At: %s Distance: %.1f", closestEntity.getName().getString(), minEntityDist);
+            String base = String.format("Pointing: %s Distance: %.1f", closestEntity.getName().getString(), minEntityDist);
+            if (TutorialMod.CONFIG.showNetherCoords) {
+                String converted = getConvertedCoords(client, closestEntity.getX(), closestEntity.getY(), closestEntity.getZ());
+                if (converted != null) {
+                    base += "\\n" + converted;
+                }
+            }
+            return base;
         }
 
         if (hitPos != null) {
-            String faceStr = hitFace != null ? " (" + hitFace.toString().toUpperCase() + ")" : "";
-            return String.format("Looking At: %d %d %d%s Distance: %.1f", hitPos.getX(), hitPos.getY(), hitPos.getZ(), faceStr, blockDist);
+            String base = String.format("Pointing: %d %d %d Distance: %.1f", hitPos.getX(), hitPos.getY(), hitPos.getZ(), blockDist);
+            if (TutorialMod.CONFIG.showNetherCoords) {
+                String converted = getConvertedCoords(client, hitPos.getX(), hitPos.getY(), hitPos.getZ());
+                if (converted != null) {
+                    base += "\\n" + converted;
+                }
+            }
+            return base;
         }
 
-        return "Looking At: None";
+        return "Pointing: None";
+    }
+
+    private String getConvertedCoords(MinecraftClient client, double x, double y, double z) {
+        if (client.world == null) return null;
+        var dim = client.world.getRegistryKey();
+        if (dim == World.OVERWORLD) {
+            return String.format("N: %d %d %d", (int)Math.floor(x / 8.0), (int)Math.floor(y), (int)Math.floor(z / 8.0));
+        } else if (dim == World.NETHER) {
+            return String.format("O: %d %d %d", (int)Math.floor(x * 8.0), (int)Math.floor(y), (int)Math.floor(z * 8.0));
+        }
+        return null;
     }
 
     private String getDetailedFacing(PlayerEntity player) {
