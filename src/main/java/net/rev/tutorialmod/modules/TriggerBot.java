@@ -29,6 +29,7 @@ public class TriggerBot {
     private int currentAttackDelay = -1;
     private int reactionTicks = 0;
     private int postChargeTicks = 0;
+    private boolean reactionGatePassed = false;
 
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled) {
@@ -63,11 +64,18 @@ public class TriggerBot {
                 if (entity != lastTarget) {
                     lastTarget = entity;
                     reactionTicks = 0;
+                    reactionGatePassed = false;
                     currentReactionDelay = getRandomDelay(TutorialMod.CONFIG.triggerBotReactionMinDelay, TutorialMod.CONFIG.triggerBotReactionMaxDelay);
                 }
 
-                reactionTicks++;
-                if (reactionTicks >= currentReactionDelay) {
+                if (!reactionGatePassed) {
+                    reactionTicks++;
+                    if (reactionTicks >= currentReactionDelay) {
+                        reactionGatePassed = true;
+                    }
+                }
+
+                if (reactionGatePassed) {
                     if (canAttack()) {
                         if (currentAttackDelay == -1) {
                             currentAttackDelay = getRandomDelay(TutorialMod.CONFIG.triggerBotAttackMinDelay, TutorialMod.CONFIG.triggerBotAttackMaxDelay);
@@ -95,6 +103,7 @@ public class TriggerBot {
     private void reset() {
         lastTarget = null;
         reactionTicks = 0;
+        reactionGatePassed = false;
         currentReactionDelay = -1;
         resetAttackDelays();
     }
@@ -154,11 +163,11 @@ public class TriggerBot {
         }
 
         // Charge check
-        float cooldown = mc.player.getAttackCooldownProgress(0.5f);
+        float cooldown = mc.player.getAttackCooldownProgress(0.0f);
         if (cooldown < (TutorialMod.CONFIG.triggerBotMinCharge / 100.0)) return false;
 
         // Crit check
-        if (TutorialMod.CONFIG.attackOnCrit) {
+        if (TutorialMod.CONFIG.attackOnCrit && !mc.player.isOnGround()) {
             if (!isCrit()) return false;
         }
 
@@ -169,13 +178,14 @@ public class TriggerBot {
         if (mc.player == null) return false;
         // Vanilla crit requirements:
         // 1. Not on ground
-        // 2. Falling (velocity.y < 0)
+        // 2. Falling (velocity.y < 0 and fallDistance > 0)
         // 3. Not climbing (ladder/vines)
         // 4. Not in water
         // 5. Not blind
         // 6. Not riding
         return !mc.player.isOnGround() &&
                mc.player.getVelocity().y < -0.01 &&
+               mc.player.fallDistance > 0.0f &&
                !mc.player.isClimbing() &&
                !mc.player.isTouchingWater() &&
                !mc.player.hasVehicle() &&
