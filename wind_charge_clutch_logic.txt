@@ -1,6 +1,6 @@
 WIND CHARGE CLUTCH LOGIC DOCUMENTATION
 
-The Wind Charge Clutch is integrated into the unified state machine of the ClutchModule. It uses a predictive algorithm to time the release of a wind charge, ensuring the player receives upward knockback just before impact to negate fall damage.
+The Wind Charge Clutch is integrated into the unified state machine of the ClutchModule. It uses an accelerated predictive algorithm to time the release of a wind charge, ensuring the player receives upward knockback just before impact to negate fall damage.
 
 1. ACTIVATION AND PRE-ARMING
 The module monitors the player's fall state. If water clutching is unavailable or the conditions are met for wind charges, the state machine transitions to WIND_PREARMED:
@@ -19,34 +19,42 @@ else if (config.windClutchEnabled && p.fallDistance >= config.windClutchMinFallD
     }
 }
 
-2. PREDICTIVE TIMING (TICKS-TO-IMPACT)
-In the WIND_PREARMED state, the mod calculates how many ticks remain before the player hits the ground using a raycast-based linear estimation:
+2. ACCELERATED PREDICTIVE TIMING (TICKS-TO-IMPACT)
+In the WIND_PREARMED state, the mod calculates how many ticks remain before the player hits the ground. To avoid quantization errors at specific heights, the estimator accounts for gravitational acceleration (0.08 per tick) using midpoint velocity extrapolation:
 
 private double estimateTicksToImpact(net.minecraft.entity.player.PlayerEntity p) {
     double reach = 256.0;
     HitResult hr = p.raycast(reach, 1.0f, false);
+    double vy = p.getVelocity().y;
+    double g = 0.08; // gravity per tick
+    double effectiveVy = -vy + g; // next-tick velocity extrapolation
+
     if (hr == null || hr.getType() != HitResult.Type.BLOCK) {
         double distance = p.getY();
-        double vy = p.getVelocity().y;
         if (vy >= -0.01) return Double.POSITIVE_INFINITY;
-        return distance / -vy;
+        return distance / effectiveVy;
     } else {
         BlockHitResult bhr = (BlockHitResult) hr;
         double distance = p.getY() - bhr.getPos().y;
-        double vy = p.getVelocity().y;
         if (vy >= -0.01) return Double.POSITIVE_INFINITY;
-        return Math.max(0.0, distance / -vy);
+        return Math.max(0.0, distance / effectiveVy);
     }
 }
 
-3. DYNAMIC FIRE THRESHOLD
-The fire timing is adjusted based on the fall height. For extremely high falls (above 114 blocks), a lower threshold is used to account for increased velocity:
+3. DYNAMIC FIRE THRESHOLD AND EARLY-FIRE GUARD
+The fire timing is adjusted based on fall height. Crucially, the mod implements a deterministic early-fire guard that subtracts 1.0 tick from the estimate when falling fast (vy < -1.5). This aligns client-side firing with the server's damage resolution phase:
 
 case WIND_PREARMED -> {
     if (p.isOnGround()) { reset(); return; }
     if (p.getVelocity().y < -3.8) { reset(); return; } // Abort if too fast (terminal)
 
     double ticksToImpact = estimateTicksToImpact(p);
+
+    // FIRE ONE TICK EARLIER when falling fast to align with server damage resolution
+    if (p.getVelocity().y < -1.5) {
+        ticksToImpact -= 1.0;
+    }
+
     int fireTicks = p.fallDistance > 114 ? config.windClutchHighFallFireTicks : config.windClutchFireTicks;
     if (ticksToImpact <= fireTicks) {
         state = ClutchState.WIND_READY_TO_FIRE;
@@ -75,7 +83,7 @@ private void doWindFireAttempt() {
 }
 
 5. SUCCESS VERIFICATION AND RETRIES
-After firing, the mod monitors the player's vertical velocity and fall distance. A successful clutch is detected by a significant upward change in velocity (knockback) or a reset of the fall distance counter. If the first attempt fails but the player is still safely above the ground, it may retry:
+After firing, the mod monitors the player's vertical velocity and fall distance. A successful clutch is detected by a significant upward change in velocity (knockback) or a reset of the fall distance counter.
 
 case WIND_FIRED -> {
     successTickCounter++;
@@ -89,7 +97,7 @@ case WIND_FIRED -> {
         return;
     }
 
-    // Retry logic
+    // Retry logic with accelerated estimation
     if (fireAttempts < config.windClutchMaxRetries && p.getVelocity().y < -0.08 && successTickCounter >= 1) {
         double ticksToImpact = estimateTicksToImpact(p);
         if (ticksToImpact > 0.5) {

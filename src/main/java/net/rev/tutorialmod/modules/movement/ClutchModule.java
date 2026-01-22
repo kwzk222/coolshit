@@ -214,6 +214,12 @@ public class ClutchModule {
                 if (p.getVelocity().y < -3.8) { reset(); return; } // Abort if too fast (terminal)
 
                 double ticksToImpact = estimateTicksToImpact(p);
+
+                // FIRE ONE TICK EARLIER when falling fast to align with server damage resolution
+                if (p.getVelocity().y < -1.5) {
+                    ticksToImpact -= 1.0;
+                }
+
                 int fireTicks = p.fallDistance > 114 ? config.windClutchHighFallFireTicks : config.windClutchFireTicks;
                 if (ticksToImpact <= fireTicks) {
                     state = ClutchState.WIND_READY_TO_FIRE;
@@ -369,17 +375,19 @@ public class ClutchModule {
     private double estimateTicksToImpact(net.minecraft.entity.player.PlayerEntity p) {
         double reach = 256.0;
         HitResult hr = p.raycast(reach, 1.0f, false);
+        double vy = p.getVelocity().y;
+        double g = 0.08;
+        double effectiveVy = -vy + g;
+
         if (hr == null || hr.getType() != HitResult.Type.BLOCK) {
             double distance = p.getY();
-            double vy = p.getVelocity().y;
             if (vy >= -0.01) return Double.POSITIVE_INFINITY;
-            return distance / -vy;
+            return distance / effectiveVy;
         } else {
             BlockHitResult bhr = (BlockHitResult) hr;
             double distance = p.getY() - bhr.getPos().y;
-            double vy = p.getVelocity().y;
             if (vy >= -0.01) return Double.POSITIVE_INFINITY;
-            return Math.max(0.0, distance / -vy);
+            return Math.max(0.0, distance / effectiveVy);
         }
     }
 
