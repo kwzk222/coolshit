@@ -2,7 +2,6 @@ package net.rev.tutorialmod;
 
 import net.fabricmc.api.ModInitializer;
 
-import net.rev.tutorialmod.modules.AutoToolSwitch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +13,6 @@ public class TutorialMod implements ModInitializer {
 	// That way, it's clear which mod wrote info, warnings, and errors.
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static ModConfig CONFIG;
-	private static final AutoToolSwitch autoToolSwitch = new AutoToolSwitch();
 
 	@Override
 	public void onInitialize() {
@@ -25,10 +23,6 @@ public class TutorialMod implements ModInitializer {
 		LOGGER.info("Hello Fabric world!");
 	}
 
-	public static AutoToolSwitch getAutoToolSwitch() {
-		return autoToolSwitch;
-	}
-
 	public static void sendUpdateMessage(String message) {
 		net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
 		if (client.player != null && !CONFIG.disableModChatUpdates) {
@@ -36,4 +30,3 @@ public class TutorialMod implements ModInitializer {
 		}
 	}
 }
-
