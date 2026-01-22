@@ -160,7 +160,7 @@ public class TriggerBot {
         }
 
         // Between min & max -> add randomness
-        return random.nextFloat() < 0.5f;
+        return random.nextFloat() < 0.4f;
     }
 
     private boolean isCrit() {

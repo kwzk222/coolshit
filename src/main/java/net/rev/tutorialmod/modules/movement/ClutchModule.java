@@ -215,15 +215,15 @@ public class ClutchModule {
                 if (p.isOnGround()) { reset(); return; }
 
                 Vec3d vel = p.getVelocity();
-                if (vel.y >= -0.08) return; // not falling meaningfully
+                if (vel.y >= -0.15) return; // must be clearly falling
 
-                Box box = p.getBoundingBox();
-                Box nextBox = box.offset(vel.x, vel.y, vel.z);
+                // Raycast DOWN by next-tick fall distance + safety margin
+                double checkDistance = Math.max(1.0, -vel.y + 0.1);
 
-                // Predict next tick collision to preempt damage resolution
-                boolean willCollide = mc.world.getBlockCollisions(p, nextBox).iterator().hasNext();
+                HitResult hit = p.raycast(checkDistance, 1.0f, false);
 
-                if (willCollide) {
+                if (hit.getType() == HitResult.Type.BLOCK) {
+                    // We are within one tick of impact → fire now
                     state = ClutchState.WIND_READY_TO_FIRE;
                 }
             }
