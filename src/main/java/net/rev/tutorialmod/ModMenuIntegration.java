@@ -387,16 +387,6 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The minimum fall distance (blocks) for a Wind Charge clutch. Default: 8"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchMinFallDistance = newValue.doubleValue())
                     .build());
-            windClutchSub.add(entryBuilder.startIntSlider(Text.literal("Fire Ticks Threshold"), TutorialMod.CONFIG.windClutchFireTicks, 1, 20)
-                    .setDefaultValue(6)
-                    .setTooltip(Text.literal("Trigger the fire sequence when estimated ticks-to-impact is below this value. Default: 6"))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchFireTicks = newValue)
-                    .build());
-            windClutchSub.add(entryBuilder.startIntSlider(Text.literal("High Fall Fire Ticks Threshold"), TutorialMod.CONFIG.windClutchHighFallFireTicks, 1, 20)
-                    .setDefaultValue(3)
-                    .setTooltip(Text.literal("The fire threshold (ticks) used when falling from more than 114 blocks. Default: 3"))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchHighFallFireTicks = newValue)
-                    .build());
             windClutchSub.add(entryBuilder.startIntSlider(Text.literal("Max Retry Attempts"), TutorialMod.CONFIG.windClutchMaxRetries, 0, 5)
                     .setDefaultValue(2)
                     .setTooltip(Text.literal("The number of retry attempts if the initial fire sequence fails. Default: 2"))

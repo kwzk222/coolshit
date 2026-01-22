@@ -16,6 +16,8 @@ import net.minecraft.item.Items;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 
 public class ClutchModule {
 
@@ -211,17 +213,17 @@ public class ClutchModule {
 
             case WIND_PREARMED -> {
                 if (p.isOnGround()) { reset(); return; }
-                if (p.getVelocity().y < -3.8) { reset(); return; } // Abort if too fast (terminal)
 
-                double ticksToImpact = estimateTicksToImpact(p);
+                Vec3d vel = p.getVelocity();
+                if (vel.y >= -0.08) return; // not falling meaningfully
 
-                // FIRE ONE TICK EARLIER when falling fast to align with server damage resolution
-                if (p.getVelocity().y < -1.5) {
-                    ticksToImpact -= 1.0;
-                }
+                Box box = p.getBoundingBox();
+                Box nextBox = box.offset(vel.x, vel.y, vel.z);
 
-                int fireTicks = p.fallDistance > 114 ? config.windClutchHighFallFireTicks : config.windClutchFireTicks;
-                if (ticksToImpact <= fireTicks) {
+                // Predict next tick collision to preempt damage resolution
+                boolean willCollide = mc.world.getBlockCollisions(p, nextBox).iterator().hasNext();
+
+                if (willCollide) {
                     state = ClutchState.WIND_READY_TO_FIRE;
                 }
             }
@@ -244,15 +246,6 @@ public class ClutchModule {
                     state = ClutchState.FINISHING;
                     tickCounter = 0;
                     return;
-                }
-
-                if (fireAttempts < config.windClutchMaxRetries && p.getVelocity().y < -0.08 && successTickCounter >= 1) {
-                    double ticksToImpact = estimateTicksToImpact(p);
-                    if (ticksToImpact > 0.5) {
-                        doWindFireAttempt();
-                        vyBeforeFire = p.getVelocity().y;
-                        successTickCounter = 0;
-                    }
                 }
 
                 if (successTickCounter > 8) { reset(); return; }
@@ -372,24 +365,6 @@ public class ClutchModule {
         fireAttempts++;
     }
 
-    private double estimateTicksToImpact(net.minecraft.entity.player.PlayerEntity p) {
-        double reach = 256.0;
-        HitResult hr = p.raycast(reach, 1.0f, false);
-        double vy = p.getVelocity().y;
-        double g = 0.08;
-        double effectiveVy = -vy + g;
-
-        if (hr == null || hr.getType() != HitResult.Type.BLOCK) {
-            double distance = p.getY();
-            if (vy >= -0.01) return Double.POSITIVE_INFINITY;
-            return distance / effectiveVy;
-        } else {
-            BlockHitResult bhr = (BlockHitResult) hr;
-            double distance = p.getY() - bhr.getPos().y;
-            if (vy >= -0.01) return Double.POSITIVE_INFINITY;
-            return Math.max(0.0, distance / effectiveVy);
-        }
-    }
 
     private int findWindChargeSlot() {
         if (mc.player == null) return -1;
