@@ -24,6 +24,12 @@ public class ModConfig {
     public int axeToOriginalDelay = 1;
     public int maceToOriginalDelay = 1;
     public int spearAutoStunDelay = 1;
+    public int spearAutoStunFailChance = 0;
+    public int spearAutoStunFakePredictionChance = 0;
+    public double spearAutoStunRange = 4.1;
+    public double spearReachSwapRange = 4.1;
+    public double reachSwapActivationRange = 2.8;
+    public int reachSwapBackDelay = 1;
 
     public boolean axeSwapEnabled = true;
     public boolean maceSwapEnabled = true;

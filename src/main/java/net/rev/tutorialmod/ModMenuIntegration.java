@@ -104,10 +104,40 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The delay (ticks) before swapping back from the axe when using a spear."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunDelay = newValue)
                     .build());
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Spear AutoStun Fail Chance"), TutorialMod.CONFIG.spearAutoStunFailChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The chance (%) for the spear axe swap to fail."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunFailChance = newValue)
+                    .build());
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Spear Fake Prediction Chance"), TutorialMod.CONFIG.spearAutoStunFakePredictionChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The chance (%) to attempt a spear axe swap even if the enemy is not shielding."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunFakePredictionChance = newValue)
+                    .build());
+            autoStun.addEntry(entryBuilder.startLongSlider(Text.literal("Spear AutoStun Range"), (long)(TutorialMod.CONFIG.spearAutoStunRange * 10), 30, 60)
+                    .setDefaultValue(41)
+                    .setTooltip(Text.literal("The maximum range (blocks * 10) to trigger spear AutoStun."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunRange = newValue / 10.0)
+                    .build());
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Spear Reach Swap Enabled"), TutorialMod.CONFIG.spearReachSwapEnabled)
                     .setDefaultValue(true)
                     .setTooltip(Text.literal("If enabled, the mod will automatically switch to a spear if the target is just out of reach."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapEnabled = newValue)
+                    .build());
+            autoStun.addEntry(entryBuilder.startLongSlider(Text.literal("Spear Reach Swap Range"), (long)(TutorialMod.CONFIG.spearReachSwapRange * 10), 30, 60)
+                    .setDefaultValue(41)
+                    .setTooltip(Text.literal("The maximum scan range (blocks * 10) for Reach Swap."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapRange = newValue / 10.0)
+                    .build());
+            autoStun.addEntry(entryBuilder.startLongSlider(Text.literal("Reach Swap Min Distance"), (long)(TutorialMod.CONFIG.reachSwapActivationRange * 10), 20, 40)
+                    .setDefaultValue(28)
+                    .setTooltip(Text.literal("The minimum distance (blocks * 10) to trigger a Reach Swap switch."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.reachSwapActivationRange = newValue / 10.0)
+                    .build());
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Reach Swap Back Delay"), TutorialMod.CONFIG.reachSwapBackDelay, 0, 10)
+                    .setDefaultValue(1)
+                    .setTooltip(Text.literal("The delay (ticks) before switching back to the original slot after a Reach Swap."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.reachSwapBackDelay = newValue)
                     .build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Minimum Fall Distance"), TutorialMod.CONFIG.minFallDistance, 1, 5)
                     .setDefaultValue(3)

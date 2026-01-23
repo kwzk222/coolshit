@@ -25,6 +25,8 @@ import net.minecraft.item.AxeItem;
 import net.minecraft.item.CrossbowItem;
 import net.minecraft.item.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -261,10 +263,12 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
 
-    private void onPostAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return;
-        if (target instanceof PlayerEntity) {
-            PlayerEntity attackedPlayer = (PlayerEntity) target;
+    private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
+        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
+        if (target instanceof PlayerEntity attackedPlayer) {
+            boolean isSpear = player.getMainHandStack().isIn(ItemTags.SPEARS);
+            if (isSpear) return ActionResult.PASS; // Handled in POST-attack
+
             boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
 
             Vec3d selfPos = new Vec3d(player.getX(), player.getY(), player.getZ());
@@ -280,17 +284,10 @@ public class TutorialModClient implements ClientModInitializer {
             boolean fakePrediction = hasShield && !isShielding && (RANDOM.nextInt(100) < TutorialMod.CONFIG.fakePredictionChance);
             boolean shouldAttemptSwap = (isShielding && isFacing) || fakePrediction;
 
-            boolean isSpear = player.getMainHandStack().isIn(net.minecraft.registry.tag.ItemTags.SPEARS);
-
-            if (shouldAttemptSwap && (isSpear ? TutorialMod.CONFIG.spearAutoStunEnabled : TutorialMod.CONFIG.axeSwapEnabled)) {
+            if (shouldAttemptSwap && TutorialMod.CONFIG.axeSwapEnabled) {
                 if (TutorialMod.CONFIG.axeSwapFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.axeSwapFailChance) {
-                    return;
+                    return ActionResult.PASS;
                 }
-                // Spear reach is 4.0 blocks
-                if (isSpear && player.distanceTo(attackedPlayer) > 4.1) {
-                    return;
-                }
-
                 int axeSlot = findAxeInHotbar(player);
                 if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
                     originalHotbarSlot = inventory.getSelectedSlot();
@@ -301,22 +298,71 @@ public class TutorialModClient implements ClientModInitializer {
                         swapCooldown = TutorialMod.CONFIG.axeToOriginalDelay;
                         nextAction = SwapAction.SWITCH_TO_ORIGINAL_THEN_MACE;
                     } else {
-                        swapCooldown = isSpear ? TutorialMod.CONFIG.spearAutoStunDelay : TutorialMod.CONFIG.axeSwapDelay;
+                        swapCooldown = TutorialMod.CONFIG.axeSwapDelay;
                         nextAction = SwapAction.SWITCH_BACK;
                     }
                 }
             } else if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled) {
-                // Mace reach is 3.0 blocks, Spears have 4.0 blocks
-                if (isSpear && player.distanceTo(attackedPlayer) > 3.1) {
-                    return;
-                }
-
                 int maceSlot = findMaceInHotbar(player);
                 if (maceSlot != -1 && inventory.getSelectedSlot() != maceSlot) {
                     originalHotbarSlot = inventory.getSelectedSlot();
                     inventory.setSelectedSlot(maceSlot);
                     swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
                     nextAction = SwapAction.SWITCH_BACK;
+                }
+            }
+        }
+        return ActionResult.PASS;
+    }
+
+    private void onPostAttackEntity(PlayerEntity player, Entity target) {
+        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return;
+        if (target instanceof PlayerEntity attackedPlayer) {
+            boolean isSpear = player.getMainHandStack().isIn(ItemTags.SPEARS);
+            if (!isSpear || !TutorialMod.CONFIG.spearAutoStunEnabled) return;
+
+            boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
+
+            Vec3d selfPos = new Vec3d(player.getX(), player.getY(), player.getZ());
+            Vec3d targetPos = new Vec3d(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ());
+            Vec3d targetLookVec = attackedPlayer.getRotationVector();
+            Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
+            boolean isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
+
+            boolean hasShield = attackedPlayer.getMainHandStack().getItem() == Items.SHIELD || attackedPlayer.getOffHandStack().getItem() == Items.SHIELD;
+            boolean fakePrediction = hasShield && !isShielding && (RANDOM.nextInt(100) < TutorialMod.CONFIG.spearAutoStunFakePredictionChance);
+            boolean shouldAttemptSwap = (isShielding && isFacing) || fakePrediction;
+
+            if (shouldAttemptSwap) {
+                if (TutorialMod.CONFIG.spearAutoStunFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.spearAutoStunFailChance) {
+                    return;
+                }
+                // Spear reach check
+                if (player.distanceTo(attackedPlayer) > TutorialMod.CONFIG.spearAutoStunRange) {
+                    return;
+                }
+
+                int axeSlot = findAxeInHotbar(player);
+                PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
+                if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
+                    originalHotbarSlot = inventory.getSelectedSlot();
+
+                    // MANUALLY SYNC
+                    inventory.setSelectedSlot(axeSlot);
+                    if (MinecraftClient.getInstance().getNetworkHandler() != null) {
+                        MinecraftClient.getInstance().getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(axeSlot));
+                    }
+
+                    targetEntity = target;
+                    boolean hasArmor = isArmored(attackedPlayer);
+                    int maceSlot = findMaceInHotbar(player);
+                    if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
+                        swapCooldown = TutorialMod.CONFIG.axeToOriginalDelay;
+                        nextAction = SwapAction.SWITCH_TO_ORIGINAL_THEN_MACE;
+                    } else {
+                        swapCooldown = TutorialMod.CONFIG.spearAutoStunDelay;
+                        nextAction = SwapAction.SWITCH_BACK;
+                    }
                 }
             }
         }
@@ -673,33 +719,32 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    public int findSpearInHotbar(PlayerEntity player) {
-        for (int i = 0; i < 9; i++) {
-            if (player.getInventory().getStack(i).isIn(net.minecraft.registry.tag.ItemTags.SPEARS)) return i;
-        }
-        return -1;
-    }
-
     public void onReachSwap() {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled || swapCooldown != -1) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
 
         ItemStack held = client.player.getMainHandStack();
-        if (held.isIn(net.minecraft.registry.tag.ItemTags.SPEARS)) return;
+        if (held.isIn(ItemTags.SPEARS)) return;
 
         int spearSlot = findSpearInHotbar(client.player);
         if (spearSlot == -1) return;
 
         // Check if there is a target within spear reach (4.0) but beyond current reach (3.0)
-        Entity target = getEntityLookingAt(client, 4.1);
+        Entity target = getEntityLookingAt(client, TutorialMod.CONFIG.spearReachSwapRange);
         if (target != null) {
             double dist = client.player.distanceTo(target);
-            if (dist > 2.8) { // 2.8 for a bit of buffer (vanilla is 3.0)
+            if (dist > TutorialMod.CONFIG.reachSwapActivationRange) {
                 PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
                 originalHotbarSlot = inventory.getSelectedSlot();
+
+                // MANUALLY SYNC
                 inventory.setSelectedSlot(spearSlot);
-                swapCooldown = 1;
+                if (client.getNetworkHandler() != null) {
+                    client.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(spearSlot));
+                }
+
+                swapCooldown = TutorialMod.CONFIG.reachSwapBackDelay;
                 nextAction = SwapAction.SWITCH_BACK;
             }
         }
@@ -717,6 +762,13 @@ public class TutorialModClient implements ClientModInitializer {
     private int findMaceInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
             if (player.getInventory().getStack(i).getItem() == Items.MACE) return i;
+        }
+        return -1;
+    }
+
+    public int findSpearInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).isIn(ItemTags.SPEARS)) return i;
         }
         return -1;
     }
