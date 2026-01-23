@@ -149,6 +149,7 @@ public class ModConfig {
     public boolean showNetherCoords = false;
     public boolean showSprintModeOverlay = true;
     public boolean showSneakModeOverlay = true;
+    public boolean showLatestToggleOverlay = false;
     public int overlayFontSize = 20;
     public int overlayBackgroundOpacity = 128;
     public String overlayAlignment = "Left";

@@ -31,8 +31,13 @@ public class TutorialMod implements ModInitializer {
 
 	public static void sendUpdateMessage(String message) {
 		net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
-		if (client.player != null && !CONFIG.disableModChatUpdates) {
-			client.player.sendMessage(net.minecraft.text.Text.literal("§7[§6TutorialMod§7] §f" + message), false);
+		if (client.player != null) {
+			if (TutorialModClient.getInstance() != null) {
+				TutorialModClient.getInstance().setOverlayStatus(message);
+			}
+			if (!CONFIG.disableModChatUpdates) {
+				client.player.sendMessage(net.minecraft.text.Text.literal("§7[§6TutorialMod§7] §f" + message), false);
+			}
 		}
 	}
 }

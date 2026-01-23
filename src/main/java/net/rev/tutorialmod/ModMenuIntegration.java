@@ -462,6 +462,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, the current sneak mode (Hold/Toggle) will be displayed in the overlay."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.showSneakModeOverlay = newValue)
                     .build());
+            overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Show Latest Toggle on Overlay"), TutorialMod.CONFIG.showLatestToggleOverlay)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("If enabled, the latest feature toggle status will be displayed at the bottom of the overlay for 2 seconds."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showLatestToggleOverlay = newValue)
+                    .build());
             overlay.addEntry(entryBuilder.startIntSlider(Text.literal("Overlay Font Size"), TutorialMod.CONFIG.overlayFontSize, 8, 40)
                     .setDefaultValue(20)
                     .setTooltip(Text.literal("The font size of the text displayed in the overlay window."))

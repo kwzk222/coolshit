@@ -115,6 +115,30 @@ public class TutorialModClient implements ClientModInitializer {
     private int pointingTickCounter = 0;
     private String lastLongCoordsInfo = null;
 
+    private String overlayStatusMessage = null;
+    private long overlayStatusTime = 0;
+
+    public void setOverlayStatus(String message) {
+        if (message == null) return;
+
+        String transformed = message;
+        if (message.contains(" set to ")) {
+            String[] parts = message.split(" set to ");
+            String feature = parts[0];
+            String status = parts[1];
+            if (status.equalsIgnoreCase("ON")) {
+                transformed = "Enabled " + feature;
+            } else if (status.equalsIgnoreCase("OFF")) {
+                transformed = "Disabled " + feature;
+            } else {
+                transformed = feature + ": " + status;
+            }
+        }
+
+        this.overlayStatusMessage = transformed;
+        this.overlayStatusTime = System.currentTimeMillis();
+    }
+
 
     @Override
     public void onInitializeClient() {
@@ -872,6 +896,14 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
 
+        if (TutorialMod.CONFIG.showLatestToggleOverlay && overlayStatusMessage != null) {
+            if (System.currentTimeMillis() - overlayStatusTime <= 2000) {
+                result.append("\\n").append(overlayStatusMessage);
+            } else {
+                overlayStatusMessage = null;
+            }
+        }
+
         return result.toString();
     }
 
@@ -972,28 +1004,28 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (yaw >= 337.5 || yaw < 22.5) {
             cardinal = "S";
-            quadrant = "( _ + )";
+            quadrant = "( _+ )";
         } else if (yaw >= 22.5 && yaw < 67.5) {
             cardinal = "SW";
-            quadrant = "( - + )";
+            quadrant = "( -+ )";
         } else if (yaw >= 67.5 && yaw < 112.5) {
             cardinal = "W";
-            quadrant = "( - _ )";
+            quadrant = "( -_ )";
         } else if (yaw >= 112.5 && yaw < 157.5) {
             cardinal = "NW";
-            quadrant = "( - - )";
+            quadrant = "( -- )";
         } else if (yaw >= 157.5 && yaw < 202.5) {
             cardinal = "N";
-            quadrant = "( _ - )";
+            quadrant = "( _- )";
         } else if (yaw >= 202.5 && yaw < 247.5) {
             cardinal = "NE";
-            quadrant = "( + - )";
+            quadrant = "( +- )";
         } else if (yaw >= 247.5 && yaw < 292.5) {
             cardinal = "E";
-            quadrant = "( + _ )";
+            quadrant = "( +_ )";
         } else {
             cardinal = "SE";
-            quadrant = "( + + )";
+            quadrant = "( ++ )";
         }
 
         return cardinal + " " + quadrant;
