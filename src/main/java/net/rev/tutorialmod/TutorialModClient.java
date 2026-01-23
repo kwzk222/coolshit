@@ -34,6 +34,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.event.AttackEntityCallback;
+import net.rev.tutorialmod.event.PostAttackEntityCallback;
 import net.rev.tutorialmod.mixin.GameOptionsAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
@@ -159,7 +160,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         // Register Event Listeners
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
-        AttackEntityCallback.EVENT.register(this::onAttackEntity);
+        PostAttackEntityCallback.EVENT.register(this::onPostAttackEntity);
 
         // Register Commands
         new CommandManager().registerCommands();
@@ -259,8 +260,9 @@ public class TutorialModClient implements ClientModInitializer {
         ClickSpamModule.onTick();
     }
 
-    private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
+
+    private void onPostAttackEntity(PlayerEntity player, Entity target) {
+        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return;
         if (target instanceof PlayerEntity) {
             PlayerEntity attackedPlayer = (PlayerEntity) target;
             boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
@@ -282,11 +284,11 @@ public class TutorialModClient implements ClientModInitializer {
 
             if (shouldAttemptSwap && (isSpear ? TutorialMod.CONFIG.spearAutoStunEnabled : TutorialMod.CONFIG.axeSwapEnabled)) {
                 if (TutorialMod.CONFIG.axeSwapFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.axeSwapFailChance) {
-                    return ActionResult.PASS;
+                    return;
                 }
-                // Spear range check: Spear reach is 4.0 blocks
+                // Spear reach is 4.0 blocks
                 if (isSpear && player.distanceTo(attackedPlayer) > 4.1) {
-                    return ActionResult.PASS;
+                    return;
                 }
 
                 int axeSlot = findAxeInHotbar(player);
@@ -306,7 +308,7 @@ public class TutorialModClient implements ClientModInitializer {
             } else if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled) {
                 // Mace reach is 3.0 blocks, Spears have 4.0 blocks
                 if (isSpear && player.distanceTo(attackedPlayer) > 3.1) {
-                    return ActionResult.PASS;
+                    return;
                 }
 
                 int maceSlot = findMaceInHotbar(player);
@@ -318,7 +320,6 @@ public class TutorialModClient implements ClientModInitializer {
                 }
             }
         }
-        return ActionResult.PASS;
     }
 
     private void handleKeybinds(MinecraftClient client) {
@@ -680,7 +681,7 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public void onReachSwap() {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled) return;
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled || swapCooldown != -1) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
 
@@ -691,12 +692,15 @@ public class TutorialModClient implements ClientModInitializer {
         if (spearSlot == -1) return;
 
         // Check if there is a target within spear reach (4.0) but beyond current reach (3.0)
-        PlayerEntity target = getPlayerLookingAt(client, 4.0);
+        Entity target = getEntityLookingAt(client, 4.1);
         if (target != null) {
             double dist = client.player.distanceTo(target);
-            if (dist > 3.0 && dist <= 4.1) { // 4.1 for a bit of buffer
+            if (dist > 2.8) { // 2.8 for a bit of buffer (vanilla is 3.0)
                 PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                originalHotbarSlot = inventory.getSelectedSlot();
                 inventory.setSelectedSlot(spearSlot);
+                swapCooldown = 1;
+                nextAction = SwapAction.SWITCH_BACK;
             }
         }
     }
@@ -755,9 +759,9 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {
-        PlayerEntity foundPlayer = null;
-        double maxDot = -1.0; // cos(180)
+    private Entity getEntityLookingAt(MinecraftClient client, double maxDistance) {
+        Entity foundEntity = null;
+        double maxDot = 0.98; // Threshold (approx 11 degrees)
 
         if (client.world == null || client.player == null) {
             return null;
@@ -766,23 +770,31 @@ public class TutorialModClient implements ClientModInitializer {
         Vec3d cameraPos = client.player.getEyePos();
         Vec3d lookVec = client.player.getRotationVector();
 
-        for (PlayerEntity player : client.world.getPlayers()) {
-            if (player == client.player) continue;
+        for (Entity entity : client.world.getEntities()) {
+            if (entity == client.player || !entity.isAlive()) continue;
 
-            double distance = client.player.distanceTo(player);
-            if (distance > maxDistance) continue;
+            double distance = client.player.distanceTo(entity);
+            if (distance > maxDistance + 2.0) continue; // Rough check
 
-            Vec3d directionToPlayer = player.getEyePos().subtract(cameraPos).normalize();
-            double dot = lookVec.dotProduct(directionToPlayer);
+            // Use center of bounding box for better targeting
+            Vec3d targetPos = entity.getBoundingBox().getCenter();
+            Vec3d directionToEntity = targetPos.subtract(cameraPos).normalize();
+            double dot = lookVec.dotProduct(directionToEntity);
 
-            // A larger dot product means a smaller angle.
-            // We'll use a threshold of 0.99, which is about 8 degrees.
-            if (dot > 0.99 && dot > maxDot) {
-                maxDot = dot;
-                foundPlayer = player;
+            if (dot > maxDot) {
+                // Confirm with more precise distance check
+                if (client.player.distanceTo(entity) <= maxDistance + 1.0) { // +1.0 for center vs feet
+                    maxDot = dot;
+                    foundEntity = entity;
+                }
             }
         }
-        return foundPlayer;
+        return foundEntity;
+    }
+
+    private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {
+        Entity entity = getEntityLookingAt(client, maxDistance);
+        return (entity instanceof PlayerEntity) ? (PlayerEntity) entity : null;
     }
 
     private void handleChatMacros(MinecraftClient client) {
