@@ -17,7 +17,6 @@ import net.minecraft.util.math.Direction;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import net.rev.tutorialmod.event.AttackEntityCallback;
-import net.rev.tutorialmod.event.PostAttackEntityCallback;
 import java.util.Random;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -45,10 +44,6 @@ public abstract class ClientPlayerInteractionManagerMixin {
         }
     }
 
-    @Inject(at = @At("TAIL"), method = "attackEntity(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/entity/Entity;)V")
-    private void onPostAttackEntity(PlayerEntity player, Entity target, CallbackInfo info) {
-        PostAttackEntityCallback.EVENT.invoker().interact(player, target);
-    }
 
     @Inject(method = "interactBlock", at = @At("TAIL"))
     private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {

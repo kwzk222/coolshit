@@ -24,7 +24,7 @@ public class MinecraftClientMixin {
         }
     }
 
-    @Inject(method = "doAttack", at = @At("TAIL"))
+    @Inject(method = "doAttack", at = @At("HEAD"))
     private void onDoAttack(CallbackInfoReturnable<Boolean> cir) {
         if (TutorialModClient.getInstance() != null) {
             TutorialModClient.getInstance().onReachSwap();
