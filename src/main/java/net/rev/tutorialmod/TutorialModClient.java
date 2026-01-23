@@ -30,11 +30,14 @@ import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import net.minecraft.block.Blocks;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.GameOptionsAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
@@ -319,7 +322,9 @@ public class TutorialModClient implements ClientModInitializer {
 
             if (attemptStun) {
                 if (stunFailChance > 0 && RANDOM.nextInt(100) < stunFailChance) return ActionResult.PASS;
-                if (player.distanceTo(attackedPlayer) > stunRange) return ActionResult.PASS;
+
+                double dist = player.distanceTo(attackedPlayer);
+                if (dist > stunRange) return ActionResult.PASS;
 
                 int axeSlot = findAxeInHotbar(player);
                 if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
@@ -729,7 +734,7 @@ public class TutorialModClient implements ClientModInitializer {
         boolean holdingSpear = held.isIn(ItemTags.SPEARS);
 
         // Check if there is a target within spear reach (4.0) but beyond current reach (3.0)
-        Entity target = getEntityLookingAt(client, TutorialMod.CONFIG.spearReachSwapRange);
+        Entity target = getEntityLookingAt(client, TutorialMod.CONFIG.spearReachSwapRange, TutorialMod.CONFIG.reachSwapIgnoreCobwebs);
         if (target != null) {
             double dist = client.player.distanceTo(target);
             if (dist > TutorialMod.CONFIG.reachSwapActivationRange) {
@@ -744,12 +749,25 @@ public class TutorialModClient implements ClientModInitializer {
                         originalHotbarSlot = inventory.getSelectedSlot();
                         syncSlot(spearSlot);
 
+                        // IMPORTANT: Set cooldown and action BEFORE calling attackEntity to prevent slot corruption
+                        // if AutoStun/Mace triggers nestedly.
+                        swapCooldown = TutorialMod.CONFIG.reachSwapBackDelay;
+                        nextAction = SwapAction.SWITCH_BACK;
+
+                        // Save current nextAction to see if it changes
+                        SwapAction previousAction = nextAction;
+
                         // Trigger manual attack in the same tick
                         client.interactionManager.attackEntity(client.player, target);
                         client.player.swingHand(Hand.MAIN_HAND);
 
-                        swapCooldown = TutorialMod.CONFIG.reachSwapBackDelay;
-                        nextAction = SwapAction.SWITCH_BACK;
+                        // If the nested attack started a complex sequence (e.g. Mace Swap), don't overwrite it
+                        if (nextAction != previousAction && nextAction != SwapAction.NONE) {
+                            // Complex sequence active, keep it.
+                        } else {
+                            // Ensure it's still set
+                            nextAction = SwapAction.SWITCH_BACK;
+                        }
                     }
                 }
             }
@@ -817,41 +835,67 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    private Entity getEntityLookingAt(MinecraftClient client, double maxDistance) {
-        Entity foundEntity = null;
-        double maxDot = 0.98; // Threshold (approx 11 degrees)
+    private Entity getEntityLookingAt(MinecraftClient client, double maxDistance, boolean ignoreCobwebs) {
+        if (client.world == null || client.player == null) return null;
 
-        if (client.world == null || client.player == null) {
-            return null;
-        }
+        Vec3d start = client.player.getCameraPosVec(1.0f);
+        Vec3d direction = client.player.getRotationVec(1.0f);
+        Vec3d end = start.add(direction.multiply(maxDistance));
 
-        Vec3d cameraPos = client.player.getEyePos();
-        Vec3d lookVec = client.player.getRotationVector();
+        Entity closestEntity = null;
+        double minDistance = maxDistance;
 
         for (Entity entity : client.world.getEntities()) {
-            if (entity == client.player || !entity.isAlive()) continue;
+            if (entity == client.player || !entity.isAlive() || !entity.isAttackable()) continue;
 
-            double distance = client.player.distanceTo(entity);
-            if (distance > maxDistance + 2.0) continue; // Rough check
+            Box box = entity.getBoundingBox().expand(entity.getTargetingMargin());
+            java.util.Optional<Vec3d> hit = box.raycast(start, end);
 
-            // Use center of bounding box for better targeting
-            Vec3d targetPos = entity.getBoundingBox().getCenter();
-            Vec3d directionToEntity = targetPos.subtract(cameraPos).normalize();
-            double dot = lookVec.dotProduct(directionToEntity);
+            if (hit.isPresent()) {
+                double dist = start.distanceTo(hit.get());
+                if (dist < minDistance) {
+                    if (isLineOfSightBlocked(start, hit.get(), ignoreCobwebs)) continue;
 
-            if (dot > maxDot) {
-                // Confirm with more precise distance check
-                if (client.player.distanceTo(entity) <= maxDistance + 1.0) { // +1.0 for center vs feet
-                    maxDot = dot;
-                    foundEntity = entity;
+                    minDistance = dist;
+                    closestEntity = entity;
                 }
             }
         }
-        return foundEntity;
+        return closestEntity;
+    }
+
+    private boolean isLineOfSightBlocked(Vec3d start, Vec3d end, boolean ignoreCobwebs) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.world == null) return false;
+
+        Vec3d currentStart = start;
+        // Limit iterations to prevent infinite loops in weird edge cases
+        for (int i = 0; i < 10; i++) {
+            if (currentStart.distanceTo(end) < 0.1) break;
+
+            BlockHitResult hit = client.world.raycast(new RaycastContext(
+                    currentStart, end,
+                    RaycastContext.ShapeType.COLLIDER,
+                    RaycastContext.FluidHandling.NONE,
+                    client.player
+            ));
+
+            if (hit.getType() == HitResult.Type.MISS) return false;
+
+            BlockPos pos = hit.getBlockPos();
+            if (ignoreCobwebs && client.world.getBlockState(pos).isOf(Blocks.COBWEB)) {
+                // Move start point past the cobweb
+                currentStart = hit.getPos().add(end.subtract(start).normalize().multiply(0.01));
+            } else {
+                // Check if the hit position is significantly before the target
+                return hit.getPos().distanceTo(start) < end.distanceTo(start) - 0.05;
+            }
+        }
+        return false;
     }
 
     private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {
-        Entity entity = getEntityLookingAt(client, maxDistance);
+        Entity entity = getEntityLookingAt(client, maxDistance, false);
         return (entity instanceof PlayerEntity) ? (PlayerEntity) entity : null;
     }
 

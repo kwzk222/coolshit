@@ -50,6 +50,7 @@ public class ModConfig {
     public double spearReachSwapRange = 4.1;
     public double reachSwapActivationRange = 2.8;
     public int reachSwapBackDelay = 1;
+    public boolean reachSwapIgnoreCobwebs = true;
 
     // Shared
     public boolean autoStunFacingCheck = true;

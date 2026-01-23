@@ -166,6 +166,10 @@ public class ModMenuIntegration implements ModMenuApi {
             reachSwapSub.add(entryBuilder.startIntSlider(Text.literal("Back Delay"), TutorialMod.CONFIG.reachSwapBackDelay, 0, 10)
                     .setDefaultValue(1)
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.reachSwapBackDelay = newValue).build());
+            reachSwapSub.add(entryBuilder.startBooleanToggle(Text.literal("Ignore Cobwebs"), TutorialMod.CONFIG.reachSwapIgnoreCobwebs)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("If enabled, Reach Swap will function even if cobwebs are blocking line of sight."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.reachSwapIgnoreCobwebs = newValue).build());
             autoStun.addEntry(reachSwapSub.build());
 
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("General Fall Distance"), TutorialMod.CONFIG.minFallDistance, 1, 5)
