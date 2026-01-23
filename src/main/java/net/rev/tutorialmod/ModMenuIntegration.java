@@ -94,6 +94,21 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The delay (ticks) before swapping back from the mace to the original item."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceToOriginalDelay = newValue)
                     .build());
+            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Spear AutoStun Enabled"), TutorialMod.CONFIG.spearAutoStunEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("Enable or disable automatic axe swapping when attacking with a spear."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunEnabled = newValue)
+                    .build());
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Spear AutoStun Delay"), TutorialMod.CONFIG.spearAutoStunDelay, 0, 20)
+                    .setDefaultValue(1)
+                    .setTooltip(Text.literal("The delay (ticks) before swapping back from the axe when using a spear."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunDelay = newValue)
+                    .build());
+            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Spear Reach Swap Enabled"), TutorialMod.CONFIG.spearReachSwapEnabled)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("If enabled, the mod will automatically switch to a spear if the target is just out of reach."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapEnabled = newValue)
+                    .build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Minimum Fall Distance"), TutorialMod.CONFIG.minFallDistance, 1, 5)
                     .setDefaultValue(3)
                     .setTooltip(Text.literal("The minimum fall distance (blocks) required to trigger the swapping sequence."))

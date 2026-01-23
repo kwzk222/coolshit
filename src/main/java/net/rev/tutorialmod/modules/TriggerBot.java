@@ -139,7 +139,7 @@ public class TriggerBot {
         // Weapon check
         if (TutorialMod.CONFIG.triggerBotWeaponOnly) {
             ItemStack stack = mc.player.getMainHandStack();
-            if (!stack.isIn(ItemTags.SWORDS) && !stack.isIn(ItemTags.AXES) && !(stack.getItem() instanceof MaceItem)) {
+            if (!stack.isIn(ItemTags.SWORDS) && !stack.isIn(ItemTags.AXES) && !(stack.getItem() instanceof MaceItem) && !stack.isIn(ItemTags.SPEARS)) {
                 return false;
             }
         }

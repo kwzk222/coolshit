@@ -23,9 +23,12 @@ public class ModConfig {
     public int maceSwapDelay = 1;
     public int axeToOriginalDelay = 1;
     public int maceToOriginalDelay = 1;
+    public int spearAutoStunDelay = 1;
 
     public boolean axeSwapEnabled = true;
     public boolean maceSwapEnabled = true;
+    public boolean spearAutoStunEnabled = true;
+    public boolean spearReachSwapEnabled = true;
 
     // --- Minecart Tech ---
     public boolean tntMinecartPlacementEnabled = true;
