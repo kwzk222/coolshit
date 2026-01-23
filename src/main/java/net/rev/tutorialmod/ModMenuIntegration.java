@@ -54,94 +54,123 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // Attribute Swapping Category
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Fake Prediction Chance"), TutorialMod.CONFIG.fakePredictionChance, 0, 100)
-                    .setDefaultValue(0)
-                    .setTooltip(Text.literal("The chance (%) to attempt an axe swap even if the enemy is not shielding."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.fakePredictionChance = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe Swap Fail Chance"), TutorialMod.CONFIG.axeSwapFailChance, 0, 100)
-                    .setDefaultValue(0)
-                    .setTooltip(Text.literal("The chance (%) for the regular axe swap to fail."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapFailChance = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Axe Swap Enabled"), TutorialMod.CONFIG.axeSwapEnabled)
+
+            // Shared/General Settings
+            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck)
                     .setDefaultValue(true)
-                    .setTooltip(Text.literal("Enable or disable the automatic axe swapping feature."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapEnabled = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe Swap Delay"), TutorialMod.CONFIG.axeSwapDelay, 0, 20)
-                    .setDefaultValue(5)
-                    .setTooltip(Text.literal("The delay (ticks) before swapping back from the axe."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapDelay = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Mace Swap Enabled"), TutorialMod.CONFIG.maceSwapEnabled)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("Enable or disable the automatic mace swapping feature."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapEnabled = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Mace Swap Delay"), TutorialMod.CONFIG.maceSwapDelay, 0, 20)
-                    .setDefaultValue(1)
-                    .setTooltip(Text.literal("The delay (ticks) before swapping back from the mace."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapDelay = newValue)
+                    .setTooltip(Text.literal("If enabled, AutoStun will only trigger if the target is facing you (correct for shield blocks)."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue)
                     .build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe to Original Delay"), TutorialMod.CONFIG.axeToOriginalDelay, 0, 20)
                     .setDefaultValue(1)
-                    .setTooltip(Text.literal("The delay (ticks) before swapping back from the axe to the original item."))
+                    .setTooltip(Text.literal("The delay (ticks) before swapping back from the axe to the original item (in sequence)."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeToOriginalDelay = newValue)
                     .build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Mace to Original Delay"), TutorialMod.CONFIG.maceToOriginalDelay, 0, 20)
                     .setDefaultValue(1)
-                    .setTooltip(Text.literal("The delay (ticks) before swapping back from the mace to the original item."))
+                    .setTooltip(Text.literal("The delay (ticks) before swapping back from the mace to the original item (in sequence)."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceToOriginalDelay = newValue)
                     .build());
-            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Spear AutoStun Enabled"), TutorialMod.CONFIG.spearAutoStunEnabled)
+
+            // Sword AutoStun SubCategory
+            SubCategoryBuilder axeStunSub = entryBuilder.startSubCategory(Text.literal("Axe AutoStun (Sword)"));
+            axeStunSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.axeSwapEnabled)
                     .setDefaultValue(true)
-                    .setTooltip(Text.literal("Enable or disable automatic axe swapping when attacking with a spear."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunEnabled = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Spear AutoStun Delay"), TutorialMod.CONFIG.spearAutoStunDelay, 0, 20)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapEnabled = newValue).build());
+            axeStunSub.add(entryBuilder.startLongSlider(Text.literal("Range"), (long)(TutorialMod.CONFIG.axeSwapRange * 10), 0, 60)
+                    .setDefaultValue(31)
+                    .setTooltip(Text.literal("Maximum range (blocks * 10) to trigger."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapRange = newValue / 10.0).build());
+            axeStunSub.add(entryBuilder.startIntSlider(Text.literal("Back Delay"), TutorialMod.CONFIG.axeSwapDelay, 0, 20)
                     .setDefaultValue(1)
-                    .setTooltip(Text.literal("The delay (ticks) before swapping back from the axe when using a spear."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunDelay = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Spear AutoStun Fail Chance"), TutorialMod.CONFIG.spearAutoStunFailChance, 0, 100)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapDelay = newValue).build());
+            axeStunSub.add(entryBuilder.startIntSlider(Text.literal("Fail Chance"), TutorialMod.CONFIG.axeSwapFailChance, 0, 100)
                     .setDefaultValue(0)
-                    .setTooltip(Text.literal("The chance (%) for the spear axe swap to fail."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunFailChance = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Spear Fake Prediction Chance"), TutorialMod.CONFIG.spearAutoStunFakePredictionChance, 0, 100)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapFailChance = newValue).build());
+            axeStunSub.add(entryBuilder.startIntSlider(Text.literal("Prediction Chance"), TutorialMod.CONFIG.axeSwapFakePredictionChance, 0, 100)
                     .setDefaultValue(0)
-                    .setTooltip(Text.literal("The chance (%) to attempt a spear axe swap even if the enemy is not shielding."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunFakePredictionChance = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startLongSlider(Text.literal("Spear AutoStun Range"), (long)(TutorialMod.CONFIG.spearAutoStunRange * 10), 30, 60)
-                    .setDefaultValue(41)
-                    .setTooltip(Text.literal("The maximum range (blocks * 10) to trigger spear AutoStun."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunRange = newValue / 10.0)
-                    .build());
-            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Spear Reach Swap Enabled"), TutorialMod.CONFIG.spearReachSwapEnabled)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapFakePredictionChance = newValue).build());
+            autoStun.addEntry(axeStunSub.build());
+
+            // Mace AutoStun SubCategory
+            SubCategoryBuilder maceStunSub = entryBuilder.startSubCategory(Text.literal("Axe AutoStun (Mace)"));
+            maceStunSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.maceAutoStunEnabled)
                     .setDefaultValue(true)
-                    .setTooltip(Text.literal("If enabled, the mod will automatically switch to a spear if the target is just out of reach."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapEnabled = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startLongSlider(Text.literal("Spear Reach Swap Range"), (long)(TutorialMod.CONFIG.spearReachSwapRange * 10), 30, 60)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceAutoStunEnabled = newValue).build());
+            maceStunSub.add(entryBuilder.startLongSlider(Text.literal("Range"), (long)(TutorialMod.CONFIG.maceAutoStunRange * 10), 0, 60)
+                    .setDefaultValue(31)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceAutoStunRange = newValue / 10.0).build());
+            maceStunSub.add(entryBuilder.startIntSlider(Text.literal("Back Delay"), TutorialMod.CONFIG.maceAutoStunDelay, 0, 20)
+                    .setDefaultValue(1)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceAutoStunDelay = newValue).build());
+            maceStunSub.add(entryBuilder.startIntSlider(Text.literal("Fail Chance"), TutorialMod.CONFIG.maceAutoStunFailChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceAutoStunFailChance = newValue).build());
+            maceStunSub.add(entryBuilder.startIntSlider(Text.literal("Prediction Chance"), TutorialMod.CONFIG.maceAutoStunFakePredictionChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceAutoStunFakePredictionChance = newValue).build());
+            autoStun.addEntry(maceStunSub.build());
+
+            // Spear AutoStun SubCategory
+            SubCategoryBuilder spearStunSub = entryBuilder.startSubCategory(Text.literal("Axe AutoStun (Spear)"));
+            spearStunSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.spearAutoStunEnabled)
+                    .setDefaultValue(true)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunEnabled = newValue).build());
+            spearStunSub.add(entryBuilder.startLongSlider(Text.literal("Range"), (long)(TutorialMod.CONFIG.spearAutoStunRange * 10), 0, 60)
                     .setDefaultValue(41)
-                    .setTooltip(Text.literal("The maximum scan range (blocks * 10) for Reach Swap."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapRange = newValue / 10.0)
-                    .build());
-            autoStun.addEntry(entryBuilder.startLongSlider(Text.literal("Reach Swap Min Distance"), (long)(TutorialMod.CONFIG.reachSwapActivationRange * 10), 20, 40)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunRange = newValue / 10.0).build());
+            spearStunSub.add(entryBuilder.startIntSlider(Text.literal("Back Delay"), TutorialMod.CONFIG.spearAutoStunDelay, 0, 20)
+                    .setDefaultValue(1)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunDelay = newValue).build());
+            spearStunSub.add(entryBuilder.startIntSlider(Text.literal("Fail Chance"), TutorialMod.CONFIG.spearAutoStunFailChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunFailChance = newValue).build());
+            spearStunSub.add(entryBuilder.startIntSlider(Text.literal("Prediction Chance"), TutorialMod.CONFIG.spearAutoStunFakePredictionChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearAutoStunFakePredictionChance = newValue).build());
+            autoStun.addEntry(spearStunSub.build());
+
+            // Mace Attribute Swap SubCategory
+            SubCategoryBuilder maceSwapSub = entryBuilder.startSubCategory(Text.literal("Mace Attribute Swap"));
+            maceSwapSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.maceSwapEnabled)
+                    .setDefaultValue(true)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapEnabled = newValue).build());
+            maceSwapSub.add(entryBuilder.startLongSlider(Text.literal("Range"), (long)(TutorialMod.CONFIG.maceSwapRange * 10), 0, 60)
+                    .setDefaultValue(31)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapRange = newValue / 10.0).build());
+            maceSwapSub.add(entryBuilder.startIntSlider(Text.literal("Back Delay"), TutorialMod.CONFIG.maceSwapDelay, 0, 20)
+                    .setDefaultValue(1)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapDelay = newValue).build());
+            maceSwapSub.add(entryBuilder.startIntSlider(Text.literal("Fail Chance"), TutorialMod.CONFIG.maceSwapFailChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapFailChance = newValue).build());
+            maceSwapSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.maceSwapMinFallDistance * 10), 0, 100)
+                    .setDefaultValue(30)
+                    .setTooltip(Text.literal("Minimum fall distance (blocks * 10) to trigger."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapMinFallDistance = newValue / 10.0).build());
+            autoStun.addEntry(maceSwapSub.build());
+
+            // Spear Reach Swap SubCategory
+            SubCategoryBuilder reachSwapSub = entryBuilder.startSubCategory(Text.literal("Spear Reach Swap"));
+            reachSwapSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.spearReachSwapEnabled)
+                    .setDefaultValue(true)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapEnabled = newValue).build());
+            reachSwapSub.add(entryBuilder.startLongSlider(Text.literal("Scan Range"), (long)(TutorialMod.CONFIG.spearReachSwapRange * 10), 0, 60)
+                    .setDefaultValue(41)
+                    .setTooltip(Text.literal("Maximum distance (blocks * 10) to look for targets."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapRange = newValue / 10.0).build());
+            reachSwapSub.add(entryBuilder.startLongSlider(Text.literal("Activation Distance"), (long)(TutorialMod.CONFIG.reachSwapActivationRange * 10), 0, 60)
                     .setDefaultValue(28)
-                    .setTooltip(Text.literal("The minimum distance (blocks * 10) to trigger a Reach Swap switch."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.reachSwapActivationRange = newValue / 10.0)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Reach Swap Back Delay"), TutorialMod.CONFIG.reachSwapBackDelay, 0, 10)
+                    .setTooltip(Text.literal("Distance (blocks * 10) beyond which to switch to Spear."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.reachSwapActivationRange = newValue / 10.0).build());
+            reachSwapSub.add(entryBuilder.startIntSlider(Text.literal("Back Delay"), TutorialMod.CONFIG.reachSwapBackDelay, 0, 10)
                     .setDefaultValue(1)
-                    .setTooltip(Text.literal("The delay (ticks) before switching back to the original slot after a Reach Swap."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.reachSwapBackDelay = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Minimum Fall Distance"), TutorialMod.CONFIG.minFallDistance, 1, 5)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.reachSwapBackDelay = newValue).build());
+            autoStun.addEntry(reachSwapSub.build());
+
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("General Fall Distance"), TutorialMod.CONFIG.minFallDistance, 1, 5)
                     .setDefaultValue(3)
-                    .setTooltip(Text.literal("The minimum fall distance (blocks) required to trigger the swapping sequence."))
+                    .setTooltip(Text.literal("Global fall distance (blocks) check for other features."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.minFallDistance = newValue)
                     .build());
 

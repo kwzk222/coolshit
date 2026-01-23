@@ -264,107 +264,110 @@ public class TutorialModClient implements ClientModInitializer {
 
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return ActionResult.PASS;
-        if (target instanceof PlayerEntity attackedPlayer) {
-            boolean isSpear = player.getMainHandStack().isIn(ItemTags.SPEARS);
-            if (isSpear) return ActionResult.PASS; // Handled in POST-attack
-
-            boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
-
-            Vec3d selfPos = new Vec3d(player.getX(), player.getY(), player.getZ());
-            Vec3d targetPos = new Vec3d(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ());
-            Vec3d targetLookVec = attackedPlayer.getRotationVector();
-            Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
-            boolean isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
-
-            boolean hasArmor = isArmored(attackedPlayer);
-            PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
-
-            boolean hasShield = attackedPlayer.getMainHandStack().getItem() == Items.SHIELD || attackedPlayer.getOffHandStack().getItem() == Items.SHIELD;
-            boolean fakePrediction = hasShield && !isShielding && (RANDOM.nextInt(100) < TutorialMod.CONFIG.fakePredictionChance);
-            boolean shouldAttemptSwap = (isShielding && isFacing) || fakePrediction;
-
-            if (shouldAttemptSwap && TutorialMod.CONFIG.axeSwapEnabled) {
-                if (TutorialMod.CONFIG.axeSwapFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.axeSwapFailChance) {
-                    return ActionResult.PASS;
-                }
-                int axeSlot = findAxeInHotbar(player);
-                if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
-                    originalHotbarSlot = inventory.getSelectedSlot();
-                    inventory.setSelectedSlot(axeSlot);
-                    targetEntity = target;
-                    int maceSlot = findMaceInHotbar(player);
-                    if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
-                        swapCooldown = TutorialMod.CONFIG.axeToOriginalDelay;
-                        nextAction = SwapAction.SWITCH_TO_ORIGINAL_THEN_MACE;
-                    } else {
-                        swapCooldown = TutorialMod.CONFIG.axeSwapDelay;
-                        nextAction = SwapAction.SWITCH_BACK;
-                    }
-                }
-            } else if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled) {
-                int maceSlot = findMaceInHotbar(player);
-                if (maceSlot != -1 && inventory.getSelectedSlot() != maceSlot) {
-                    originalHotbarSlot = inventory.getSelectedSlot();
-                    inventory.setSelectedSlot(maceSlot);
-                    swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
-                    nextAction = SwapAction.SWITCH_BACK;
-                }
-            }
-        }
+        // All combat swap logic moved to POST-attack for consistent Attribute Swapping behavior.
         return ActionResult.PASS;
     }
 
     private void onPostAttackEntity(PlayerEntity player, Entity target) {
         if (!TutorialMod.CONFIG.masterEnabled || swapCooldown != -1) return;
         if (target instanceof PlayerEntity attackedPlayer) {
-            boolean isSpear = player.getMainHandStack().isIn(ItemTags.SPEARS);
-            if (!isSpear || !TutorialMod.CONFIG.spearAutoStunEnabled) return;
+            ItemStack held = player.getMainHandStack();
+            boolean isSpear = held.isIn(ItemTags.SPEARS);
+            boolean isMace = held.getItem() == Items.MACE;
+            boolean isSword = held.isIn(ItemTags.SWORDS);
+            boolean isAxe = held.getItem() instanceof AxeItem;
 
             boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
 
-            Vec3d selfPos = new Vec3d(player.getX(), player.getY(), player.getZ());
-            Vec3d targetPos = new Vec3d(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ());
-            Vec3d targetLookVec = attackedPlayer.getRotationVector();
-            Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
-            boolean isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
+            boolean isFacing = true;
+            if (TutorialMod.CONFIG.autoStunFacingCheck) {
+                Vec3d selfPos = new Vec3d(player.getX(), player.getY(), player.getZ());
+                Vec3d targetPos = new Vec3d(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ());
+                Vec3d targetLookVec = attackedPlayer.getRotationVector();
+                Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
+                isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
+            }
+
+            boolean hasArmor = isArmored(attackedPlayer);
+            PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
 
             boolean hasShield = attackedPlayer.getMainHandStack().getItem() == Items.SHIELD || attackedPlayer.getOffHandStack().getItem() == Items.SHIELD;
-            boolean fakePrediction = hasShield && !isShielding && (RANDOM.nextInt(100) < TutorialMod.CONFIG.spearAutoStunFakePredictionChance);
-            boolean shouldAttemptSwap = (isShielding && isFacing) || fakePrediction;
 
-            if (shouldAttemptSwap) {
-                if (TutorialMod.CONFIG.spearAutoStunFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.spearAutoStunFailChance) {
-                    return;
-                }
-                // Spear reach check
-                if (player.distanceTo(attackedPlayer) > TutorialMod.CONFIG.spearAutoStunRange) {
-                    return;
-                }
+            // AutoStun Trigger Determination
+            boolean attemptStun = false;
+            int stunFailChance = 0;
+            int stunPredictionChance = 0;
+            double stunRange = 3.1;
+            int stunDelay = 5;
+            boolean stunEnabled = false;
+
+            if (isSpear) {
+                stunEnabled = TutorialMod.CONFIG.spearAutoStunEnabled;
+                stunRange = TutorialMod.CONFIG.spearAutoStunRange;
+                stunFailChance = TutorialMod.CONFIG.spearAutoStunFailChance;
+                stunPredictionChance = TutorialMod.CONFIG.spearAutoStunFakePredictionChance;
+                stunDelay = TutorialMod.CONFIG.spearAutoStunDelay;
+            } else if (isMace) {
+                stunEnabled = TutorialMod.CONFIG.maceAutoStunEnabled;
+                stunRange = TutorialMod.CONFIG.maceAutoStunRange;
+                stunFailChance = TutorialMod.CONFIG.maceAutoStunFailChance;
+                stunPredictionChance = TutorialMod.CONFIG.maceAutoStunFakePredictionChance;
+                stunDelay = TutorialMod.CONFIG.maceAutoStunDelay;
+            } else { // Sword or Default
+                stunEnabled = TutorialMod.CONFIG.axeSwapEnabled;
+                stunRange = TutorialMod.CONFIG.axeSwapRange;
+                stunFailChance = TutorialMod.CONFIG.axeSwapFailChance;
+                stunPredictionChance = TutorialMod.CONFIG.axeSwapFakePredictionChance;
+                stunDelay = TutorialMod.CONFIG.axeSwapDelay;
+            }
+
+            boolean fakePrediction = hasShield && !isShielding && (RANDOM.nextInt(100) < stunPredictionChance);
+            attemptStun = stunEnabled && ((isShielding && isFacing) || fakePrediction);
+
+            if (attemptStun) {
+                if (stunFailChance > 0 && RANDOM.nextInt(100) < stunFailChance) return;
+                if (player.distanceTo(attackedPlayer) > stunRange) return;
 
                 int axeSlot = findAxeInHotbar(player);
-                PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
                 if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
                     originalHotbarSlot = inventory.getSelectedSlot();
-
-                    // MANUALLY SYNC
-                    inventory.setSelectedSlot(axeSlot);
-                    if (MinecraftClient.getInstance().getNetworkHandler() != null) {
-                        MinecraftClient.getInstance().getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(axeSlot));
-                    }
-
+                    syncSlot(axeSlot);
                     targetEntity = target;
-                    boolean hasArmor = isArmored(attackedPlayer);
                     int maceSlot = findMaceInHotbar(player);
-                    if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.minFallDistance) {
+                    if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.maceSwapMinFallDistance) {
                         swapCooldown = TutorialMod.CONFIG.axeToOriginalDelay;
                         nextAction = SwapAction.SWITCH_TO_ORIGINAL_THEN_MACE;
                     } else {
-                        swapCooldown = TutorialMod.CONFIG.spearAutoStunDelay;
+                        swapCooldown = stunDelay;
                         nextAction = SwapAction.SWITCH_BACK;
                     }
+                    return; // Stun handled
                 }
             }
+
+            // Mace Attribute Swap (Damage)
+            if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.maceSwapMinFallDistance) {
+                if (TutorialMod.CONFIG.maceSwapFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.maceSwapFailChance) return;
+                if (player.distanceTo(attackedPlayer) > TutorialMod.CONFIG.maceSwapRange) return;
+
+                int maceSlot = findMaceInHotbar(player);
+                if (maceSlot != -1 && inventory.getSelectedSlot() != maceSlot) {
+                    originalHotbarSlot = inventory.getSelectedSlot();
+                    syncSlot(maceSlot);
+                    swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
+                    nextAction = SwapAction.SWITCH_BACK;
+                }
+            }
+        }
+    }
+
+    private void syncSlot(int slot) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+        inventory.setSelectedSlot(slot);
+        if (client.getNetworkHandler() != null) {
+            client.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(slot));
         }
     }
 
@@ -525,25 +528,24 @@ public class TutorialModClient implements ClientModInitializer {
             nextAction = SwapAction.NONE;
             swapCooldown = -1;
             if (client.player == null) return;
-            PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
             switch (action) {
                 case SWITCH_BACK:
-                    inventory.setSelectedSlot(originalHotbarSlot);
+                    syncSlot(originalHotbarSlot);
                     break;
                 case SWITCH_TO_ORIGINAL_THEN_MACE:
-                    inventory.setSelectedSlot(originalHotbarSlot);
+                    syncSlot(originalHotbarSlot);
                     if (client.interactionManager != null && targetEntity != null && targetEntity.isAlive()) {
                         client.interactionManager.attackEntity(client.player, targetEntity);
                     }
                     int maceSlot = findMaceInHotbar(client.player);
                     if (maceSlot != -1) {
-                        inventory.setSelectedSlot(maceSlot);
+                        syncSlot(maceSlot);
                         swapCooldown = TutorialMod.CONFIG.maceToOriginalDelay;
                         nextAction = SwapAction.SWITCH_BACK_FROM_MACE;
                     }
                     break;
                 case SWITCH_BACK_FROM_MACE:
-                    inventory.setSelectedSlot(originalHotbarSlot);
+                    syncSlot(originalHotbarSlot);
                     break;
                 default: break;
             }
@@ -737,13 +739,7 @@ public class TutorialModClient implements ClientModInitializer {
             if (dist > TutorialMod.CONFIG.reachSwapActivationRange) {
                 PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
                 originalHotbarSlot = inventory.getSelectedSlot();
-
-                // MANUALLY SYNC
-                inventory.setSelectedSlot(spearSlot);
-                if (client.getNetworkHandler() != null) {
-                    client.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(spearSlot));
-                }
-
+                syncSlot(spearSlot);
                 swapCooldown = TutorialMod.CONFIG.reachSwapBackDelay;
                 nextAction = SwapAction.SWITCH_BACK;
             }

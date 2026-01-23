@@ -17,24 +17,45 @@ public class ModConfig {
     private static final File CONFIG_FILE = new File(FabricLoader.getInstance().getConfigDir().toFile(), "tutorialmod.json");
 
     // --- Attribute Swapping ---
-    public int fakePredictionChance = 0;
+    // Axe AutoStun (Sword/others -> Axe)
+    public boolean axeSwapEnabled = true;
+    public double axeSwapRange = 3.1;
+    public int axeSwapDelay = 1;
     public int axeSwapFailChance = 0;
-    public int axeSwapDelay = 5;
-    public int maceSwapDelay = 1;
-    public int axeToOriginalDelay = 1;
-    public int maceToOriginalDelay = 1;
+    public int axeSwapFakePredictionChance = 0;
+
+    // Mace AutoStun (Mace -> Axe)
+    public boolean maceAutoStunEnabled = true;
+    public double maceAutoStunRange = 3.1;
+    public int maceAutoStunDelay = 1;
+    public int maceAutoStunFailChance = 0;
+    public int maceAutoStunFakePredictionChance = 0;
+
+    // Spear AutoStun (Spear -> Axe)
+    public boolean spearAutoStunEnabled = true;
+    public double spearAutoStunRange = 4.1;
     public int spearAutoStunDelay = 1;
     public int spearAutoStunFailChance = 0;
     public int spearAutoStunFakePredictionChance = 0;
-    public double spearAutoStunRange = 4.1;
+
+    // Mace Swap (Any -> Mace for damage)
+    public boolean maceSwapEnabled = true;
+    public double maceSwapRange = 3.1;
+    public int maceSwapDelay = 1;
+    public int maceSwapFailChance = 0;
+    public double maceSwapMinFallDistance = 3.0;
+
+    // Reach Swap (Any -> Spear)
+    public boolean spearReachSwapEnabled = true;
     public double spearReachSwapRange = 4.1;
     public double reachSwapActivationRange = 2.8;
     public int reachSwapBackDelay = 1;
 
-    public boolean axeSwapEnabled = true;
-    public boolean maceSwapEnabled = true;
-    public boolean spearAutoStunEnabled = true;
-    public boolean spearReachSwapEnabled = true;
+    // Shared
+    public boolean autoStunFacingCheck = true;
+    public int axeToOriginalDelay = 1;
+    public int maceToOriginalDelay = 1;
+
 
     // --- Minecart Tech ---
     public boolean tntMinecartPlacementEnabled = true;
