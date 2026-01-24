@@ -57,31 +57,36 @@ public class TriggerBot {
             return;
         }
 
+        Entity entity = null;
         HitResult hitResult = mc.crosshairTarget;
         if (hitResult instanceof EntityHitResult entityHitResult) {
-            Entity entity = entityHitResult.getEntity();
-            if (shouldAttack(entity)) {
-                if (entity != lastTarget) {
-                    lastTarget = entity;
-                    reactionTicks = 0;
-                    reactionGatePassed = false;
-                    currentReactionDelay = getRandomDelay(TutorialMod.CONFIG.triggerBotReactionMinDelay, TutorialMod.CONFIG.triggerBotReactionMaxDelay);
-                }
+            entity = entityHitResult.getEntity();
+        }
 
-                if (!reactionGatePassed) {
-                    reactionTicks++;
-                    if (reactionTicks >= currentReactionDelay) {
-                        reactionGatePassed = true;
-                    }
-                }
+        // If no target via vanilla raycast, check up to configured max range
+        if (entity == null || (mc.player != null && mc.player.distanceTo(entity) > TutorialMod.CONFIG.triggerBotMaxRange)) {
+            entity = findEntityInCrosshair(TutorialMod.CONFIG.triggerBotMaxRange);
+        }
 
-                if (reactionGatePassed) {
-                    if (canAttack()) {
-                        attack(entity);
-                    }
+        if (entity != null && shouldAttack(entity)) {
+            if (entity != lastTarget) {
+                lastTarget = entity;
+                reactionTicks = 0;
+                reactionGatePassed = false;
+                currentReactionDelay = getRandomDelay(TutorialMod.CONFIG.triggerBotReactionMinDelay, TutorialMod.CONFIG.triggerBotReactionMaxDelay);
+            }
+
+            if (!reactionGatePassed) {
+                reactionTicks++;
+                if (reactionTicks >= currentReactionDelay) {
+                    reactionGatePassed = true;
                 }
-            } else {
-                reset();
+            }
+
+            if (reactionGatePassed) {
+                if (canAttack()) {
+                    attack(entity);
+                }
             }
         } else {
             reset();
@@ -189,6 +194,33 @@ public class TriggerBot {
         mc.interactionManager.attackEntity(mc.player, entity);
         mc.player.swingHand(Hand.MAIN_HAND);
         lastAttackTime = System.currentTimeMillis();
+    }
+
+    private Entity findEntityInCrosshair(double range) {
+        if (mc.player == null || mc.world == null) return null;
+
+        net.minecraft.util.math.Vec3d start = mc.player.getCameraPosVec(1.0f);
+        net.minecraft.util.math.Vec3d direction = mc.player.getRotationVec(1.0f);
+        net.minecraft.util.math.Vec3d end = start.add(direction.multiply(range));
+
+        Entity closest = null;
+        double minDist = range;
+
+        for (Entity e : mc.world.getEntities()) {
+            if (e == mc.player || !e.isAlive()) continue;
+
+            net.minecraft.util.math.Box box = e.getBoundingBox().expand(e.getTargetingMargin());
+            java.util.Optional<net.minecraft.util.math.Vec3d> hit = box.raycast(start, end);
+
+            if (hit.isPresent()) {
+                double dist = start.distanceTo(hit.get());
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = e;
+                }
+            }
+        }
+        return closest;
     }
 
     private int getKeyCode(String translationKey) {

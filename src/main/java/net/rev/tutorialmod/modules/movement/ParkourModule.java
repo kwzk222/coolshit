@@ -75,6 +75,9 @@ public class ParkourModule {
 
         // If no collision → jump
         if (!hasGround) {
+            // Check if player is already jumping to avoid double speed boost
+            if (mc.options.jumpKey.isPressed()) return;
+
             player.jump();
         }
     }

@@ -130,6 +130,9 @@ public class ModConfig {
     public boolean triggerBotExcludeVillagers = true;
     public boolean triggerBotIncludeCrystals = true;
     public boolean triggerBotActiveInInventory = false;
+    public double triggerBotMaxRange = 3.0;
+    public boolean quickCrossbowEnabled = true;
+    public int quickCrossbowReloadThreshold = 4;
     public transient boolean triggerBotToggledOn = true;
 
     // --- Hotkeys ---
@@ -184,6 +187,7 @@ public class ModConfig {
     public int overlayFontSize = 20;
     public int overlayBackgroundOpacity = 128;
     public String overlayAlignment = "Left";
+    public String overlayVAlignment = "Top";
     public String overlayFontName = "Consolas";
     public boolean overlayLocked = false;
 

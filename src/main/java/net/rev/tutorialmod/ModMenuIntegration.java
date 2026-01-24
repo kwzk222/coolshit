@@ -555,10 +555,15 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The opacity level (0-255) of the overlay window background."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayBackgroundOpacity = newValue)
                     .build());
-            overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Text Alignment"), TutorialMod.CONFIG.overlayAlignment)
+            overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Horizontal Alignment"), TutorialMod.CONFIG.overlayAlignment)
                     .setDefaultValue("Left")
-                    .setTooltip(Text.literal("The alignment of the text in the overlay (Left, Center, or Right)."))
+                    .setTooltip(Text.literal("The horizontal alignment of the text in the overlay (Left, Center, or Right)."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayAlignment = newValue)
+                    .build());
+            overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Vertical Alignment"), TutorialMod.CONFIG.overlayVAlignment)
+                    .setDefaultValue("Top")
+                    .setTooltip(Text.literal("The vertical alignment of the text in the overlay (Top, Middle, or Bottom)."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayVAlignment = newValue)
                     .build());
             overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Font Name"), TutorialMod.CONFIG.overlayFontName)
                     .setDefaultValue("Consolas")
@@ -723,6 +728,22 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, the Trigger Bot will remain functional while an inventory screen is open."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotActiveInInventory = newValue)
                     .build());
+            triggerBot.addEntry(entryBuilder.startLongSlider(Text.literal("Trigger Bot Max Range"), (long)(TutorialMod.CONFIG.triggerBotMaxRange * 10), 0, 40)
+                    .setDefaultValue(30)
+                    .setTooltip(Text.literal("The maximum distance (blocks * 10) to automatically attack entities. Default: 30 (3 blocks)"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMaxRange = newValue / 10.0)
+                    .build());
+
+            // Quick Crossbow SubCategory
+            SubCategoryBuilder quickCrossbowSub = entryBuilder.startSubCategory(Text.literal("Quick Crossbow"));
+            quickCrossbowSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.quickCrossbowEnabled)
+                    .setDefaultValue(true)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.quickCrossbowEnabled = newValue).build());
+            quickCrossbowSub.add(entryBuilder.startIntSlider(Text.literal("Reload Threshold (Ticks)"), TutorialMod.CONFIG.quickCrossbowReloadThreshold, 1, 10)
+                    .setDefaultValue(4)
+                    .setTooltip(Text.literal("If held for longer than this, the mod assumes you are manually reloading and does nothing."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.quickCrossbowReloadThreshold = newValue).build());
+            triggerBot.addEntry(quickCrossbowSub.build());
             triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Min Reaction Delay"), TutorialMod.CONFIG.triggerBotReactionMinDelay, 0, 20)
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("The minimum duration (ticks) the crosshair must be over a target before the first attack."))

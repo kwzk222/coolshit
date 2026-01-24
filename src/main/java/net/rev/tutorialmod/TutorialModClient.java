@@ -120,6 +120,9 @@ public class TutorialModClient implements ClientModInitializer {
     private int pointingTickCounter = 0;
     private String lastLongCoordsInfo = null;
 
+    private int crossbowUseTicks = 0;
+    private boolean crossbowWasUsing = false;
+
     private String overlayStatusMessage = null;
     private long overlayStatusTime = 0;
 
@@ -209,6 +212,7 @@ public class TutorialModClient implements ClientModInitializer {
     private void onClientTick(MinecraftClient client) {
         // Handle keybinds first, as they might toggle features on/off.
         handleKeybinds(client);
+        handleQuickCrossbow(client);
         handleChatMacros(client);
 
         // Handle TriggerBot separately, as it may have its own master toggle.
@@ -786,6 +790,68 @@ public class TutorialModClient implements ClientModInitializer {
     private int findMaceInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
             if (player.getInventory().getStack(i).getItem() == Items.MACE) return i;
+        }
+        return -1;
+    }
+
+    private void handleQuickCrossbow(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.quickCrossbowEnabled) return;
+        if (client.player == null || client.world == null || client.interactionManager == null) return;
+
+        ItemStack mainHand = client.player.getMainHandStack();
+        boolean isCrossbow = mainHand.getItem() == Items.CROSSBOW;
+        boolean isEmpty = isCrossbow && !CrossbowItem.isCharged(mainHand);
+
+        if (client.options.useKey.isPressed()) {
+            if (isEmpty) {
+                crossbowUseTicks++;
+                crossbowWasUsing = true;
+            } else {
+                crossbowUseTicks = 0;
+                crossbowWasUsing = false;
+            }
+        } else {
+            if (crossbowWasUsing) {
+                // Tapped (released before threshold)
+                if (crossbowUseTicks > 0 && crossbowUseTicks <= TutorialMod.CONFIG.quickCrossbowReloadThreshold) {
+                    triggerQuickCrossbow(client);
+                }
+                crossbowUseTicks = 0;
+                crossbowWasUsing = false;
+            }
+        }
+    }
+
+    private void triggerQuickCrossbow(MinecraftClient client) {
+        if (client.player == null || client.interactionManager == null) return;
+
+        // Check offhand first
+        ItemStack offHand = client.player.getOffHandStack();
+        if (offHand.getItem() == Items.CROSSBOW && CrossbowItem.isCharged(offHand)) {
+            // Find first hotbar slot that isn't a crossbow to switch main hand
+            int nonCrossbowSlot = findNonCrossbowHotbarSlot(client.player);
+            if (nonCrossbowSlot != -1) {
+                syncSlot(nonCrossbowSlot);
+            }
+            // Fire offhand
+            client.interactionManager.interactItem(client.player, Hand.OFF_HAND);
+            return;
+        }
+
+        // Check hotbar
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = client.player.getInventory().getStack(i);
+            if (stack.getItem() == Items.CROSSBOW && CrossbowItem.isCharged(stack)) {
+                syncSlot(i);
+                client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                return;
+            }
+        }
+    }
+
+    private int findNonCrossbowHotbarSlot(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).getItem() != Items.CROSSBOW) return i;
         }
         return -1;
     }

@@ -82,6 +82,7 @@ public class OverlayManager {
             socketWriter.println("CONFIG FONT_SIZE " + TutorialMod.CONFIG.overlayFontSize);
             socketWriter.println("CONFIG OPACITY " + TutorialMod.CONFIG.overlayBackgroundOpacity);
             socketWriter.println("CONFIG ALIGNMENT " + TutorialMod.CONFIG.overlayAlignment);
+            socketWriter.println("CONFIG V_ALIGNMENT " + TutorialMod.CONFIG.overlayVAlignment);
             socketWriter.println("CONFIG FONT_NAME " + TutorialMod.CONFIG.overlayFontName.replace(" ", "_"));
             socketWriter.println("CONFIG LOCKED " + TutorialMod.CONFIG.overlayLocked);
         }
