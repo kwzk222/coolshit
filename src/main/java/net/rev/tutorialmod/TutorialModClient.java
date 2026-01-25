@@ -591,10 +591,15 @@ public class TutorialModClient implements ClientModInitializer {
                         if (client.crosshairTarget instanceof BlockHitResult bhr) {
                             BlockState state = client.world.getBlockState(bhr.getBlockPos());
                             if (state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+                                ((MinecraftClientAccessor) client).setItemUseCooldown(0);
                                 ((MinecraftClientAccessor) client).invokeDoItemUse();
+                                awaitingMinecartConfirmationCooldown = 20; // Wait for server confirmation
+                            } else {
+                                railPos = null; // Cancel sequence if not looking at rail
                             }
+                        } else {
+                            railPos = null; // Cancel sequence if not looking at rail
                         }
-                        awaitingMinecartConfirmationCooldown = 20; // Wait for server confirmation
                     }
                     break;
                 case AWAITING_LAVA_PLACEMENT:
