@@ -40,6 +40,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.GameOptionsAccessor;
+import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.EnemyInfo;
@@ -584,17 +585,14 @@ public class TutorialModClient implements ClientModInitializer {
                 case PLACE_TNT_MINECART:
                     int minecartSlot = findTntMinecartInHotbar(client.player);
                     if (minecartSlot != -1) {
-                        inventory.setSelectedSlot(minecartSlot);
-                        if (railPos != null) {
-                            BlockHitResult bhr = new BlockHitResult(
-                                    new Vec3d(railPos.getX() + 0.5, railPos.getY() + 0.6, railPos.getZ() + 0.5),
-                                    Direction.NORTH, railPos, false
-                            );
-                            client.player.swingHand(Hand.MAIN_HAND);
-                            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
-                        } else {
-                            client.player.swingHand(Hand.MAIN_HAND);
-                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        syncSlot(minecartSlot);
+
+                        // Simulated right click only if looking at a rail
+                        if (client.crosshairTarget instanceof BlockHitResult bhr) {
+                            BlockState state = client.world.getBlockState(bhr.getBlockPos());
+                            if (state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+                                ((MinecraftClientAccessor) client).invokeDoItemUse();
+                            }
                         }
                         awaitingMinecartConfirmationCooldown = 20; // Wait for server confirmation
                     }
