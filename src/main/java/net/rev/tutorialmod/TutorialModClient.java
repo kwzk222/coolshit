@@ -112,6 +112,7 @@ public class TutorialModClient implements ClientModInitializer {
     private int utilitySlot = -1;
     private int crossbowSlot = -1;
     private int actionTimeout = -1;
+    private int minecartRetryCounter = 0;
 
     // --- State: Misc ---
     public static long lastBowShotTick = -1;
@@ -585,20 +586,32 @@ public class TutorialModClient implements ClientModInitializer {
                 case PLACE_TNT_MINECART:
                     int minecartSlot = findTntMinecartInHotbar(client.player);
                     if (minecartSlot != -1) {
-                        syncSlot(minecartSlot);
-
                         // Simulated right click only if looking at a rail
                         if (client.crosshairTarget instanceof BlockHitResult bhr) {
                             BlockState state = client.world.getBlockState(bhr.getBlockPos());
                             if (state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
+                                syncSlot(minecartSlot);
                                 ((MinecraftClientAccessor) client).setItemUseCooldown(0);
-                                ((MinecraftClientAccessor) client).invokeDoItemUse();
-                                awaitingMinecartConfirmationCooldown = 20; // Wait for server confirmation
-                            } else {
-                                railPos = null; // Cancel sequence if not looking at rail
+                                client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
+                                client.player.swingHand(Hand.MAIN_HAND);
+                                awaitingMinecartConfirmationCooldown = 60; // Wait for server confirmation
+                                placementCooldown = -1;
+                                nextPlacementAction = PlacementAction.NONE;
+                                minecartRetryCounter = 0;
+                                return;
                             }
+                        }
+
+                        if (minecartRetryCounter < 10) {
+                            minecartRetryCounter++;
+                            placementCooldown = 1; // Retry next tick
+                            nextPlacementAction = action;
                         } else {
-                            railPos = null; // Cancel sequence if not looking at rail
+                            // Timeout/Fail
+                            placementCooldown = -1;
+                            nextPlacementAction = PlacementAction.NONE;
+                            minecartRetryCounter = 0;
+                            railPos = null;
                         }
                     }
                     break;
@@ -680,6 +693,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || findTntMinecartInHotbar(client.player) == -1) return;
         this.railPos = pos;
         this.placementCooldown = 1;
+        this.minecartRetryCounter = 0;
         this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
     }
 
