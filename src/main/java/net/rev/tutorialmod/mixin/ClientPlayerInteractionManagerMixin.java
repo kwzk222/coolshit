@@ -50,7 +50,17 @@ public abstract class ClientPlayerInteractionManagerMixin {
         if (TutorialMod.CONFIG.tntMinecartPlacementEnabled && cir.getReturnValue().isAccepted()) {
             ItemStack stack = player.getStackInHand(hand);
             if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {
-                TutorialModClient.setAwaitingRailConfirmation();
+                // Calculate the likely placed block position
+                BlockPos placedPos = hitResult.getBlockPos();
+                MinecraftClient mc = MinecraftClient.getInstance();
+                if (mc.world != null && !mc.world.getBlockState(placedPos).canReplace(new net.minecraft.item.ItemPlacementContext(player, hand, stack, hitResult))) {
+                    placedPos = placedPos.offset(hitResult.getSide());
+                }
+
+                TutorialModClient.triggerImmediateRailPlacement(placedPos);
+
+                // NOTE: Old server confirmation logic - disabled to fix "cart tech" on laggy servers
+                // TutorialModClient.setAwaitingRailConfirmation();
             }
         }
     }

@@ -6,12 +6,9 @@ import net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor;
 import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.minecraft.block.*;
-import net.minecraft.block.enums.BlockHalf;
-import net.minecraft.block.enums.SlabType;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.fluid.Fluids;
-import net.minecraft.item.BlockItem;
 import net.minecraft.item.Items;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -26,8 +23,7 @@ public class ClutchModule {
     private enum ClutchState {
         IDLE,
         ARMING,          // Detected fall, pre-selecting bucket
-        PLACING_BLOCK,   // Falling on waterloggable, placing block first
-        PLACING_WATER,   // Placing water (direct or after block)
+        PLACING_WATER,   // Placing water
         LANDED,          // On ground, buffer for lag
         RECOVERING,      // Picking up water
         FINISHING,       // Restoring slot
@@ -68,7 +64,7 @@ public class ClutchModule {
         }
 
         // Fix random sneaking: handle interactables during water clutch sequence and recovery
-        if (state == ClutchState.ARMING || state == ClutchState.PLACING_BLOCK || state == ClutchState.PLACING_WATER ||
+        if (state == ClutchState.ARMING || state == ClutchState.PLACING_WATER ||
             state == ClutchState.LANDED || state == ClutchState.RECOVERING || state == ClutchState.FINISHING) {
             handleInteractableSneak(p);
         }
@@ -76,11 +72,10 @@ public class ClutchModule {
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.getPitch() >= config.clutchActivationPitch) {
-                    // Prioritize Water Clutch (or Block Clutch fallback)
+                    // Prioritize Water Clutch
                     boolean hasBucket = config.clutchAutoSwitch ? (findWaterBucket() != -1) : isHoldingWater();
-                    boolean hasBlock = findBlock() != -1;
 
-                    boolean canWaterClutch = config.waterClutchEnabled && p.fallDistance >= config.clutchMinFallDistance && (hasBucket || hasBlock);
+                    boolean canWaterClutch = config.waterClutchEnabled && p.fallDistance >= config.clutchMinFallDistance && hasBucket;
 
                     if (canWaterClutch) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
@@ -122,35 +117,6 @@ public class ClutchModule {
 
                 tickCounter++;
                 handleArming(p, config);
-            }
-
-            case PLACING_BLOCK -> {
-                if (p.isOnGround()) {
-                    state = ClutchState.LANDED;
-                    tickCounter = 0;
-                    return;
-                }
-
-                spamUse();
-                spamTickCounter++;
-
-                // Success check: block placed at offset position
-                HitResult hit = p.raycast(CLUTCH_REACH, 1.0f, false);
-                if (hit.getType() == HitResult.Type.BLOCK) {
-                    BlockHitResult bhr = (BlockHitResult) hit;
-                    BlockPos placedPos = bhr.getBlockPos().offset(bhr.getSide());
-                    if (!mc.world.getBlockState(placedPos).isAir()) {
-                        // Success! Now switch to water
-                        int waterSlot = findWaterBucket();
-                        if (waterSlot != -1) {
-                            if (config.clutchAutoSwitch) setSlot(waterSlot);
-                            state = ClutchState.PLACING_WATER;
-                            spamTickCounter = 0;
-                        }
-                    }
-                }
-
-                if (spamTickCounter > MAX_SPAM_TICKS) { reset(); }
             }
 
             case PLACING_WATER -> {
@@ -273,23 +239,6 @@ public class ClutchModule {
         return state.getBlock() instanceof BlockEntityProvider || state.getBlock() instanceof InventoryProvider;
     }
 
-    private boolean isWaterloggable(BlockState state) {
-        Block block = state.getBlock();
-        if (block instanceof LeavesBlock) return true;
-        if (block instanceof StairsBlock) return true;
-        if (block instanceof SlabBlock) {
-            return state.get(SlabBlock.TYPE) != SlabType.BOTTOM;
-        }
-        if (block instanceof TrapdoorBlock) {
-            return state.get(TrapdoorBlock.HALF) == BlockHalf.TOP && !state.get(TrapdoorBlock.OPEN);
-        }
-        return block == Blocks.CAULDRON ||
-               block == Blocks.BIG_DRIPLEAF ||
-               block == Blocks.COPPER_GRATE ||
-               block == Blocks.DECORATED_POT ||
-               block == Blocks.MANGROVE_ROOTS;
-    }
-
     private void spamUse() {
         ((MinecraftClientAccessor) mc).setItemUseCooldown(0);
         ((MinecraftClientAccessor) mc).invokeDoItemUse();
@@ -314,23 +263,8 @@ public class ClutchModule {
             // Check target with increased reach (10.0) to transition early
             HitResult hit = p.raycast(10.0, 1.0f, false);
             if (hit.getType() == HitResult.Type.BLOCK) {
-                BlockState targetState = mc.world.getBlockState(((BlockHitResult) hit).getBlockPos());
-
-                // IF target is waterloggable -> place block FIRST (to avoid waterlogging)
-                if (isWaterloggable(targetState)) {
-                    int blockSlot = findBlock();
-                    if (blockSlot != -1) {
-                        if (config.clutchAutoSwitch) setSlot(blockSlot);
-                        state = ClutchState.PLACING_BLOCK;
-                        spamUse(); // Save a tick
-                    } else {
-                        state = ClutchState.PLACING_WATER;
-                        spamUse(); // Save a tick
-                    }
-                } else {
-                    state = ClutchState.PLACING_WATER;
-                    spamUse(); // Save a tick
-                }
+                state = ClutchState.PLACING_WATER;
+                spamUse(); // Save a tick
                 spamTickCounter = 0;
                 tickCounter = 0;
             }
@@ -391,14 +325,6 @@ public class ClutchModule {
     private int findWaterBucket() {
         for (int i = 0; i < 9; i++) {
             if (mc.player.getInventory().getStack(i).isOf(Items.WATER_BUCKET))
-                return i;
-        }
-        return -1;
-    }
-
-    private int findBlock() {
-        for (int i = 0; i < 9; i++) {
-            if (mc.player.getInventory().getStack(i).getItem() instanceof BlockItem)
                 return i;
         }
         return -1;

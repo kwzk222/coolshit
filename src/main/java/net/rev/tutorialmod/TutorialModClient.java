@@ -636,11 +636,17 @@ public class TutorialModClient implements ClientModInitializer {
         awaitingRailConfirmationCooldown = 2;
     }
 
+    public static void triggerImmediateRailPlacement(BlockPos pos) {
+        if (instance != null) instance.startRailPlacement(pos);
+    }
+
     public static void confirmRailPlacement(BlockPos pos, BlockState state) {
+        /* NOTE: Server confirmation logic - disabled to fix "cart tech" on laggy servers
         if (awaitingRailConfirmationCooldown > 0 && state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
             if (instance != null) instance.startRailPlacement(pos);
             awaitingRailConfirmationCooldown = -1;
         }
+        */
     }
 
     public static void confirmLavaPlacement(BlockPos pos, BlockState state) {
