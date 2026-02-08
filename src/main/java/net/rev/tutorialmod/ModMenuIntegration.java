@@ -719,6 +719,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Automatically use an empty bucket on water sources when right-clicking."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue)
                     .build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Water Drain Mode"), TutorialMod.CONFIG.autoWaterDrainMode)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Automatically pick up isolated water source blocks you look at."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoWaterDrainMode = newValue)
+                    .build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Auto Water Drain Hotkey"), TutorialMod.CONFIG.autoWaterDrainHotkey)
+                    .setDefaultValue("key.keyboard.n")
+                    .setTooltip(Text.literal("The hotkey used to toggle Auto Water Drain Mode."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoWaterDrainHotkey = newValue)
+                    .build());
             misc.addEntry(entryBuilder.startIntSlider(Text.literal("Water Drain Switch To Delay"), TutorialMod.CONFIG.waterDrainSwitchToDelay, 0, 20)
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("Delay (ticks) before switching to the bucket."))
@@ -729,6 +739,19 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Delay (ticks) after filling the bucket before switching back."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchBackDelay = newValue)
                     .build());
+
+            SubCategoryBuilder extinguishSub = entryBuilder.startSubCategory(Text.literal("Auto Extinguish"));
+            extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Automatically use a water bucket to extinguish yourself when on fire and looking down."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue)
+                    .build());
+            extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90)
+                    .setDefaultValue(60)
+                    .setTooltip(Text.literal("The minimum pitch (looking down) to trigger Auto Extinguish."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue())
+                    .build());
+            misc.addEntry(extinguishSub.build());
 
             // Potion Module Category
             ConfigCategory potionModule = builder.getOrCreateCategory(Text.literal("Potion Module"));

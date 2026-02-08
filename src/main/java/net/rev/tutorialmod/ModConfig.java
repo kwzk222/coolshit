@@ -98,8 +98,12 @@ public class ModConfig {
     public double miningResetThreshold = 0.92;
     public int miningResetDelay = 0;
     public boolean waterDrainEnabled = false;
+    public boolean autoWaterDrainMode = false;
+    public String autoWaterDrainHotkey = "key.keyboard.n";
     public int waterDrainSwitchToDelay = 0;
     public int waterDrainSwitchBackDelay = 0;
+    public boolean autoExtinguishEnabled = false;
+    public double autoExtinguishPitch = 60.0;
 
     // --- General ---
     public boolean masterEnabled = true;

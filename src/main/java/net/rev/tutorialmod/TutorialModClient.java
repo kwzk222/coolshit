@@ -38,6 +38,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
+import org.lwjgl.glfw.GLFW;
 import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.GameOptionsAccessor;
 import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
@@ -104,6 +105,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean miningResetWasPressed = false;
     private boolean sprintModeWasPressed = false;
     private boolean sneakModeWasPressed = false;
+    private boolean autoWaterDrainModeWasPressed = false;
 
     // --- State: Combat Swap ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_TO_ORIGINAL_THEN_MACE, SWITCH_BACK_FROM_MACE }
@@ -135,6 +137,11 @@ public class TutorialModClient implements ClientModInitializer {
     private int drainPendingSlot = -1;
     private int drainSwitchToTicks = -1;
     private int drainSwitchBackTimer = -1;
+
+    private enum ExtinguishState { NONE, SWITCH_TO_BUCKET, PLACING, PICKING_UP, SWITCHING_BACK }
+    private ExtinguishState currentExtinguishState = ExtinguishState.NONE;
+    private int extinguishTimer = -1;
+    private int originalSlotBeforeExtinguish = -1;
 
     private int crossbowUseTicks = 0;
     private boolean crossbowWasUsing = false;
@@ -291,6 +298,8 @@ public class TutorialModClient implements ClientModInitializer {
             jumpResetModule.onTick(client);
         }
 
+        handleAutoWaterDrain(client);
+        handleAutoExtinguish(client);
         handleWaterDrainSwitchTo(client);
         handleWaterDrainRestore(client);
 
@@ -411,8 +420,27 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleKeybinds(MinecraftClient client) {
         if (client.player == null) return;
 
+        // F3 Safety Check
+        try {
+            if (InputUtil.isKeyPressed(client.getWindow(), GLFW.GLFW_KEY_F3)) {
+                return;
+            }
+        } catch (Exception ignored) {}
+
         if (!TutorialMod.CONFIG.activeInInventory && client.currentScreen != null) {
             return;
+        }
+
+        // --- Toggle Auto Water Drain Mode Hotkey ---
+        try {
+            boolean isAutoWaterDrainModePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.autoWaterDrainHotkey).getCode());
+            if (isAutoWaterDrainModePressed && !autoWaterDrainModeWasPressed) {
+                TutorialMod.CONFIG.autoWaterDrainMode = !TutorialMod.CONFIG.autoWaterDrainMode;
+                TutorialMod.CONFIG.save();
+                TutorialMod.sendUpdateMessage("Auto Water Drain Mode set to " + (TutorialMod.CONFIG.autoWaterDrainMode ? "ON" : "OFF"));
+            }
+            autoWaterDrainModeWasPressed = isAutoWaterDrainModePressed;
+        } catch (IllegalArgumentException e) {
         }
 
         // --- Open Settings Hotkey ---
@@ -1013,6 +1041,150 @@ public class TutorialModClient implements ClientModInitializer {
     private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {
         Entity entity = getEntityLookingAt(client, maxDistance, false);
         return (entity instanceof PlayerEntity) ? (PlayerEntity) entity : null;
+    }
+
+    private void handleAutoWaterDrain(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled || !TutorialMod.CONFIG.autoWaterDrainMode) return;
+        if (client.player == null || client.world == null) return;
+        if (drainRestoreTicks != -1 || drainSwitchToTicks != -1) return; // Busy
+
+        // Condition: Not swimming/in water
+        if (client.player.isTouchingWater()) return;
+
+        double range = client.player.getBlockInteractionRange();
+        Vec3d start = client.player.getCameraPosVec(1.0f);
+        Vec3d dir = client.player.getRotationVec(1.0f);
+        Vec3d end = start.add(dir.multiply(range));
+
+        Entity blocking = getEntityLookingAt(client, client.player.getEntityInteractionRange(), false);
+        if (blocking != null) return;
+
+        BlockHitResult hit = client.world.raycast(new RaycastContext(
+                start, end,
+                RaycastContext.ShapeType.OUTLINE,
+                RaycastContext.FluidHandling.SOURCE_ONLY,
+                client.player
+        ));
+
+        if (hit.getType() == HitResult.Type.BLOCK) {
+            BlockPos pos = hit.getBlockPos();
+            if (client.world.getFluidState(pos).isStill()) {
+                // Check if isolated (no adjacent water sources)
+                if (isIsolatedWater(client.world, pos)) {
+                    int bucketSlot = findEmptyBucketInHotbar(client.player);
+                    PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                    if (bucketSlot != -1 && inventory.getSelectedSlot() != bucketSlot) {
+                        if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
+                            drainPendingSlot = bucketSlot;
+                            drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
+                            originalSlotBeforeDrain = inventory.getSelectedSlot();
+                        } else {
+                            originalSlotBeforeDrain = inventory.getSelectedSlot();
+                            syncSlot(bucketSlot);
+                            if (client.interactionManager != null) {
+                                client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                                client.player.swingHand(Hand.MAIN_HAND);
+                            }
+                            drainRestoreTicks = 20 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                            drainSwitchBackTimer = -1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isIsolatedWater(World world, BlockPos pos) {
+        Direction[] horizontal = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
+        for (Direction d : horizontal) {
+            BlockPos neighbor = pos.offset(d);
+            if (world.getFluidState(neighbor).isStill()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void handleAutoExtinguish(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.autoExtinguishEnabled) {
+            currentExtinguishState = ExtinguishState.NONE;
+            return;
+        }
+        if (client.player == null || client.world == null) return;
+
+        if (currentExtinguishState == ExtinguishState.NONE) {
+            if (client.player.isOnFire() && client.player.getPitch() >= TutorialMod.CONFIG.autoExtinguishPitch) {
+                int waterSlot = findWaterBucketInHotbar(client.player);
+                if (waterSlot != -1) {
+                    PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                    originalSlotBeforeExtinguish = inventory.getSelectedSlot();
+
+                    if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
+                        currentExtinguishState = ExtinguishState.SWITCH_TO_BUCKET;
+                        extinguishTimer = TutorialMod.CONFIG.waterDrainSwitchToDelay;
+                    } else {
+                        syncSlot(waterSlot);
+                        currentExtinguishState = ExtinguishState.PLACING;
+                        extinguishTimer = 0;
+                    }
+                }
+            }
+        } else {
+            if (extinguishTimer > 0) {
+                extinguishTimer--;
+                return;
+            }
+
+            switch (currentExtinguishState) {
+                case SWITCH_TO_BUCKET:
+                    int waterSlot = findWaterBucketInHotbar(client.player);
+                    if (waterSlot != -1) {
+                        syncSlot(waterSlot);
+                        currentExtinguishState = ExtinguishState.PLACING;
+                        extinguishTimer = 0;
+                    } else {
+                        currentExtinguishState = ExtinguishState.NONE;
+                    }
+                    break;
+                case PLACING:
+                    if (client.interactionManager != null) {
+                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        client.player.swingHand(Hand.MAIN_HAND);
+                        currentExtinguishState = ExtinguishState.PICKING_UP;
+                        extinguishTimer = 1; // Wait 1 tick for placement to register
+                    } else {
+                        currentExtinguishState = ExtinguishState.NONE;
+                    }
+                    break;
+                case PICKING_UP:
+                    if (client.interactionManager != null) {
+                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        client.player.swingHand(Hand.MAIN_HAND);
+                        currentExtinguishState = ExtinguishState.SWITCHING_BACK;
+                        extinguishTimer = TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                    } else {
+                        currentExtinguishState = ExtinguishState.NONE;
+                    }
+                    break;
+                case SWITCHING_BACK:
+                    if (originalSlotBeforeExtinguish != -1) {
+                        syncSlot(originalSlotBeforeExtinguish);
+                    }
+                    currentExtinguishState = ExtinguishState.NONE;
+                    originalSlotBeforeExtinguish = -1;
+                    break;
+                default:
+                    currentExtinguishState = ExtinguishState.NONE;
+                    break;
+            }
+        }
+    }
+
+    private int findWaterBucketInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).getItem() == Items.WATER_BUCKET) return i;
+        }
+        return -1;
     }
 
     public boolean onItemUse() {
