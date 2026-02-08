@@ -31,10 +31,10 @@ public class MinecraftClientMixin {
         }
     }
 
-    @Inject(method = "doItemUse", at = @At("HEAD"))
+    @Inject(method = "doItemUse", at = @At("HEAD"), cancellable = true)
     private void onDoItemUse(CallbackInfo ci) {
-        if (TutorialModClient.getInstance() != null) {
-            TutorialModClient.getInstance().onItemUse();
+        if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().onItemUse()) {
+            ci.cancel();
         }
     }
 }

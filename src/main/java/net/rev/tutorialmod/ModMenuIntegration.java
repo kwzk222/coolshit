@@ -719,6 +719,16 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Automatically use an empty bucket on water sources when right-clicking."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue)
                     .build());
+            misc.addEntry(entryBuilder.startIntSlider(Text.literal("Water Drain Switch To Delay"), TutorialMod.CONFIG.waterDrainSwitchToDelay, 0, 20)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("Delay (ticks) before switching to the bucket."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchToDelay = newValue)
+                    .build());
+            misc.addEntry(entryBuilder.startIntSlider(Text.literal("Water Drain Switch Back Delay"), TutorialMod.CONFIG.waterDrainSwitchBackDelay, 0, 20)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("Delay (ticks) after filling the bucket before switching back."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchBackDelay = newValue)
+                    .build());
 
             // Potion Module Category
             ConfigCategory potionModule = builder.getOrCreateCategory(Text.literal("Potion Module"));
@@ -751,18 +761,18 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, the mod will switch back to the original slot after throwing a health potion."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionRestoreSlot = newValue)
                     .build());
-            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Strength Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionStrengthThreshold * 10), 0, 600)
-                    .setDefaultValue(200)
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Strength Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionStrengthThreshold * 10), 0, 4800)
+                    .setDefaultValue(300)
                     .setTooltip(Text.literal("Remaining duration (seconds * 10) below which to use a Strength Potion."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionStrengthThreshold = newValue / 10.0)
                     .build());
-            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Speed Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionSpeedThreshold * 10), 0, 600)
-                    .setDefaultValue(200)
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Speed Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionSpeedThreshold * 10), 0, 4800)
+                    .setDefaultValue(300)
                     .setTooltip(Text.literal("Remaining duration (seconds * 10) below which to use a Speed Potion."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionSpeedThreshold = newValue / 10.0)
                     .build());
-            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Fire Res Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionFireResThreshold * 10), 0, 600)
-                    .setDefaultValue(200)
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Fire Res Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionFireResThreshold * 10), 0, 4800)
+                    .setDefaultValue(300)
                     .setTooltip(Text.literal("Remaining duration (seconds * 10) below which to use a Fire Resistance Potion."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionFireResThreshold = newValue / 10.0)
                     .build());

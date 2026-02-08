@@ -98,6 +98,8 @@ public class ModConfig {
     public double miningResetThreshold = 0.92;
     public int miningResetDelay = 0;
     public boolean waterDrainEnabled = false;
+    public int waterDrainSwitchToDelay = 0;
+    public int waterDrainSwitchBackDelay = 0;
 
     // --- General ---
     public boolean masterEnabled = true;
@@ -207,9 +209,9 @@ public class ModConfig {
     public double potionHealthThreshold = 10.0;
     public boolean potionThrow = true;
     public boolean potionRestoreSlot = true;
-    public double potionStrengthThreshold = 20.0;
-    public double potionSpeedThreshold = 20.0;
-    public double potionFireResThreshold = 20.0;
+    public double potionStrengthThreshold = 30.0;
+    public double potionSpeedThreshold = 30.0;
+    public double potionFireResThreshold = 30.0;
 
     // --- Jump Reset ---
     public boolean jumpResetEnabled = false;

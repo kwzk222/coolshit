@@ -132,6 +132,9 @@ public class TutorialModClient implements ClientModInitializer {
 
     private int originalSlotBeforeDrain = -1;
     private int drainRestoreTicks = -1;
+    private int drainPendingSlot = -1;
+    private int drainSwitchToTicks = -1;
+    private int drainSwitchBackTimer = -1;
 
     private int crossbowUseTicks = 0;
     private boolean crossbowWasUsing = false;
@@ -288,6 +291,7 @@ public class TutorialModClient implements ClientModInitializer {
             jumpResetModule.onTick(client);
         }
 
+        handleWaterDrainSwitchTo(client);
         handleWaterDrainRestore(client);
 
         ClickSpamModule.onTick();
@@ -1011,23 +1015,23 @@ public class TutorialModClient implements ClientModInitializer {
         return (entity instanceof PlayerEntity) ? (PlayerEntity) entity : null;
     }
 
-    public void onItemUse() {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled) return;
+    public boolean onItemUse() {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled) return false;
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.world == null) return;
+        if (client.player == null || client.world == null) return false;
 
         // Condition: Not swimming/in water
-        if (client.player.isTouchingWater()) return;
+        if (client.player.isTouchingWater()) return false;
 
-        // Find water source at crosshair (up to 4.5 blocks as per request "in range")
-        double range = 4.5;
+        // Use attribute-based reach
+        double range = client.player.getBlockInteractionRange();
         Vec3d start = client.player.getCameraPosVec(1.0f);
         Vec3d dir = client.player.getRotationVec(1.0f);
         Vec3d end = start.add(dir.multiply(range));
 
         // Check for entities blocking
-        Entity blocking = getEntityLookingAt(client, range, false);
-        if (blocking != null) return;
+        Entity blocking = getEntityLookingAt(client, client.player.getEntityInteractionRange(), false);
+        if (blocking != null) return false;
 
         BlockHitResult hit = client.world.raycast(new RaycastContext(
                 start, end,
@@ -1041,10 +1045,38 @@ public class TutorialModClient implements ClientModInitializer {
                 int bucketSlot = findEmptyBucketInHotbar(client.player);
                 PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
                 if (bucketSlot != -1 && inventory.getSelectedSlot() != bucketSlot) {
-                    originalSlotBeforeDrain = inventory.getSelectedSlot();
-                    syncSlot(bucketSlot);
-                    drainRestoreTicks = 20; // 1 second timeout
+                    if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
+                        drainPendingSlot = bucketSlot;
+                        drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
+                        originalSlotBeforeDrain = inventory.getSelectedSlot();
+                    } else {
+                        originalSlotBeforeDrain = inventory.getSelectedSlot();
+                        syncSlot(bucketSlot);
+                        drainRestoreTicks = 20 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                        drainSwitchBackTimer = -1;
+                    }
+                    return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    private void handleWaterDrainSwitchTo(MinecraftClient client) {
+        if (drainSwitchToTicks > 0) {
+            drainSwitchToTicks--;
+            if (drainSwitchToTicks == 0) {
+                if (drainPendingSlot != -1) {
+                    syncSlot(drainPendingSlot);
+                    if (client.interactionManager != null && client.player != null) {
+                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        client.player.swingHand(Hand.MAIN_HAND);
+                    }
+                    drainRestoreTicks = 20 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                    drainSwitchBackTimer = -1;
+                    drainPendingSlot = -1;
+                }
+                drainSwitchToTicks = -1;
             }
         }
     }
@@ -1052,15 +1084,38 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleWaterDrainRestore(MinecraftClient client) {
         if (drainRestoreTicks > 0) {
             drainRestoreTicks--;
-            if (client.player.getMainHandStack().getItem() == Items.WATER_BUCKET) {
-                if (originalSlotBeforeDrain != -1) syncSlot(originalSlotBeforeDrain);
-                drainRestoreTicks = -1;
-                originalSlotBeforeDrain = -1;
-            } else if (drainRestoreTicks == 0) {
-                if (originalSlotBeforeDrain != -1) syncSlot(originalSlotBeforeDrain);
-                drainRestoreTicks = -1;
-                originalSlotBeforeDrain = -1;
+
+            if (client.player.getMainHandStack().getItem() == Items.WATER_BUCKET && drainSwitchBackTimer == -1) {
+                drainSwitchBackTimer = TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                if (drainSwitchBackTimer == 0) {
+                    restoreDrainSlot();
+                    drainRestoreTicks = -1;
+                    return;
+                }
             }
+
+            if (drainSwitchBackTimer > 0) {
+                drainSwitchBackTimer--;
+                if (drainSwitchBackTimer == 0) {
+                    restoreDrainSlot();
+                    drainRestoreTicks = -1;
+                    drainSwitchBackTimer = -1;
+                    return;
+                }
+            }
+
+            if (drainRestoreTicks == 0) {
+                restoreDrainSlot();
+                drainRestoreTicks = -1;
+                drainSwitchBackTimer = -1;
+            }
+        }
+    }
+
+    private void restoreDrainSlot() {
+        if (originalSlotBeforeDrain != -1) {
+            syncSlot(originalSlotBeforeDrain);
+            originalSlotBeforeDrain = -1;
         }
     }
 
