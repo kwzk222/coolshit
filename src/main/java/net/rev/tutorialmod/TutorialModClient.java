@@ -877,8 +877,15 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null || client.interactionManager == null) return;
 
         ItemStack mainHand = client.player.getMainHandStack();
-        boolean isCrossbow = mainHand.getItem() == Items.CROSSBOW;
-        boolean isEmpty = isCrossbow && !CrossbowItem.isCharged(mainHand);
+        ItemStack offHand = client.player.getOffHandStack();
+        boolean isCrossbow = mainHand.getItem() == Items.CROSSBOW || offHand.getItem() == Items.CROSSBOW;
+
+        boolean isEmpty = false;
+        if (mainHand.getItem() == Items.CROSSBOW && !CrossbowItem.isCharged(mainHand)) {
+            isEmpty = true;
+        } else if (offHand.getItem() == Items.CROSSBOW && !CrossbowItem.isCharged(offHand)) {
+            isEmpty = true;
+        }
 
         if (client.options.useKey.isPressed()) {
             if (isEmpty) {
