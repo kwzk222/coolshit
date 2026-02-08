@@ -196,6 +196,25 @@ public class ModConfig {
     public boolean showHpDecimals = false;
     public boolean showLowestArmorPiece = false;
     public boolean doubleEnemyInfoRange = false;
+    public boolean showBlastProtectionCount = false;
+
+    // --- Potion Module ---
+    public boolean potionModuleEnabled = false;
+    public String potionHotkey = "key.keyboard.left.alt";
+    public double potionActivationPitch = 60.0;
+    public double potionHealthThreshold = 10.0;
+    public boolean potionThrow = true;
+    public boolean potionRestoreSlot = true;
+    public int potionStrengthThreshold = 400;
+    public int potionSpeedThreshold = 400;
+    public int potionFireResThreshold = 400;
+
+    // --- Jump Reset ---
+    public boolean jumpResetEnabled = false;
+    public String jumpResetHotkey = "key.keyboard.b";
+    public int jumpResetDelay = 0;
+    public int jumpResetFailChance = 0;
+    public int jumpResetMaxExtraDelay = 5;
 
 
     public List<String> teammates = new ArrayList<>();

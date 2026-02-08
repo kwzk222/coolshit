@@ -593,6 +593,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, the armor piece with the lowest durability will be identified (H, C, L, B)."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.showLowestArmorPiece = newValue)
                     .build());
+            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show Blast Protection Count"), TutorialMod.CONFIG.showBlastProtectionCount)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("If enabled, the number of armor pieces with Blast Protection will be displayed."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.showBlastProtectionCount = newValue)
+                    .build());
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Extended Detection Range"), TutorialMod.CONFIG.doubleEnemyInfoRange)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("If enabled, the detection range for enemy info will be doubled."))
@@ -638,6 +643,35 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchMineMaxDelay = newValue)
                     .build());
 
+            // Jump Reset
+            SubCategoryBuilder jumpResetSub = entryBuilder.startSubCategory(Text.literal("Jump Reset"));
+            jumpResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.jumpResetEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("If enabled, you will automatically jump after taking damage."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetEnabled = newValue)
+                    .build());
+            jumpResetSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.jumpResetHotkey)
+                    .setDefaultValue("key.keyboard.b")
+                    .setTooltip(Text.literal("The hotkey that must be held for Jump Reset to trigger."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetHotkey = newValue)
+                    .build());
+            jumpResetSub.add(entryBuilder.startIntSlider(Text.literal("Delay"), TutorialMod.CONFIG.jumpResetDelay, 0, 10)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The delay (ticks) between being hit and jumping."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetDelay = newValue)
+                    .build());
+            jumpResetSub.add(entryBuilder.startIntSlider(Text.literal("Fail Chance (%)"), TutorialMod.CONFIG.jumpResetFailChance, 0, 100)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The percentage chance that the jump will be delayed randomly."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetFailChance = newValue)
+                    .build());
+            jumpResetSub.add(entryBuilder.startIntSlider(Text.literal("Max Extra Fail Delay"), TutorialMod.CONFIG.jumpResetMaxExtraDelay, 1, 20)
+                    .setDefaultValue(5)
+                    .setTooltip(Text.literal("The maximum extra delay (ticks) when a jump 'fails'."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetMaxExtraDelay = newValue)
+                    .build());
+            movement.addEntry(jumpResetSub.build());
+
             // Misc Category
             ConfigCategory misc = builder.getOrCreateCategory(Text.literal("Misc"));
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled)
@@ -679,6 +713,53 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setDefaultValue(0)
                     .setTooltip(Text.literal("The cooldown duration (ticks) set after a reset occurs. 0 is fastest, 5 is vanilla. Default: 0"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetDelay = newValue)
+                    .build());
+
+            // Potion Module Category
+            ConfigCategory potionModule = builder.getOrCreateCategory(Text.literal("Potion Module"));
+            potionModule.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.potionModuleEnabled)
+                    .setDefaultValue(false)
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionModuleEnabled = newValue)
+                    .build());
+            potionModule.addEntry(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.potionHotkey)
+                    .setDefaultValue("key.keyboard.left.alt")
+                    .setTooltip(Text.literal("The hotkey that must be held to activate the Potion Module."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionHotkey = newValue)
+                    .build());
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.potionActivationPitch, 0, 90)
+                    .setDefaultValue(60)
+                    .setTooltip(Text.literal("The minimum pitch (looking down) to activate the Potion Module."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionActivationPitch = newValue.doubleValue())
+                    .build());
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Health Threshold"), (long)TutorialMod.CONFIG.potionHealthThreshold, 1, 20)
+                    .setDefaultValue(10)
+                    .setTooltip(Text.literal("Health (HP) below which to use a Health Potion."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionHealthThreshold = newValue.doubleValue())
+                    .build());
+            potionModule.addEntry(entryBuilder.startBooleanToggle(Text.literal("Throw Potion"), TutorialMod.CONFIG.potionThrow)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("If enabled, the mod will throw the potion. If disabled, it will only switch to it."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionThrow = newValue)
+                    .build());
+            potionModule.addEntry(entryBuilder.startBooleanToggle(Text.literal("Restore Slot (Health)"), TutorialMod.CONFIG.potionRestoreSlot)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.literal("If enabled, the mod will switch back to the original slot after throwing a health potion."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionRestoreSlot = newValue)
+                    .build());
+            potionModule.addEntry(entryBuilder.startIntSlider(Text.literal("Strength Threshold (Ticks)"), TutorialMod.CONFIG.potionStrengthThreshold, 0, 1200)
+                    .setDefaultValue(400)
+                    .setTooltip(Text.literal("Remaining duration below which to use a Strength Potion."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionStrengthThreshold = newValue)
+                    .build());
+            potionModule.addEntry(entryBuilder.startIntSlider(Text.literal("Speed Threshold (Ticks)"), TutorialMod.CONFIG.potionSpeedThreshold, 0, 1200)
+                    .setDefaultValue(400)
+                    .setTooltip(Text.literal("Remaining duration below which to use a Speed Potion."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionSpeedThreshold = newValue)
+                    .build());
+            potionModule.addEntry(entryBuilder.startIntSlider(Text.literal("Fire Res Threshold (Ticks)"), TutorialMod.CONFIG.potionFireResThreshold, 0, 1200)
+                    .setDefaultValue(400)
+                    .setTooltip(Text.literal("Remaining duration below which to use a Fire Resistance Potion."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionFireResThreshold = newValue)
                     .build());
 
             // Trigger Bot Category

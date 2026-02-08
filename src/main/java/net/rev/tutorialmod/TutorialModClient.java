@@ -45,10 +45,12 @@ import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
+import net.rev.tutorialmod.modules.PotionModule;
 import net.rev.tutorialmod.modules.TriggerBot;
 import net.rev.tutorialmod.modules.misc.ClickSpamModule;
 import net.rev.tutorialmod.modules.movement.BridgeAssistModule;
 import net.rev.tutorialmod.modules.movement.ClutchModule;
+import net.rev.tutorialmod.modules.movement.JumpResetModule;
 import net.rev.tutorialmod.modules.movement.ParkourModule;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -67,7 +69,9 @@ public class TutorialModClient implements ClientModInitializer {
     private TriggerBot triggerBot;
     private AutoTotem autoTotem;
     private EnemyInfo enemyInfo;
+    private PotionModule potionModule;
     private ParkourModule parkourModule;
+    private JumpResetModule jumpResetModule;
     private ClutchModule clutchModule;
     private BridgeAssistModule bridgeAssistModule;
     private static OverlayManager overlayManager;
@@ -82,6 +86,10 @@ public class TutorialModClient implements ClientModInitializer {
 
     public EnemyInfo getEnemyInfo() {
         return enemyInfo;
+    }
+
+    public JumpResetModule getJumpResetModule() {
+        return jumpResetModule;
     }
 
 
@@ -156,7 +164,9 @@ public class TutorialModClient implements ClientModInitializer {
         triggerBot = new TriggerBot();
         autoTotem = new AutoTotem();
         enemyInfo = new EnemyInfo();
+        potionModule = new PotionModule();
         parkourModule = new ParkourModule();
+        jumpResetModule = new JumpResetModule();
         clutchModule = new ClutchModule();
         bridgeAssistModule = new BridgeAssistModule();
         overlayManager = new OverlayManager();
@@ -265,6 +275,14 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (clutchModule != null) {
             clutchModule.tick();
+        }
+
+        if (potionModule != null) {
+            potionModule.onTick(client);
+        }
+
+        if (jumpResetModule != null) {
+            jumpResetModule.onTick(client);
         }
 
         ClickSpamModule.onTick();

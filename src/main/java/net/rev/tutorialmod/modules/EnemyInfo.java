@@ -5,15 +5,19 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentHelper;
+import net.minecraft.enchantment.Enchantments;
 import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 
+import java.util.Optional;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class EnemyInfo {
 
@@ -71,19 +75,33 @@ public class EnemyInfo {
         }
         sb.append(getArmorDurability(player));
 
-        // Line 3: Potion Effects
-        String effects = player.getStatusEffects().stream()
-                .map(effect -> {
-                    Text effectName = effect.getEffectType().value().getName();
-                    int amplifier = effect.getAmplifier();
-                    return effectName.getString() + (amplifier > 0 ? " " + (amplifier + 1) : "");
-                })
-                .collect(Collectors.joining(", "));
-        if (!effects.isEmpty()) {
-            sb.append("\\n").append(effects);
+        // Line 3: Blast Protection Count
+        if (TutorialMod.CONFIG.showBlastProtectionCount) {
+            int bpCount = getBlastProtectionCount(player);
+            if (bpCount > 0) {
+                sb.append("\\n").append(bpCount).append(" BP");
+            }
         }
 
         return sb.toString();
+    }
+
+    private int getBlastProtectionCount(PlayerEntity player) {
+        int count = 0;
+        var world = MinecraftClient.getInstance().world;
+        if (world == null) return 0;
+        var registry = world.getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT);
+        Optional<RegistryEntry.Reference<Enchantment>> bpEntry = registry.getEntry(Enchantments.BLAST_PROTECTION.getValue());
+
+        if (bpEntry.isPresent()) {
+            for (EquipmentSlot slot : ARMOR_SLOTS) {
+                ItemStack stack = player.getEquippedStack(slot);
+                if (EnchantmentHelper.getLevel(bpEntry.get(), stack) > 0) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private static final EquipmentSlot[] ARMOR_SLOTS = {

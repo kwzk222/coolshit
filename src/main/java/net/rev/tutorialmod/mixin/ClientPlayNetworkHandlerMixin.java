@@ -44,6 +44,12 @@ public class ClientPlayNetworkHandlerMixin {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
+        if (packet.getStatus() == 2 && packet.getEntity(client.world) == client.player) {
+            if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getJumpResetModule() != null) {
+                TutorialModClient.getInstance().getJumpResetModule().onHurt();
+            }
+        }
+
         if (packet.getStatus() == 35 && packet.getEntity(client.world) == client.player) {
             if (!TutorialMod.CONFIG.autoTotemEnabled || !TutorialMod.CONFIG.autoTotemRefillOnPop) {
                 return;
