@@ -719,6 +719,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("Automatically use an empty bucket on water sources when right-clicking."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue)
                     .build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enable Lava Drain"), TutorialMod.CONFIG.waterDrainLavaEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Allows the Water Drain feature to also work with Lava source blocks."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainLavaEnabled = newValue)
+                    .build());
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Water Drain Mode"), TutorialMod.CONFIG.autoWaterDrainMode)
                     .setDefaultValue(false)
                     .setTooltip(Text.literal("Automatically pick up isolated water source blocks you look at."))

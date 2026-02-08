@@ -138,7 +138,7 @@ public class TutorialModClient implements ClientModInitializer {
     private int drainSwitchToTicks = -1;
     private int drainSwitchBackTimer = -1;
 
-    private enum ExtinguishState { NONE, SWITCH_TO_BUCKET, PLACING, PICKING_UP, SWITCHING_BACK }
+    private enum ExtinguishState { NONE, PUNCHING, SWITCH_TO_BUCKET, PLACING, PICKING_UP, SWITCHING_BACK }
     private ExtinguishState currentExtinguishState = ExtinguishState.NONE;
     private int extinguishTimer = -1;
     private int originalSlotBeforeExtinguish = -1;
@@ -1051,6 +1051,8 @@ public class TutorialModClient implements ClientModInitializer {
         // Condition: Not swimming/in water
         if (client.player.isTouchingWater()) return;
 
+        boolean isNether = client.world.getRegistryKey() == World.NETHER;
+
         double range = client.player.getBlockInteractionRange();
         Vec3d start = client.player.getCameraPosVec(1.0f);
         Vec3d dir = client.player.getRotationVec(1.0f);
@@ -1068,9 +1070,16 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (hit.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = hit.getBlockPos();
-            if (client.world.getFluidState(pos).isStill()) {
-                // Check if isolated (no adjacent water sources)
-                if (isIsolatedWater(client.world, pos)) {
+            var fluidState = client.world.getFluidState(pos);
+            if (fluidState.isStill()) {
+                boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
+                boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
+
+                if (isWater && isNether) return; // No water drain in Nether
+                if (isLava && !TutorialMod.CONFIG.waterDrainLavaEnabled) return; // Lava disabled
+
+                // Check if isolated (no adjacent fluids of same type)
+                if (isIsolatedFluid(client.world, pos)) {
                     int bucketSlot = findEmptyBucketInHotbar(client.player);
                     PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
                     if (bucketSlot != -1 && inventory.getSelectedSlot() != bucketSlot) {
@@ -1094,11 +1103,13 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private boolean isIsolatedWater(World world, BlockPos pos) {
+    private boolean isIsolatedFluid(World world, BlockPos pos) {
+        var state = world.getFluidState(pos);
         Direction[] horizontal = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
         for (Direction d : horizontal) {
             BlockPos neighbor = pos.offset(d);
-            if (world.getFluidState(neighbor).isStill()) {
+            var neighborState = world.getFluidState(neighbor);
+            if (neighborState.isStill() && neighborState.getFluid().equals(state.getFluid())) {
                 return false;
             }
         }
@@ -1112,22 +1123,14 @@ public class TutorialModClient implements ClientModInitializer {
         }
         if (client.player == null || client.world == null) return;
 
+        boolean isNether = client.world.getRegistryKey() == World.NETHER;
+
         if (currentExtinguishState == ExtinguishState.NONE) {
             if (client.player.isOnFire() && client.player.getPitch() >= TutorialMod.CONFIG.autoExtinguishPitch) {
-                int waterSlot = findWaterBucketInHotbar(client.player);
-                if (waterSlot != -1) {
-                    PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-                    originalSlotBeforeExtinguish = inventory.getSelectedSlot();
-
-                    if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
-                        currentExtinguishState = ExtinguishState.SWITCH_TO_BUCKET;
-                        extinguishTimer = TutorialMod.CONFIG.waterDrainSwitchToDelay;
-                    } else {
-                        syncSlot(waterSlot);
-                        currentExtinguishState = ExtinguishState.PLACING;
-                        extinguishTimer = 0;
-                    }
-                }
+                PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                originalSlotBeforeExtinguish = inventory.getSelectedSlot();
+                currentExtinguishState = ExtinguishState.PUNCHING;
+                extinguishTimer = 0;
             }
         } else {
             if (extinguishTimer > 0) {
@@ -1136,6 +1139,42 @@ public class TutorialModClient implements ClientModInitializer {
             }
 
             switch (currentExtinguishState) {
+                case PUNCHING:
+                    // Punch fire if looking at it
+                    double range = client.player.getBlockInteractionRange();
+                    Vec3d start = client.player.getCameraPosVec(1.0f);
+                    Vec3d dir = client.player.getRotationVec(1.0f);
+                    Vec3d end = start.add(dir.multiply(range));
+                    BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player));
+                    if (hit.getType() == HitResult.Type.BLOCK && client.world.getBlockState(hit.getBlockPos()).isOf(Blocks.FIRE)) {
+                        if (client.interactionManager != null) {
+                            client.interactionManager.attackBlock(hit.getBlockPos(), hit.getSide());
+                            client.player.swingHand(Hand.MAIN_HAND);
+                        }
+                    }
+
+                    if (isNether) {
+                        // Only punch fire in Nether
+                        currentExtinguishState = ExtinguishState.NONE;
+                        originalSlotBeforeExtinguish = -1;
+                    } else {
+                        // Continue to water sequence
+                        int waterSlot = findWaterBucketInHotbar(client.player);
+                        if (waterSlot != -1) {
+                            if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
+                                currentExtinguishState = ExtinguishState.SWITCH_TO_BUCKET;
+                                extinguishTimer = TutorialMod.CONFIG.waterDrainSwitchToDelay;
+                            } else {
+                                syncSlot(waterSlot);
+                                currentExtinguishState = ExtinguishState.PLACING;
+                                extinguishTimer = 0;
+                            }
+                        } else {
+                            currentExtinguishState = ExtinguishState.NONE;
+                            originalSlotBeforeExtinguish = -1;
+                        }
+                    }
+                    break;
                 case SWITCH_TO_BUCKET:
                     int waterSlot = findWaterBucketInHotbar(client.player);
                     if (waterSlot != -1) {
@@ -1144,6 +1183,7 @@ public class TutorialModClient implements ClientModInitializer {
                         extinguishTimer = 0;
                     } else {
                         currentExtinguishState = ExtinguishState.NONE;
+                        originalSlotBeforeExtinguish = -1;
                     }
                     break;
                 case PLACING:
@@ -1154,6 +1194,7 @@ public class TutorialModClient implements ClientModInitializer {
                         extinguishTimer = 1; // Wait 1 tick for placement to register
                     } else {
                         currentExtinguishState = ExtinguishState.NONE;
+                        originalSlotBeforeExtinguish = -1;
                     }
                     break;
                 case PICKING_UP:
@@ -1164,6 +1205,7 @@ public class TutorialModClient implements ClientModInitializer {
                         extinguishTimer = TutorialMod.CONFIG.waterDrainSwitchBackDelay;
                     } else {
                         currentExtinguishState = ExtinguishState.NONE;
+                        originalSlotBeforeExtinguish = -1;
                     }
                     break;
                 case SWITCHING_BACK:
@@ -1195,6 +1237,8 @@ public class TutorialModClient implements ClientModInitializer {
         // Condition: Not swimming/in water
         if (client.player.isTouchingWater()) return false;
 
+        boolean isNether = client.world.getRegistryKey() == World.NETHER;
+
         // Use attribute-based reach
         double range = client.player.getBlockInteractionRange();
         Vec3d start = client.player.getCameraPosVec(1.0f);
@@ -1213,7 +1257,14 @@ public class TutorialModClient implements ClientModInitializer {
         ));
 
         if (hit.getType() == HitResult.Type.BLOCK) {
-            if (client.world.getFluidState(hit.getBlockPos()).isStill()) {
+            var fluidState = client.world.getFluidState(hit.getBlockPos());
+            if (fluidState.isStill()) {
+                boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
+                boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
+
+                if (isWater && isNether) return false; // No water drain in Nether
+                if (isLava && !TutorialMod.CONFIG.waterDrainLavaEnabled) return false; // Lava disabled
+
                 int bucketSlot = findEmptyBucketInHotbar(client.player);
                 PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
                 if (bucketSlot != -1 && inventory.getSelectedSlot() != bucketSlot) {
@@ -1257,7 +1308,10 @@ public class TutorialModClient implements ClientModInitializer {
         if (drainRestoreTicks > 0) {
             drainRestoreTicks--;
 
-            if (client.player.getMainHandStack().getItem() == Items.WATER_BUCKET && drainSwitchBackTimer == -1) {
+            ItemStack held = client.player.getMainHandStack();
+            boolean isFull = held.getItem() == Items.WATER_BUCKET || held.getItem() == Items.LAVA_BUCKET;
+
+            if (isFull && drainSwitchBackTimer == -1) {
                 drainSwitchBackTimer = TutorialMod.CONFIG.waterDrainSwitchBackDelay;
                 if (drainSwitchBackTimer == 0) {
                     restoreDrainSlot();
