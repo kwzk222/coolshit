@@ -130,6 +130,9 @@ public class TutorialModClient implements ClientModInitializer {
     private int pointingTickCounter = 0;
     private String lastLongCoordsInfo = null;
 
+    private int originalSlotBeforeDrain = -1;
+    private int drainRestoreTicks = -1;
+
     private int crossbowUseTicks = 0;
     private boolean crossbowWasUsing = false;
 
@@ -284,6 +287,8 @@ public class TutorialModClient implements ClientModInitializer {
         if (jumpResetModule != null) {
             jumpResetModule.onTick(client);
         }
+
+        handleWaterDrainRestore(client);
 
         ClickSpamModule.onTick();
     }
@@ -1004,6 +1009,66 @@ public class TutorialModClient implements ClientModInitializer {
     private PlayerEntity getPlayerLookingAt(MinecraftClient client, double maxDistance) {
         Entity entity = getEntityLookingAt(client, maxDistance, false);
         return (entity instanceof PlayerEntity) ? (PlayerEntity) entity : null;
+    }
+
+    public void onItemUse() {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null || client.world == null) return;
+
+        // Condition: Not swimming/in water
+        if (client.player.isTouchingWater()) return;
+
+        // Find water source at crosshair (up to 4.5 blocks as per request "in range")
+        double range = 4.5;
+        Vec3d start = client.player.getCameraPosVec(1.0f);
+        Vec3d dir = client.player.getRotationVec(1.0f);
+        Vec3d end = start.add(dir.multiply(range));
+
+        // Check for entities blocking
+        Entity blocking = getEntityLookingAt(client, range, false);
+        if (blocking != null) return;
+
+        BlockHitResult hit = client.world.raycast(new RaycastContext(
+                start, end,
+                RaycastContext.ShapeType.OUTLINE,
+                RaycastContext.FluidHandling.SOURCE_ONLY,
+                client.player
+        ));
+
+        if (hit.getType() == HitResult.Type.BLOCK) {
+            if (client.world.getFluidState(hit.getBlockPos()).isStill()) {
+                int bucketSlot = findEmptyBucketInHotbar(client.player);
+                PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                if (bucketSlot != -1 && inventory.getSelectedSlot() != bucketSlot) {
+                    originalSlotBeforeDrain = inventory.getSelectedSlot();
+                    syncSlot(bucketSlot);
+                    drainRestoreTicks = 20; // 1 second timeout
+                }
+            }
+        }
+    }
+
+    private void handleWaterDrainRestore(MinecraftClient client) {
+        if (drainRestoreTicks > 0) {
+            drainRestoreTicks--;
+            if (client.player.getMainHandStack().getItem() == Items.WATER_BUCKET) {
+                if (originalSlotBeforeDrain != -1) syncSlot(originalSlotBeforeDrain);
+                drainRestoreTicks = -1;
+                originalSlotBeforeDrain = -1;
+            } else if (drainRestoreTicks == 0) {
+                if (originalSlotBeforeDrain != -1) syncSlot(originalSlotBeforeDrain);
+                drainRestoreTicks = -1;
+                originalSlotBeforeDrain = -1;
+            }
+        }
+    }
+
+    private int findEmptyBucketInHotbar(PlayerEntity player) {
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).getItem() == Items.BUCKET) return i;
+        }
+        return -1;
     }
 
     private void handleChatMacros(MinecraftClient client) {

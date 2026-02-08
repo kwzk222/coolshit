@@ -30,4 +30,11 @@ public class MinecraftClientMixin {
             TutorialModClient.getInstance().onReachSwap();
         }
     }
+
+    @Inject(method = "doItemUse", at = @At("HEAD"))
+    private void onDoItemUse(CallbackInfo ci) {
+        if (TutorialModClient.getInstance() != null) {
+            TutorialModClient.getInstance().onItemUse();
+        }
+    }
 }

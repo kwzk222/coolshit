@@ -45,7 +45,7 @@ public class PotionModule {
         }
 
         // 2. Status Effects Check
-        if (checkEffect(client, StatusEffects.STRENGTH, TutorialMod.CONFIG.potionStrengthThreshold)) {
+        if (checkEffect(client, StatusEffects.STRENGTH, (int)(TutorialMod.CONFIG.potionStrengthThreshold * 20))) {
             int slot = findPotion(client, StatusEffects.STRENGTH);
             if (slot != -1) {
                 usePotion(client, slot, false);
@@ -53,7 +53,7 @@ public class PotionModule {
             }
         }
 
-        if (checkEffect(client, StatusEffects.SPEED, TutorialMod.CONFIG.potionSpeedThreshold)) {
+        if (checkEffect(client, StatusEffects.SPEED, (int)(TutorialMod.CONFIG.potionSpeedThreshold * 20))) {
             int slot = findPotion(client, StatusEffects.SPEED);
             if (slot != -1) {
                 usePotion(client, slot, false);
@@ -61,7 +61,7 @@ public class PotionModule {
             }
         }
 
-        if (checkEffect(client, StatusEffects.FIRE_RESISTANCE, TutorialMod.CONFIG.potionFireResThreshold)) {
+        if (checkEffect(client, StatusEffects.FIRE_RESISTANCE, (int)(TutorialMod.CONFIG.potionFireResThreshold * 20))) {
             int slot = findPotion(client, StatusEffects.FIRE_RESISTANCE);
             if (slot != -1) {
                 usePotion(client, slot, false);

@@ -97,6 +97,7 @@ public class ModConfig {
     public boolean miningResetSimulateStops = false;
     public double miningResetThreshold = 0.92;
     public int miningResetDelay = 0;
+    public boolean waterDrainEnabled = false;
 
     // --- General ---
     public boolean masterEnabled = true;
@@ -131,6 +132,7 @@ public class ModConfig {
     public boolean triggerBotIncludeCrystals = true;
     public boolean triggerBotActiveInInventory = false;
     public double triggerBotMaxRange = 3.0;
+    public double triggerBotMinRange = 0.0;
     public boolean quickCrossbowEnabled = true;
     public int quickCrossbowReloadThreshold = 4;
     public transient boolean triggerBotToggledOn = true;
@@ -205,9 +207,9 @@ public class ModConfig {
     public double potionHealthThreshold = 10.0;
     public boolean potionThrow = true;
     public boolean potionRestoreSlot = true;
-    public int potionStrengthThreshold = 400;
-    public int potionSpeedThreshold = 400;
-    public int potionFireResThreshold = 400;
+    public double potionStrengthThreshold = 20.0;
+    public double potionSpeedThreshold = 20.0;
+    public double potionFireResThreshold = 20.0;
 
     // --- Jump Reset ---
     public boolean jumpResetEnabled = false;

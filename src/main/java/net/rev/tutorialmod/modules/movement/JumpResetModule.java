@@ -14,9 +14,10 @@ public class JumpResetModule {
     public void onTick(MinecraftClient client) {
         if (jumpDelayTicks > 0) {
             jumpDelayTicks--;
-        } else if (jumpDelayTicks == 0) {
-            jump(client);
-            jumpDelayTicks = -1;
+            if (jumpDelayTicks == 0) {
+                jump(client);
+                jumpDelayTicks = -1;
+            }
         }
     }
 
@@ -49,24 +50,19 @@ public class JumpResetModule {
     }
 
     private void jump(MinecraftClient client) {
-        if (client.player != null) {
-            client.options.jumpKey.setPressed(true);
-            // We'll release it next tick or just let Minecraft handle it if it was already pressed.
-            // Actually, for jump reset, just triggering the jump is enough.
-            client.execute(() -> {
-                // This runs on the client thread.
+        client.execute(() -> {
+            if (client.player != null) {
                 // To simulate a press and release:
-                // Actually, client.player.jump() might be better if we want it immediate,
-                // but setting jumpKey.setPressed(true) is more "authentic".
-                // But we need to make sure it gets released.
-                // MinecraftClient.doAttack/doItemUse don't help here.
-            });
+                client.options.jumpKey.setPressed(true);
 
-            // Re-evaluating: client.player.jump() is what's usually used for auto-jump.
-            if (client.player.isOnGround()) {
-                client.player.jump();
+                // Re-evaluating: client.player.jump() is what's usually used for auto-jump.
+                if (client.player.isOnGround()) {
+                    client.player.jump();
+                }
+
+                // Release it
+                client.options.jumpKey.setPressed(false);
             }
-            client.options.jumpKey.setPressed(false);
-        }
+        });
     }
 }

@@ -714,6 +714,11 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("The cooldown duration (ticks) set after a reset occurs. 0 is fastest, 5 is vanilla. Default: 0"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetDelay = newValue)
                     .build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Water Drain"), TutorialMod.CONFIG.waterDrainEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.literal("Automatically use an empty bucket on water sources when right-clicking."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue)
+                    .build());
 
             // Potion Module Category
             ConfigCategory potionModule = builder.getOrCreateCategory(Text.literal("Potion Module"));
@@ -746,20 +751,20 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, the mod will switch back to the original slot after throwing a health potion."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionRestoreSlot = newValue)
                     .build());
-            potionModule.addEntry(entryBuilder.startIntSlider(Text.literal("Strength Threshold (Ticks)"), TutorialMod.CONFIG.potionStrengthThreshold, 0, 1200)
-                    .setDefaultValue(400)
-                    .setTooltip(Text.literal("Remaining duration below which to use a Strength Potion."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionStrengthThreshold = newValue)
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Strength Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionStrengthThreshold * 10), 0, 600)
+                    .setDefaultValue(200)
+                    .setTooltip(Text.literal("Remaining duration (seconds * 10) below which to use a Strength Potion."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionStrengthThreshold = newValue / 10.0)
                     .build());
-            potionModule.addEntry(entryBuilder.startIntSlider(Text.literal("Speed Threshold (Ticks)"), TutorialMod.CONFIG.potionSpeedThreshold, 0, 1200)
-                    .setDefaultValue(400)
-                    .setTooltip(Text.literal("Remaining duration below which to use a Speed Potion."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionSpeedThreshold = newValue)
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Speed Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionSpeedThreshold * 10), 0, 600)
+                    .setDefaultValue(200)
+                    .setTooltip(Text.literal("Remaining duration (seconds * 10) below which to use a Speed Potion."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionSpeedThreshold = newValue / 10.0)
                     .build());
-            potionModule.addEntry(entryBuilder.startIntSlider(Text.literal("Fire Res Threshold (Ticks)"), TutorialMod.CONFIG.potionFireResThreshold, 0, 1200)
-                    .setDefaultValue(400)
-                    .setTooltip(Text.literal("Remaining duration below which to use a Fire Resistance Potion."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionFireResThreshold = newValue)
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Fire Res Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionFireResThreshold * 10), 0, 600)
+                    .setDefaultValue(200)
+                    .setTooltip(Text.literal("Remaining duration (seconds * 10) below which to use a Fire Resistance Potion."))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.potionFireResThreshold = newValue / 10.0)
                     .build());
 
             // Trigger Bot Category
@@ -809,10 +814,15 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setTooltip(Text.literal("If enabled, the Trigger Bot will remain functional while an inventory screen is open."))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotActiveInInventory = newValue)
                     .build());
-            triggerBot.addEntry(entryBuilder.startLongSlider(Text.literal("Trigger Bot Max Range"), (long)(TutorialMod.CONFIG.triggerBotMaxRange * 10), 0, 40)
+            triggerBot.addEntry(entryBuilder.startLongSlider(Text.literal("Trigger Bot Max Range"), (long)(TutorialMod.CONFIG.triggerBotMaxRange * 10), 0, 45)
                     .setDefaultValue(30)
                     .setTooltip(Text.literal("The maximum distance (blocks * 10) to automatically attack entities. Default: 30 (3 blocks)"))
                     .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMaxRange = newValue / 10.0)
+                    .build());
+            triggerBot.addEntry(entryBuilder.startLongSlider(Text.literal("Trigger Bot Min Range"), (long)(TutorialMod.CONFIG.triggerBotMinRange * 10), 0, 45)
+                    .setDefaultValue(0)
+                    .setTooltip(Text.literal("The minimum distance (blocks * 10) to automatically attack entities. Default: 0"))
+                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotMinRange = newValue / 10.0)
                     .build());
 
             // Quick Crossbow SubCategory

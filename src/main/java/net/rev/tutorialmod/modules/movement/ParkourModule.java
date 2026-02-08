@@ -37,6 +37,9 @@ public class ParkourModule {
     private void tick() {
         if (mc.player == null || mc.world == null) return;
 
+        // Disable if manual jump is held
+        if (mc.options.jumpKey.isPressed()) return;
+
         var player = mc.player;
 
         // Must be on ground - STRICT check to prevent flying

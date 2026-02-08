@@ -68,6 +68,11 @@ public class TriggerBot {
             entity = findEntityInCrosshair(TutorialMod.CONFIG.triggerBotMaxRange);
         }
 
+        // Minimum range check
+        if (entity != null && mc.player != null && mc.player.distanceTo(entity) < TutorialMod.CONFIG.triggerBotMinRange) {
+            entity = null;
+        }
+
         if (entity != null && shouldAttack(entity)) {
             if (entity != lastTarget) {
                 lastTarget = entity;
