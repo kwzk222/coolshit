@@ -8,13 +8,9 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.platform.win32.User32;
-import com.sun.jna.platform.win32.WinDef.HWND;
-import com.sun.jna.platform.win32.WinDef.RECT;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,8 +40,16 @@ public class ESPModule {
 
         long now = System.currentTimeMillis();
         long refreshInterval = 1000 / Math.max(1, TutorialMod.CONFIG.espRefreshRate);
-        if (now - lastRefreshTime < refreshInterval) {
-            return;
+
+        // Always calculate projection to keep it smooth with camera movement,
+        // but throttle the socket updates if desired.
+        // Actually, if we throttle, it will jitter.
+        // The user complained it "doesn't seem to change anything", so let's just update as fast as possible for now
+        // unless they specifically set a very low refresh rate.
+        if (TutorialMod.CONFIG.espRefreshRate < 60) {
+            if (now - lastRefreshTime < refreshInterval) {
+                return;
+            }
         }
         lastRefreshTime = now;
 
@@ -73,7 +77,7 @@ public class ESPModule {
 
         VanishedPlayerData data = vanishedPlayers.get(entityId);
         if (data != null) {
-            // In 1.21.1, deltas are typically encoded as (short)(delta * 4096)
+            // Delta values are in 1/4096th of a block
             double dx = deltaX / 4096.0;
             double dy = deltaY / 4096.0;
             double dz = deltaZ / 4096.0;
@@ -91,7 +95,7 @@ public class ESPModule {
         for (PlayerEntity player : client.world.getPlayers()) {
             if (player == client.player || !player.isAlive() || player.isInvisibleTo(client.player)) continue;
 
-            // Interpolated position
+            // Interpolated position for smooth movement
             double x = MathHelper.lerp(tickDelta, player.lastRenderX, player.getX());
             double y = MathHelper.lerp(tickDelta, player.lastRenderY, player.getY());
             double z = MathHelper.lerp(tickDelta, player.lastRenderZ, player.getZ());
@@ -119,11 +123,12 @@ public class ESPModule {
     }
 
     private void projectAndAppend(StringBuilder data, Vec3d worldPos, double height, Matrix4f projMat, Matrix4f viewMat, Vec3d cameraPos, String label) {
-        Vec3d bottomPos = worldPos.subtract(cameraPos);
-        Vec3d topPos = bottomPos.add(0, height, 0);
+        // Use camera-relative coordinates
+        Vec3d relPos = worldPos.subtract(cameraPos);
 
-        Vector4f bottom2D = project(bottomPos, projMat, viewMat);
-        Vector4f top2D = project(topPos, projMat, viewMat);
+        // Project bottom center and top center
+        Vector4f bottom2D = project(relPos, projMat, viewMat);
+        Vector4f top2D = project(relPos.add(0, height, 0), projMat, viewMat);
 
         if (bottom2D != null && top2D != null) {
             int bx = (int) bottom2D.x;
@@ -132,12 +137,15 @@ public class ESPModule {
             int ty = (int) top2D.y;
 
             int boxHeight = Math.abs(by - ty);
+            // Constant aspect ratio for stability
             int boxWidth = (int) (boxHeight * 0.6);
             int boxX = bx - boxWidth / 2;
             int boxY = ty;
 
-            // Simple clipping: if the box is totally off screen, don't send
-            if (boxX + boxWidth < 0 || boxX > client.getWindow().getWidth() || boxY + boxHeight < 0 || boxY > client.getWindow().getHeight()) {
+            // Basic off-screen check
+            int winW = client.getWindow().getWidth();
+            int winH = client.getWindow().getHeight();
+            if (boxX + boxWidth < -100 || boxX > winW + 100 || boxY + boxHeight < -100 || boxY > winH + 100) {
                 return;
             }
 
@@ -152,10 +160,12 @@ public class ESPModule {
 
     private Vector4f project(Vec3d relPos, Matrix4f projMat, Matrix4f viewMat) {
         Vector4f vec = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
+        // modelViewMatrix in render() usually already includes camera translation if called with world coords?
+        // Actually, in WorldRenderer.render, it's typically just rotation if you pass camera-relative coords.
         vec.mul(viewMat);
         vec.mul(projMat);
 
-        if (vec.w > 0.1f) { // Increased threshold for stability
+        if (vec.w > 0.001f) {
             float x = (vec.x / vec.w + 1.0f) / 2.0f * client.getWindow().getWidth();
             float y = (1.0f - vec.y / vec.w) / 2.0f * client.getWindow().getHeight();
             return new Vector4f(x, y, 0, 0);
@@ -177,34 +187,15 @@ public class ESPModule {
     public void syncWindowBounds() {
         if (net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().isRunning()) {
             var window = client.getWindow();
-            int x = window.getX();
-            int y = window.getY();
+
+            // Using GLFW to get precise logical coordinates for the client area
+            int[] left = new int[1], top = new int[1], right = new int[1], bottom = new int[1];
+            GLFW.glfwGetWindowFrameSize(window.getHandle(), left, top, right, bottom);
+
+            int x = window.getX() + left[0];
+            int y = window.getY() + top[0];
             int w = window.getWidth();
             int h = window.getHeight();
-
-            if (System.getProperty("os.name").toLowerCase().contains("win")) {
-                try {
-                    HWND hwnd = new HWND(new Pointer(window.getHandle()));
-                    RECT windowRect = new RECT();
-                    RECT clientRect = new RECT();
-                    if (User32.INSTANCE.GetWindowRect(hwnd, windowRect) && User32.INSTANCE.GetClientRect(hwnd, clientRect)) {
-                        int windowWidth = windowRect.right - windowRect.left;
-                        int windowHeight = windowRect.bottom - windowRect.top;
-                        int clientWidth = clientRect.right - clientRect.left;
-                        int clientHeight = clientRect.bottom - clientRect.top;
-
-                        int border = (windowWidth - clientWidth) / 2;
-                        int titleBar = windowHeight - clientHeight - border;
-
-                        x = windowRect.left + border;
-                        y = windowRect.top + titleBar;
-                        w = clientWidth;
-                        h = clientHeight;
-                    }
-                } catch (Throwable t) {
-                    // Fallback
-                }
-            }
 
             net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(
                 String.format("WINDOW_SYNC %d,%d,%d,%d", x, y, w, h)
