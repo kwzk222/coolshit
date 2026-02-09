@@ -67,8 +67,8 @@ public class ClientPlayNetworkHandlerMixin {
         }
     }
 
-    @Inject(method = "onEntityUpdate", at = @At("HEAD"))
-    private void onEntityUpdate(EntityS2CPacket packet, CallbackInfo ci) {
+    @Inject(method = "onEntity", at = @At("HEAD"))
+    private void onEntity(EntityS2CPacket packet, CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world != null) {
             Entity entity = packet.getEntity(client.world);
