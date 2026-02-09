@@ -29,7 +29,7 @@ public class ESPOverlayManager {
                 return;
             }
 
-            System.out.println("[TutorialMod] Starting ESP overlay process: " + extractedJar.getAbsolutePath());
+
             ProcessBuilder pb = new ProcessBuilder("java", "-jar", extractedJar.getAbsolutePath());
             overlayProcess = pb.start();
 

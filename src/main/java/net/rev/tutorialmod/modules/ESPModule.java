@@ -12,6 +12,8 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.glfw.GLFW;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,7 +32,7 @@ public class ESPModule {
         }
     }
 
-    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f projMat, Matrix4f viewMat) {
+    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f projectionMatrix, Matrix4f modelViewMatrix) {
         if (!TutorialMod.CONFIG.showESP || client.player == null || client.world == null) {
             vanishedPlayers.clear();
             return;
@@ -48,7 +50,9 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        updateESP(tickCounter, camera, projMat, viewMat);
+        // Use the game's actual matrices
+        Matrix4f combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
+        updateESP(tickCounter, camera, combinedMatrix);
     }
 
     public void updateVanishedPlayer(int entityId, double x, double y, double z) {
@@ -74,10 +78,10 @@ public class ESPModule {
         }
     }
 
-    private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f projMat, Matrix4f viewMat) {
+    private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f combinedMatrix) {
         StringBuilder boxesData = new StringBuilder();
-        Vec3d cameraPos = camera.getCameraPos();
         float tickDelta = tickCounter.getTickProgress(true);
+        Vec3d cameraPos = camera.getCameraPos();
 
         for (PlayerEntity player : client.world.getPlayers()) {
             if (player == client.player || !player.isAlive() || player.isInvisibleTo(client.player)) continue;
@@ -86,31 +90,29 @@ public class ESPModule {
             double y = MathHelper.lerp(tickDelta, player.lastRenderY, player.getY());
             double z = MathHelper.lerp(tickDelta, player.lastRenderZ, player.getZ());
 
-            appendEntityBox(boxesData, player, new Vec3d(x, y, z), projMat, viewMat, cameraPos, "");
+            appendEntityBox(boxesData, player, new Vec3d(x, y, z).subtract(cameraPos), combinedMatrix, "");
         }
 
         if (TutorialMod.CONFIG.espAntiVanish) {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
-                appendVanishedBox(boxesData, entry.getValue().pos, projMat, viewMat, cameraPos);
+                appendVanishedBox(boxesData, entry.getValue().pos.subtract(cameraPos), combinedMatrix);
             }
         }
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
     }
 
-    private void appendEntityBox(StringBuilder data, Entity entity, Vec3d pos, Matrix4f projMat, Matrix4f viewMat, Vec3d cameraPos, String label) {
-        projectAndAppend(data, pos, entity.getHeight(), projMat, viewMat, cameraPos, label);
+    private void appendEntityBox(StringBuilder data, Entity entity, Vec3d relPos, Matrix4f combinedMatrix, String label) {
+        projectAndAppend(data, relPos, entity.getHeight(), combinedMatrix, label);
     }
 
-    private void appendVanishedBox(StringBuilder data, Vec3d pos, Matrix4f projMat, Matrix4f viewMat, Vec3d cameraPos) {
-        projectAndAppend(data, pos, 1.8, projMat, viewMat, cameraPos, "Vanished");
+    private void appendVanishedBox(StringBuilder data, Vec3d relPos, Matrix4f combinedMatrix) {
+        projectAndAppend(data, relPos, 1.8, combinedMatrix, "Vanished");
     }
 
-    private void projectAndAppend(StringBuilder data, Vec3d worldPos, double height, Matrix4f projMat, Matrix4f viewMat, Vec3d cameraPos, String label) {
-        Vec3d relPos = worldPos.subtract(cameraPos);
-
-        Vector4f bottom2D = project(relPos, projMat, viewMat);
-        Vector4f top2D = project(relPos.add(0, height, 0), projMat, viewMat);
+    private void projectAndAppend(StringBuilder data, Vec3d relPos, double height, Matrix4f combinedMatrix, String label) {
+        Vector4f bottom2D = project(relPos, combinedMatrix);
+        Vector4f top2D = project(relPos.add(0, height, 0), combinedMatrix);
 
         if (bottom2D != null && top2D != null) {
             int bx = (int) bottom2D.x;
@@ -121,7 +123,7 @@ public class ESPModule {
             int boxHeight = Math.abs(by - ty);
             int boxWidth = (int) (boxHeight * 0.6);
             int boxX = bx - boxWidth / 2;
-            int boxY = Math.min(by, ty); // Use the topmost Y
+            int boxY = Math.min(by, ty);
 
             if (data.length() > 0) data.append(";");
             data.append(boxX).append(",")
@@ -132,24 +134,13 @@ public class ESPModule {
         }
     }
 
-    private Vector4f project(Vec3d relPos, Matrix4f projMat, Matrix4f viewMat) {
+    private Vector4f project(Vec3d relPos, Matrix4f combinedMatrix) {
         Vector4f vec = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
+        combinedMatrix.transform(vec);
 
-        // Multiplications order matters in JOML: vec = matrix * vec
-        // but Matrix4f.transform(vec) is vec = matrix * vec
-        // vec.mul(matrix) is usually vec = vec * matrix (post-multiplication)
-        // Minecraft/JOML usually uses row vectors? No, OpenGL is column vectors.
-        // Let's use Matrix4f.transform(vec) or project properly.
-
-        Vector4f viewPos = new Vector4f();
-        viewMat.transform(vec, viewPos);
-
-        Vector4f clipPos = new Vector4f();
-        projMat.transform(viewPos, clipPos);
-
-        if (clipPos.w > 0.1f) {
-            float x = (clipPos.x / clipPos.w + 1.0f) / 2.0f * client.getWindow().getWidth();
-            float y = (1.0f - clipPos.y / clipPos.w) / 2.0f * client.getWindow().getHeight();
+        if (vec.w > 0.001f) {
+            float x = (vec.x / vec.w + 1.0f) / 2.0f * client.getWindow().getWidth();
+            float y = (1.0f - vec.y / vec.w) / 2.0f * client.getWindow().getHeight();
             return new Vector4f(x, y, 0, 0);
         }
         return null;
@@ -169,11 +160,15 @@ public class ESPModule {
     public void syncWindowBounds() {
         if (net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().isRunning()) {
             var window = client.getWindow();
-            int[] left = new int[1], top = new int[1], right = new int[1], bottom = new int[1];
-            GLFW.glfwGetWindowFrameSize(window.getHandle(), left, top, right, bottom);
 
-            int x = window.getX() + left[0];
-            int y = window.getY() + top[0];
+            // Re-evaluating alignment.
+            // If it's to the left and down:
+            // Shifted left = X is too small. Shifted down = Y is too large.
+            // If I was using window.getX() + leftBorder, and it was shifted left, maybe window.getX() is already logical client X?
+            // Actually, let's try raw window.getX() and window.getY().
+
+            int x = window.getX();
+            int y = window.getY();
             int w = window.getWidth();
             int h = window.getHeight();
 
