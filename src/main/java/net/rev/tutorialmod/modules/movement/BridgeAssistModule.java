@@ -32,13 +32,12 @@ public class BridgeAssistModule {
             return;
         }
 
-        // Module activates only when player is pressing Sneak
+        // Module activates only when player is pressing Sneak key
         if (!isManualSneakPressed()) {
             if (lastAutoSneak) {
                 mc.options.sneakKey.setPressed(false);
                 lastAutoSneak = false;
             }
-            // Ensure manual sneak doesn't work if the module is ON but we aren't at an edge
             mc.options.sneakKey.setPressed(false);
             return;
         }
@@ -53,12 +52,8 @@ public class BridgeAssistModule {
         }
 
         Vec3d velocity = player.getVelocity();
-        // Even if stationary, we might want to stay sneaked if we are at the edge
-        // But the user said "direction they are walking"
-
         Vec3d moveDir;
         if (velocity.horizontalLengthSquared() < 1e-6) {
-            // Use movement input if velocity is low
             float forward = 0;
             if (mc.options.forwardKey.isPressed()) forward += 1;
             if (mc.options.backKey.isPressed()) forward -= 1;
@@ -67,75 +62,68 @@ public class BridgeAssistModule {
             if (mc.options.rightKey.isPressed()) sideways -= 1;
 
             if (forward == 0 && sideways == 0) {
-                if (!lastAutoSneak) {
+                // Stationary - maintain current sneak if we were already sneaking
+                if (lastAutoSneak) {
+                    mc.options.sneakKey.setPressed(true);
+                } else {
                     mc.options.sneakKey.setPressed(false);
                 }
                 return;
             }
-            Vec3d forwardVec = Vec3d.fromPolar(0, player.getYaw());
-            Vec3d sideVec = Vec3d.fromPolar(0, player.getYaw() + 90);
-            moveDir = forwardVec.multiply(forward).add(sideVec.multiply(sideways)).normalize();
+            // sideways is positive for Left, negative for Right in Input but here we used keys directly.
+            // In MC polar, 0 is South (+Z), -90 is East (+X).
+            Vec3d fwd = Vec3d.fromPolar(0, player.getYaw());
+            Vec3d side = Vec3d.fromPolar(0, player.getYaw() - 90); // Left
+            moveDir = fwd.multiply(forward).add(side.multiply(sideways)).normalize();
         } else {
             moveDir = new Vec3d(velocity.x, 0, velocity.z).normalize();
         }
 
         Box box = player.getBoundingBox();
+        java.util.List<Vec3d> samplePoints = new java.util.ArrayList<>();
 
-        // Find the "trailing" edge of the hitbox (opposite to moveDir)
-        // We check a small margin around the trailing side.
+        // Define trailing sides based on movement direction
+        if (moveDir.x > 0.1) { // Moving East (+X), trailing is West (minX)
+            samplePoints.add(new Vec3d(box.minX, box.minY, box.minZ));
+            samplePoints.add(new Vec3d(box.minX, box.minY, box.maxZ));
+            samplePoints.add(new Vec3d(box.minX, box.minY, (box.minZ + box.maxZ) * 0.5));
+        } else if (moveDir.x < -0.1) { // Moving West (-X), trailing is East (maxX)
+            samplePoints.add(new Vec3d(box.maxX, box.minY, box.minZ));
+            samplePoints.add(new Vec3d(box.maxX, box.minY, box.maxZ));
+            samplePoints.add(new Vec3d(box.maxX, box.minY, (box.minZ + box.maxZ) * 0.5));
+        }
 
-        // Direction opposite to movement
-        Vec3d oppositeDir = moveDir.multiply(-1);
-
-        // Hitbox extent from center
-        double hx = (box.maxX - box.minX) * 0.5;
-        double hz = (box.maxZ - box.minZ) * 0.5;
-        Vec3d center = box.getCenter().withAxis(net.minecraft.util.math.Direction.Axis.Y, box.minY);
-
-        // The point at the very edge of the hitbox in the opposite direction
-        // For diagonal movement, we check multiple points along that edge
-        Vec3d trailingEdgePoint = center.add(
-            Math.signum(oppositeDir.x) * hx,
-            0,
-            Math.signum(oppositeDir.z) * hz
-        );
-
-        // Actually, let's just check the whole footprint for ground.
-        // We want to sneak if the player is about to fall off.
-        // "side of the players hitbox oposite to the direction they are walking is at the very edge of a block"
-        // This means most of the hitbox is already over air.
-
-        // Check ground at the trailing edge.
-        // We'll use a few sample points along the trailing side.
-        Vec3d lateral = new Vec3d(-moveDir.z, 0, moveDir.x).normalize();
-
-        // The center point of the trailing edge
-        Vec3d trailingCenter = center.add(oppositeDir.normalize().multiply(Math.max(hx, hz)));
-        // This is slightly wrong for diagonals.
-
-        // Better: Find the point on the box perimeter in oppositeDir
-        // For a box, the farthest point in direction d is (sign(d.x)*hx, sign(d.z)*hz)
-        Vec3d backPoint = new Vec3d(
-            center.x + (oppositeDir.x > 0.01 ? hx : (oppositeDir.x < -0.01 ? -hx : 0)),
-            box.minY,
-            center.z + (oppositeDir.z > 0.01 ? hz : (oppositeDir.z < -0.01 ? -hz : 0))
-        );
-
-        // Sample points along the back edge(s)
-        // If vx and vz are both non-zero, it's a corner.
+        if (moveDir.z > 0.1) { // Moving South (+Z), trailing is North (minZ)
+            samplePoints.add(new Vec3d(box.minX, box.minY, box.minZ));
+            samplePoints.add(new Vec3d(box.maxX, box.minY, box.minZ));
+            samplePoints.add(new Vec3d((box.minX + box.maxX) * 0.5, box.minY, box.minZ));
+        } else if (moveDir.z < -0.1) { // Moving North (-Z), trailing is South (maxZ)
+            samplePoints.add(new Vec3d(box.minX, box.minY, box.maxZ));
+            samplePoints.add(new Vec3d(box.maxX, box.minY, box.maxZ));
+            samplePoints.add(new Vec3d((box.minX + box.maxX) * 0.5, box.minY, box.maxZ));
+        }
 
         boolean shouldSneak = false;
-        double drop = computeDropDistance(backPoint, box.minY);
-        if (drop > TutorialMod.CONFIG.bridgeAssistStartSneakHeight) {
-            shouldSneak = true;
+        for (Vec3d pt : samplePoints) {
+            if (computeDropDistance(pt, box.minY) > TutorialMod.CONFIG.bridgeAssistStartSneakHeight) {
+                shouldSneak = true;
+                break;
+            }
         }
 
         if (shouldSneak) {
             mc.options.sneakKey.setPressed(true);
             lastAutoSneak = true;
+            sneakHoldCounter = 3; // Hysteresis: keep sneaking for at least 3 ticks
         } else {
-            mc.options.sneakKey.setPressed(false);
-            lastAutoSneak = false;
+            if (sneakHoldCounter > 0) {
+                sneakHoldCounter--;
+                mc.options.sneakKey.setPressed(true);
+                lastAutoSneak = true;
+            } else {
+                mc.options.sneakKey.setPressed(false);
+                lastAutoSneak = false;
+            }
         }
     }
 
