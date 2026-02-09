@@ -117,6 +117,9 @@ public abstract class ClientPlayerInteractionManagerMixin {
     private boolean tutorialmod$isMiningResetHotkeyDown() {
         MinecraftClient mc = MinecraftClient.getInstance();
         try {
+            if (InputUtil.isKeyPressed(mc.getWindow(), GLFW.GLFW_KEY_F3)) {
+                return false;
+            }
             InputUtil.Key key = InputUtil.fromTranslationKey(TutorialMod.CONFIG.miningResetHotkey);
             long handle = mc.getWindow().getHandle();
             if (key.getCategory() == InputUtil.Type.MOUSE) {

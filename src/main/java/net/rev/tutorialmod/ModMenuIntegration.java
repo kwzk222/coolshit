@@ -45,19 +45,9 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // 1. Attribute Swapping
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
-            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.literal("If enabled, AutoStun will only trigger if the target is facing you."))
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe to Original Delay"), TutorialMod.CONFIG.axeToOriginalDelay, 0, 20)
-                    .setDefaultValue(1)
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.axeToOriginalDelay = newValue)
-                    .build());
-            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Mace to Original Delay"), TutorialMod.CONFIG.maceToOriginalDelay, 0, 20)
-                    .setDefaultValue(1)
-                    .setSaveConsumer(newValue -> TutorialMod.CONFIG.maceToOriginalDelay = newValue)
-                    .build());
+            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue).build());
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe to Original Delay"), TutorialMod.CONFIG.axeToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.axeToOriginalDelay = newValue).build());
+            autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Mace to Original Delay"), TutorialMod.CONFIG.maceToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.maceToOriginalDelay = newValue).build());
 
             SubCategoryBuilder axeStunSub = entryBuilder.startSubCategory(Text.literal("Axe AutoStun (Sword)"));
             axeStunSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.axeSwapEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.axeSwapEnabled = newValue).build());
@@ -120,6 +110,7 @@ public class ModMenuIntegration implements ModMenuApi {
             movement.addEntry(parkourSub.build());
 
             SubCategoryBuilder bridgeAssistSub = entryBuilder.startSubCategory(Text.literal("Bridge Assist"));
+            bridgeAssistSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.bridgeAssistEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistEnabled = newValue).build());
             bridgeAssistSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.bridgeAssistHotkey).setDefaultValue("key.keyboard.left.alt").setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistHotkey = newValue).build());
             bridgeAssistSub.add(entryBuilder.startLongSlider(Text.literal("Prediction"), (long)(TutorialMod.CONFIG.bridgeAssistPredict * 100), 0, 50).setDefaultValue(16).setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistPredict = newValue / 100.0).build());
             bridgeAssistSub.add(entryBuilder.startLongSlider(Text.literal("Start Height"), (long)(TutorialMod.CONFIG.bridgeAssistStartSneakHeight * 100), 0, 150).setDefaultValue(70).setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistStartSneakHeight = newValue / 100.0).build());
@@ -129,6 +120,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water)"));
             waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.waterClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue).build());
+            waterClutchSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.clutchHotkey).setDefaultValue("key.keyboard.j").setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchHotkey = newValue).build());
             waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.clutchMinFallDistance), 0, 100).setDefaultValue(3).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue.doubleValue()).build());
             waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue()).build());
             waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Switch Delay"), TutorialMod.CONFIG.clutchSwitchDelay, 0, 40).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchSwitchDelay = newValue).build());
@@ -146,7 +138,6 @@ public class ModMenuIntegration implements ModMenuApi {
             movement.addEntry(windClutchSub.build());
 
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Clutch Module Toggle"), TutorialMod.CONFIG.clutchEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue).build());
-            movement.addEntry(entryBuilder.startStrField(Text.literal("Clutch Hotkey"), TutorialMod.CONFIG.clutchHotkey).setDefaultValue("key.keyboard.j").setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchHotkey = newValue).build());
 
             SubCategoryBuilder jumpResetSub = entryBuilder.startSubCategory(Text.literal("Jump Reset"));
             jumpResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.jumpResetEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetEnabled = newValue).build());
@@ -257,17 +248,15 @@ public class ModMenuIntegration implements ModMenuApi {
                 chat.addEntry(macroCategory.build());
             }
 
-            // 9. Hotkeys
-            ConfigCategory hotkeys = builder.getOrCreateCategory(Text.literal("Hotkeys"));
-            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Open Settings Hotkey"), TutorialMod.CONFIG.openSettingsHotkey).setDefaultValue("key.keyboard.right.shift").setSaveConsumer(newValue -> TutorialMod.CONFIG.openSettingsHotkey = newValue).build());
-            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey).setDefaultValue("key.keyboard.m").setSaveConsumer(newValue -> TutorialMod.CONFIG.masterToggleHotkey = newValue).build());
-            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Teammate Toggle Hotkey"), TutorialMod.CONFIG.teammateHotkey).setDefaultValue("key.keyboard.g").setSaveConsumer(newValue -> TutorialMod.CONFIG.teammateHotkey = newValue).build());
-            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintModeHotkey = newValue).build());
-            hotkeys.addEntry(entryBuilder.startStrField(Text.literal("Sneak Mode Toggle Hotkey"), TutorialMod.CONFIG.sneakModeHotkey).setDefaultValue("key.keyboard.b").setSaveConsumer(newValue -> TutorialMod.CONFIG.sneakModeHotkey = newValue).build());
-            hotkeys.addEntry(entryBuilder.startBooleanToggle(Text.literal("Hotkeys Active in Inventory"), TutorialMod.CONFIG.activeInInventory).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.activeInInventory = newValue).build());
-
-            // 10. Misc
+            // 9. Misc
             ConfigCategory misc = builder.getOrCreateCategory(Text.literal("Misc"));
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Open Settings Hotkey"), TutorialMod.CONFIG.openSettingsHotkey).setDefaultValue("key.keyboard.right.shift").setSaveConsumer(newValue -> TutorialMod.CONFIG.openSettingsHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey).setDefaultValue("key.keyboard.m").setSaveConsumer(newValue -> TutorialMod.CONFIG.masterToggleHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Teammate Toggle Hotkey"), TutorialMod.CONFIG.teammateHotkey).setDefaultValue("key.keyboard.g").setSaveConsumer(newValue -> TutorialMod.CONFIG.teammateHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintModeHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Sneak Mode Toggle Hotkey"), TutorialMod.CONFIG.sneakModeHotkey).setDefaultValue("key.keyboard.b").setSaveConsumer(newValue -> TutorialMod.CONFIG.sneakModeHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Hotkeys Active in Inventory"), TutorialMod.CONFIG.activeInInventory).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.activeInInventory = newValue).build());
+
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue).build());
             misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue).build());
@@ -277,7 +266,7 @@ public class ModMenuIntegration implements ModMenuApi {
             extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
             misc.addEntry(extinguishSub.build());
 
-            // 11. Overlay
+            // 10. Overlay
             ConfigCategory overlay = builder.getOrCreateCategory(Text.literal("Overlay"));
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Coords Overlay Enabled"), TutorialMod.CONFIG.showCoordsOverlay).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showCoordsOverlay = newValue).build());
             overlay.addEntry(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.toggleOverlayHotkey).setDefaultValue("key.keyboard.h").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleOverlayHotkey = newValue).build());

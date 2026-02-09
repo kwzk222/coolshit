@@ -68,6 +68,7 @@ public class ModConfig {
     public boolean parkourEnabled = false;
     public double parkourPredict = 0.12;
     public double parkourMaxDropHeight = 0.6;
+    public boolean bridgeAssistEnabled = false;
     public double bridgeAssistPredict = 0.16;
     public double bridgeAssistStartSneakHeight = 0.7;
     public double bridgeAssistStopSneakHeight = 0.5;

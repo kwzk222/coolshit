@@ -36,6 +36,9 @@ public class ClickSpamModule {
     private static boolean isModifierHeld(String keyTranslation) {
         if (keyTranslation == null || keyTranslation.isEmpty()) return true;
         try {
+            if (InputUtil.isKeyPressed(mc.getWindow(), org.lwjgl.glfw.GLFW.GLFW_KEY_F3)) {
+                return false;
+            }
             InputUtil.Key key = InputUtil.fromTranslationKey(keyTranslation);
             int code = key.getCode();
             if (code == -1) return true;

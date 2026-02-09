@@ -106,6 +106,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean sprintModeWasPressed = false;
     private boolean sneakModeWasPressed = false;
     private boolean autoWaterDrainModeWasPressed = false;
+    private boolean bridgeAssistWasPressed = false;
 
     // --- State: Combat Swap ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_TO_ORIGINAL_THEN_MACE, SWITCH_BACK_FROM_MACE }
@@ -440,6 +441,18 @@ public class TutorialModClient implements ClientModInitializer {
                 TutorialMod.sendUpdateMessage("Auto Water Drain Mode set to " + (TutorialMod.CONFIG.autoWaterDrainMode ? "ON" : "OFF"));
             }
             autoWaterDrainModeWasPressed = isAutoWaterDrainModePressed;
+        } catch (IllegalArgumentException e) {
+        }
+
+        // --- Toggle Bridge Assist Hotkey ---
+        try {
+            boolean isBridgeAssistPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode());
+            if (isBridgeAssistPressed && !bridgeAssistWasPressed) {
+                TutorialMod.CONFIG.bridgeAssistEnabled = !TutorialMod.CONFIG.bridgeAssistEnabled;
+                TutorialMod.CONFIG.save();
+                TutorialMod.sendUpdateMessage("Bridge Assist set to " + (TutorialMod.CONFIG.bridgeAssistEnabled ? "ON" : "OFF"));
+            }
+            bridgeAssistWasPressed = isBridgeAssistPressed;
         } catch (IllegalArgumentException e) {
         }
 
@@ -1361,6 +1374,12 @@ public class TutorialModClient implements ClientModInitializer {
 
     private void handleChatMacros(MinecraftClient client) {
         if (client.player == null) return;
+
+        try {
+            if (InputUtil.isKeyPressed(client.getWindow(), GLFW.GLFW_KEY_F3)) {
+                return;
+            }
+        } catch (Exception ignored) {}
 
         List<ModConfig.Macro> macros = new ArrayList<>(Arrays.asList(TutorialMod.CONFIG.macro1, TutorialMod.CONFIG.macro2, TutorialMod.CONFIG.macro3, TutorialMod.CONFIG.macro4, TutorialMod.CONFIG.macro5));
 

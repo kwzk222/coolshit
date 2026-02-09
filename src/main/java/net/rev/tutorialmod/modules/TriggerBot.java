@@ -45,6 +45,13 @@ public class TriggerBot {
 
         // Check hotkey
         if (!TutorialMod.CONFIG.triggerBotHotkey.equals("key.keyboard.unknown")) {
+            try {
+                if (InputUtil.isKeyPressed(mc.getWindow(), GLFW.GLFW_KEY_F3)) {
+                    reset();
+                    return;
+                }
+            } catch (Exception ignored) {}
+
             int keyCode = getKeyCode(TutorialMod.CONFIG.triggerBotHotkey);
             if (keyCode != -1 && !InputUtil.isKeyPressed(mc.getWindow(), keyCode)) {
                 reset();
