@@ -44,7 +44,7 @@ public class TriggerBot {
         }
 
         // Check hotkey
-        if (!TutorialMod.CONFIG.triggerBotHotkey.equals("key.keyboard.unknown")) {
+        if (!TutorialMod.CONFIG.triggerBotHotkey.equals("key.keyboard.unknown") && !TutorialMod.CONFIG.triggerBotHotkey.equals("key.keyboard.0")) {
             try {
                 if (InputUtil.isKeyPressed(mc.getWindow(), GLFW.GLFW_KEY_F3)) {
                     reset();
@@ -52,8 +52,7 @@ public class TriggerBot {
                 }
             } catch (Exception ignored) {}
 
-            int keyCode = getKeyCode(TutorialMod.CONFIG.triggerBotHotkey);
-            if (keyCode != -1 && !InputUtil.isKeyPressed(mc.getWindow(), keyCode)) {
+            if (!net.rev.tutorialmod.TutorialModClient.isKeyDown(TutorialMod.CONFIG.triggerBotHotkey)) {
                 reset();
                 return;
             }
@@ -235,16 +234,4 @@ public class TriggerBot {
         return closest;
     }
 
-    private int getKeyCode(String translationKey) {
-        if (translationKey == null || translationKey.isEmpty() || translationKey.equals("key.keyboard.unknown")) return -1;
-        try {
-            if (translationKey.startsWith("key.keyboard.")) {
-                String keyName = translationKey.substring("key.keyboard.".length()).toUpperCase();
-                return GLFW.class.getField("GLFW_KEY_" + keyName).getInt(null);
-            }
-        } catch (Exception e) {
-            return -1;
-        }
-        return -1;
-    }
 }

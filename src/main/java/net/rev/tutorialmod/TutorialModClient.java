@@ -433,154 +433,116 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         // --- Toggle Auto Water Drain Mode Hotkey ---
-        try {
-            boolean isAutoWaterDrainModePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.autoWaterDrainHotkey).getCode());
-            if (isAutoWaterDrainModePressed && !autoWaterDrainModeWasPressed) {
-                TutorialMod.CONFIG.autoWaterDrainMode = !TutorialMod.CONFIG.autoWaterDrainMode;
-                TutorialMod.CONFIG.save();
-                TutorialMod.sendUpdateMessage("Auto Water Drain Mode set to " + (TutorialMod.CONFIG.autoWaterDrainMode ? "ON" : "OFF"));
-            }
-            autoWaterDrainModeWasPressed = isAutoWaterDrainModePressed;
-        } catch (IllegalArgumentException e) {
+        boolean isAutoWaterDrainModePressed = isKeyDown(TutorialMod.CONFIG.autoWaterDrainHotkey);
+        if (isAutoWaterDrainModePressed && !autoWaterDrainModeWasPressed) {
+            TutorialMod.CONFIG.autoWaterDrainMode = !TutorialMod.CONFIG.autoWaterDrainMode;
+            TutorialMod.CONFIG.save();
+            TutorialMod.sendUpdateMessage("Auto Water Drain Mode set to " + (TutorialMod.CONFIG.autoWaterDrainMode ? "ON" : "OFF"));
         }
+        autoWaterDrainModeWasPressed = isAutoWaterDrainModePressed;
 
         // --- Toggle Bridge Assist Hotkey ---
-        try {
-            boolean isBridgeAssistPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.bridgeAssistHotkey).getCode());
-            if (isBridgeAssistPressed && !bridgeAssistWasPressed) {
-                TutorialMod.CONFIG.bridgeAssistEnabled = !TutorialMod.CONFIG.bridgeAssistEnabled;
-                TutorialMod.CONFIG.save();
-                TutorialMod.sendUpdateMessage("Bridge Assist set to " + (TutorialMod.CONFIG.bridgeAssistEnabled ? "ON" : "OFF"));
-            }
-            bridgeAssistWasPressed = isBridgeAssistPressed;
-        } catch (IllegalArgumentException e) {
+        boolean isBridgeAssistPressed = isKeyDown(TutorialMod.CONFIG.bridgeAssistHotkey);
+        if (isBridgeAssistPressed && !bridgeAssistWasPressed) {
+            TutorialMod.CONFIG.bridgeAssistEnabled = !TutorialMod.CONFIG.bridgeAssistEnabled;
+            TutorialMod.CONFIG.save();
+            TutorialMod.sendUpdateMessage("Bridge Assist set to " + (TutorialMod.CONFIG.bridgeAssistEnabled ? "ON" : "OFF"));
         }
+        bridgeAssistWasPressed = isBridgeAssistPressed;
 
         // --- Open Settings Hotkey ---
-        try {
-            boolean isOpenSettingsPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.openSettingsHotkey).getCode());
-            if (isOpenSettingsPressed && !openSettingsWasPressed) {
-                client.setScreen(new ModMenuIntegration().getModConfigScreenFactory().create(client.currentScreen));
-            }
-            openSettingsWasPressed = isOpenSettingsPressed;
-        } catch (IllegalArgumentException e) {
-            // Invalid key
+        boolean isOpenSettingsPressed = isKeyDown(TutorialMod.CONFIG.openSettingsHotkey);
+        if (isOpenSettingsPressed && !openSettingsWasPressed) {
+            client.setScreen(new ModMenuIntegration().getModConfigScreenFactory().create(client.currentScreen));
         }
+        openSettingsWasPressed = isOpenSettingsPressed;
 
 
         // --- Toggle Clutch Hotkey ---
-        try {
-            boolean isClutchTogglePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.clutchHotkey).getCode());
-            if (isClutchTogglePressed && !clutchToggleWasPressed) {
-                TutorialMod.CONFIG.clutchEnabled = !TutorialMod.CONFIG.clutchEnabled;
-                TutorialMod.CONFIG.save();
-                TutorialMod.sendUpdateMessage("Clutch set to " + (TutorialMod.CONFIG.clutchEnabled ? "ON" : "OFF"));
-            }
-            clutchToggleWasPressed = isClutchTogglePressed;
-        } catch (IllegalArgumentException e) {
-            // Invalid key
+        boolean isClutchTogglePressed = isKeyDown(TutorialMod.CONFIG.clutchHotkey);
+        if (isClutchTogglePressed && !clutchToggleWasPressed) {
+            TutorialMod.CONFIG.clutchEnabled = !TutorialMod.CONFIG.clutchEnabled;
+            TutorialMod.CONFIG.save();
+            TutorialMod.sendUpdateMessage("Clutch set to " + (TutorialMod.CONFIG.clutchEnabled ? "ON" : "OFF"));
         }
+        clutchToggleWasPressed = isClutchTogglePressed;
 
-        try {
-            boolean isMasterTogglePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.masterToggleHotkey).getCode());
-            if (isMasterTogglePressed && !masterToggleWasPressed) {
-                TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
-                TutorialMod.CONFIG.save();
-                TutorialMod.sendUpdateMessage("Master Switch set to " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF"));
-            }
-            masterToggleWasPressed = isMasterTogglePressed;
-        } catch (IllegalArgumentException e) {
-            // This can happen if the key is not set or invalid.
+        boolean isMasterTogglePressed = isKeyDown(TutorialMod.CONFIG.masterToggleHotkey);
+        if (isMasterTogglePressed && !masterToggleWasPressed) {
+            TutorialMod.CONFIG.masterEnabled = !TutorialMod.CONFIG.masterEnabled;
+            TutorialMod.CONFIG.save();
+            TutorialMod.sendUpdateMessage("Master Switch set to " + (TutorialMod.CONFIG.masterEnabled ? "ON" : "OFF"));
         }
+        masterToggleWasPressed = isMasterTogglePressed;
 
 
-        try {
-            boolean isTeammateKeyPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.teammateHotkey).getCode());
-            if (isTeammateKeyPressed && !teammateWasPressed) {
-                handleTeammateKeybind(client);
-            }
-            teammateWasPressed = isTeammateKeyPressed;
-        } catch (IllegalArgumentException e) {
+        boolean isTeammateKeyPressed = isKeyDown(TutorialMod.CONFIG.teammateHotkey);
+        if (isTeammateKeyPressed && !teammateWasPressed) {
+            handleTeammateKeybind(client);
         }
+        teammateWasPressed = isTeammateKeyPressed;
 
 
-        try {
-            boolean isTriggerBotTogglePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.triggerBotToggleHotkey).getCode());
-            if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
-                TutorialMod.CONFIG.triggerBotToggledOn = !TutorialMod.CONFIG.triggerBotToggledOn;
-                TutorialMod.sendUpdateMessage("TriggerBot set to " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF"));
-            }
-            triggerBotToggleWasPressed = isTriggerBotTogglePressed;
-        } catch (IllegalArgumentException e) {
+        boolean isTriggerBotTogglePressed = isKeyDown(TutorialMod.CONFIG.triggerBotToggleHotkey);
+        if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
+            TutorialMod.CONFIG.triggerBotToggledOn = !TutorialMod.CONFIG.triggerBotToggledOn;
+            TutorialMod.sendUpdateMessage("TriggerBot set to " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF"));
         }
+        triggerBotToggleWasPressed = isTriggerBotTogglePressed;
 
         // --- Toggle Overlay Hotkey ---
-        try {
-            boolean isToggleOverlayPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.toggleOverlayHotkey).getCode());
-            if (isToggleOverlayPressed && !overlayToggleWasPressed) {
-                TutorialMod.CONFIG.showCoordsOverlay = !TutorialMod.CONFIG.showCoordsOverlay;
-                TutorialMod.CONFIG.save();
-                TutorialMod.sendUpdateMessage("Coords Overlay set to " + (TutorialMod.CONFIG.showCoordsOverlay ? "ON" : "OFF"));
-                if (TutorialMod.CONFIG.showCoordsOverlay) {
-                    getOverlayManager().start();
-                } else {
-                    getOverlayManager().stop();
-                }
+        boolean isToggleOverlayPressed = isKeyDown(TutorialMod.CONFIG.toggleOverlayHotkey);
+        if (isToggleOverlayPressed && !overlayToggleWasPressed) {
+            TutorialMod.CONFIG.showCoordsOverlay = !TutorialMod.CONFIG.showCoordsOverlay;
+            TutorialMod.CONFIG.save();
+            TutorialMod.sendUpdateMessage("Coords Overlay set to " + (TutorialMod.CONFIG.showCoordsOverlay ? "ON" : "OFF"));
+            if (TutorialMod.CONFIG.showCoordsOverlay) {
+                getOverlayManager().start();
+            } else {
+                getOverlayManager().stop();
             }
-            overlayToggleWasPressed = isToggleOverlayPressed;
-        } catch (IllegalArgumentException e) {
-            // Invalid key
         }
+        overlayToggleWasPressed = isToggleOverlayPressed;
 
         // --- Toggle Parkour Hotkey ---
-        try {
-            boolean isParkourTogglePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.parkourHotkey).getCode());
-            if (isParkourTogglePressed && !parkourToggleWasPressed) {
-                parkourModule.toggle();
-                TutorialMod.sendUpdateMessage("Parkour set to " + (TutorialMod.CONFIG.parkourEnabled ? "ON" : "OFF"));
-            }
-            parkourToggleWasPressed = isParkourTogglePressed;
-        } catch (IllegalArgumentException e) {
-            // Invalid key
+        boolean isParkourTogglePressed = isKeyDown(TutorialMod.CONFIG.parkourHotkey);
+        if (isParkourTogglePressed && !parkourToggleWasPressed) {
+            parkourModule.toggle();
+            TutorialMod.sendUpdateMessage("Parkour set to " + (TutorialMod.CONFIG.parkourEnabled ? "ON" : "OFF"));
         }
+        parkourToggleWasPressed = isParkourTogglePressed;
 
         // --- Toggle Sprint Mode Hotkey ---
-        try {
-            boolean isSprintModePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sprintModeHotkey).getCode());
-            if (isSprintModePressed && !sprintModeWasPressed) {
-                var sprintToggled = ((GameOptionsAccessor) client.options).getSprintToggled();
-                boolean newValue = !sprintToggled.getValue();
-                sprintToggled.setValue(newValue);
-                // Reset state when switching to Hold mode
-                if (!newValue) {
-                    client.options.sprintKey.setPressed(isKeyCurrentlyPressed(client.options.sprintKey, client));
-                }
-                client.options.write();
-                String mode = newValue ? "Toggle" : "Hold";
-                TutorialMod.sendUpdateMessage("Sprint Mode set to " + mode);
+        boolean isSprintModePressed = isKeyDown(TutorialMod.CONFIG.sprintModeHotkey);
+        if (isSprintModePressed && !sprintModeWasPressed) {
+            var sprintToggled = ((GameOptionsAccessor) client.options).getSprintToggled();
+            boolean newValue = !sprintToggled.getValue();
+            sprintToggled.setValue(newValue);
+            // Reset state when switching to Hold mode
+            if (!newValue) {
+                client.options.sprintKey.setPressed(isKeyCurrentlyPressed(client.options.sprintKey, client));
             }
-            sprintModeWasPressed = isSprintModePressed;
-        } catch (IllegalArgumentException e) {
+            client.options.write();
+            String mode = newValue ? "Toggle" : "Hold";
+            TutorialMod.sendUpdateMessage("Sprint Mode set to " + mode);
         }
+        sprintModeWasPressed = isSprintModePressed;
 
         // --- Toggle Sneak Mode Hotkey ---
-        try {
-            boolean isSneakModePressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.sneakModeHotkey).getCode());
-            if (isSneakModePressed && !sneakModeWasPressed) {
-                var sneakToggled = ((GameOptionsAccessor) client.options).getSneakToggled();
-                boolean newValue = !sneakToggled.getValue();
-                sneakToggled.setValue(newValue);
-                // Reset state when switching to Hold mode
-                if (!newValue) {
-                    client.options.sneakKey.setPressed(isKeyCurrentlyPressed(client.options.sneakKey, client));
-                }
-                client.options.write();
-                String mode = newValue ? "Toggle" : "Hold";
-                TutorialMod.sendUpdateMessage("Sneak Mode set to " + mode);
+        boolean isSneakModePressed = isKeyDown(TutorialMod.CONFIG.sneakModeHotkey);
+        if (isSneakModePressed && !sneakModeWasPressed) {
+            var sneakToggled = ((GameOptionsAccessor) client.options).getSneakToggled();
+            boolean newValue = !sneakToggled.getValue();
+            sneakToggled.setValue(newValue);
+            // Reset state when switching to Hold mode
+            if (!newValue) {
+                client.options.sneakKey.setPressed(isKeyCurrentlyPressed(client.options.sneakKey, client));
             }
-            sneakModeWasPressed = isSneakModePressed;
-        } catch (IllegalArgumentException e) {
+            client.options.write();
+            String mode = newValue ? "Toggle" : "Hold";
+            TutorialMod.sendUpdateMessage("Sneak Mode set to " + mode);
         }
+        sneakModeWasPressed = isSneakModePressed;
     }
 
     private void handleTeammateKeybind(MinecraftClient client) {
@@ -870,12 +832,7 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private boolean isKeyCurrentlyPressed(net.minecraft.client.option.KeyBinding keyBinding, MinecraftClient client) {
-        try {
-            return InputUtil.isKeyPressed(client.getWindow(),
-                InputUtil.fromTranslationKey(keyBinding.getBoundKeyTranslationKey()).getCode());
-        } catch (Exception e) {
-            return false;
-        }
+        return isKeyDown(keyBinding.getBoundKeyTranslationKey());
     }
 
     private int findMaceInHotbar(PlayerEntity player) {
@@ -1388,13 +1345,7 @@ public class TutorialModClient implements ClientModInitializer {
                 continue;
             }
 
-            boolean isPressed;
-            try {
-                isPressed = InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(macro.hotkey).getCode());
-            } catch (IllegalArgumentException e) {
-                continue; // Invalid key
-            }
-
+            boolean isPressed = isKeyDown(macro.hotkey);
             boolean wasPressed = wasMacroKeyPressed.getOrDefault(macro.hotkey, false);
 
             if (isPressed && !wasPressed) {
@@ -1665,4 +1616,17 @@ public class TutorialModClient implements ClientModInitializer {
         return cardinal + " " + quadrant;
     }
 
+    public static boolean isKeyDown(String translationKey) {
+        if (translationKey == null || translationKey.isEmpty() || translationKey.equals("key.keyboard.unknown")) return false;
+        try {
+            InputUtil.Key key = InputUtil.fromTranslationKey(translationKey);
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (key.getCategory() == InputUtil.Type.KEYSYM) {
+                return InputUtil.isKeyPressed(mc.getWindow(), key.getCode());
+            } else if (key.getCategory() == InputUtil.Type.MOUSE) {
+                return org.lwjgl.glfw.GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), key.getCode()) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
 }

@@ -43,7 +43,9 @@ public class ModMenuIntegration implements ModMenuApi {
 
             ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
-            // 1. Attribute Swapping
+            // --- 1. Alphabetical Feature Categories ---
+
+            // 1.1 Attribute Swapping
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue).build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe to Original Delay"), TutorialMod.CONFIG.axeToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.axeToOriginalDelay = newValue).build());
@@ -91,7 +93,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("General Fall Distance"), TutorialMod.CONFIG.minFallDistance, 1, 5).setDefaultValue(3).setSaveConsumer(newValue -> TutorialMod.CONFIG.minFallDistance = newValue).build());
 
-            // 2. Crystal/Mace (Auto Totem)
+            // 1.2 Crystal/Mace (Auto Totem)
             ConfigCategory autoTotem = builder.getOrCreateCategory(Text.literal("Crystal/Mace"));
             autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Totem Enabled"), TutorialMod.CONFIG.autoTotemEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnabled = newValue).build());
             autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Survival Mode Only"), TutorialMod.CONFIG.autoTotemSurvivalOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemSurvivalOnly = newValue).build());
@@ -100,15 +102,8 @@ public class ModMenuIntegration implements ModMenuApi {
                 try { TutorialMod.CONFIG.autoTotemHotbarSlots = Arrays.stream(newValue.replace(" ", "").split(",")).map(s -> Integer.parseInt(s) - 1).collect(Collectors.toList()); } catch (NumberFormatException ignored) {}
             }).build());
 
-            // 3. Movement
+            // 1.3 Movement
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
-            SubCategoryBuilder parkourSub = entryBuilder.startSubCategory(Text.literal("Parkour"));
-            parkourSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.parkourEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourEnabled = newValue).build());
-            parkourSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.parkourHotkey).setDefaultValue("key.keyboard.p").setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue).build());
-            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourPredict = newValue / 100.0).build());
-            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0).build());
-            movement.addEntry(parkourSub.build());
-
             SubCategoryBuilder bridgeAssistSub = entryBuilder.startSubCategory(Text.literal("Bridge Assist"));
             bridgeAssistSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.bridgeAssistEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistEnabled = newValue).build());
             bridgeAssistSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.bridgeAssistHotkey).setDefaultValue("key.keyboard.left.alt").setSaveConsumer(newValue -> TutorialMod.CONFIG.bridgeAssistHotkey = newValue).build());
@@ -147,7 +142,14 @@ public class ModMenuIntegration implements ModMenuApi {
             jumpResetSub.add(entryBuilder.startIntSlider(Text.literal("Max Extra Fail Delay"), TutorialMod.CONFIG.jumpResetMaxExtraDelay, 1, 20).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetMaxExtraDelay = newValue).build());
             movement.addEntry(jumpResetSub.build());
 
-            // 4. Potions
+            SubCategoryBuilder parkourSub = entryBuilder.startSubCategory(Text.literal("Parkour"));
+            parkourSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.parkourEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourEnabled = newValue).build());
+            parkourSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.parkourHotkey).setDefaultValue("key.keyboard.p").setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue).build());
+            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourPredict = newValue / 100.0).build());
+            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0).build());
+            movement.addEntry(parkourSub.build());
+
+            // 1.4 Potions
             ConfigCategory potionModule = builder.getOrCreateCategory(Text.literal("Potions"));
             potionModule.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.potionModuleEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionModuleEnabled = newValue).build());
             potionModule.addEntry(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.potionHotkey).setDefaultValue("key.keyboard.left.alt").setSaveConsumer(newValue -> TutorialMod.CONFIG.potionHotkey = newValue).build());
@@ -159,7 +161,7 @@ public class ModMenuIntegration implements ModMenuApi {
             potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Speed Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionSpeedThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionSpeedThreshold = newValue / 10.0).build());
             potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Fire Res Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionFireResThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionFireResThreshold = newValue / 10.0).build());
 
-            // 5. Tool Switch
+            // 1.5 Tool Switch
             ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch Enabled"), TutorialMod.CONFIG.autoToolSwitchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Durability Safety Enabled"), TutorialMod.CONFIG.toolDurabilitySafetyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.toolDurabilitySafetyEnabled = newValue).build());
@@ -178,7 +180,7 @@ public class ModMenuIntegration implements ModMenuApi {
             miningResetSub.add(entryBuilder.startIntSlider(Text.literal("Mining Reset Delay"), TutorialMod.CONFIG.miningResetDelay, 0, 5).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetDelay = newValue).build());
             toolSwitch.addEntry(miningResetSub.build());
 
-            // 6. Trigger Bot
+            // 1.6 Trigger Bot
             ConfigCategory triggerBot = builder.getOrCreateCategory(Text.literal("Trigger Bot"));
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Trigger Bot Enabled"), TutorialMod.CONFIG.triggerBotEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotEnabled = newValue).build());
             triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.triggerBotToggleHotkey).setDefaultValue("key.keyboard.k").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotToggleHotkey = newValue).build());
@@ -206,7 +208,7 @@ public class ModMenuIntegration implements ModMenuApi {
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.triggerBotWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotWeaponOnly = newValue).build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit Only"), TutorialMod.CONFIG.attackOnCrit).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue).build());
 
-            // 7. UHC/Cart (Minecart Tech)
+            // 1.7 UHC/Cart (Minecart Tech)
             ConfigCategory minecartTech = builder.getOrCreateCategory(Text.literal("UHC/Cart"));
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement Enabled"), TutorialMod.CONFIG.tntMinecartPlacementEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue).build());
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence Enabled"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
@@ -222,7 +224,10 @@ public class ModMenuIntegration implements ModMenuApi {
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Switch Back Delay"), TutorialMod.CONFIG.waterDrainSwitchBackDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchBackDelay = newValue).build());
             minecartTech.addEntry(waterDrainSub.build());
 
-            // 8. Chat
+
+            // --- 2. System Categories at the end ---
+
+            // 2.1 Chat
             ConfigCategory chat = builder.getOrCreateCategory(Text.literal("Chat"));
             chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Disable Mod Chat Updates"), TutorialMod.CONFIG.disableModChatUpdates).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.disableModChatUpdates = newValue).build());
             chat.addEntry(entryBuilder.startStrField(Text.literal("Coordinate Trigger"), TutorialMod.CONFIG.trigger).setDefaultValue("cc").setSaveConsumer(newValue -> TutorialMod.CONFIG.trigger = newValue).build());
@@ -248,7 +253,7 @@ public class ModMenuIntegration implements ModMenuApi {
                 chat.addEntry(macroCategory.build());
             }
 
-            // 9. Misc
+            // 2.2 Misc
             ConfigCategory misc = builder.getOrCreateCategory(Text.literal("Misc"));
             misc.addEntry(entryBuilder.startStrField(Text.literal("Open Settings Hotkey"), TutorialMod.CONFIG.openSettingsHotkey).setDefaultValue("key.keyboard.right.shift").setSaveConsumer(newValue -> TutorialMod.CONFIG.openSettingsHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey).setDefaultValue("key.keyboard.m").setSaveConsumer(newValue -> TutorialMod.CONFIG.masterToggleHotkey = newValue).build());
@@ -266,7 +271,7 @@ public class ModMenuIntegration implements ModMenuApi {
             extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
             misc.addEntry(extinguishSub.build());
 
-            // 10. Overlay
+            // 2.3 Overlay
             ConfigCategory overlay = builder.getOrCreateCategory(Text.literal("Overlay"));
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Coords Overlay Enabled"), TutorialMod.CONFIG.showCoordsOverlay).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showCoordsOverlay = newValue).build());
             overlay.addEntry(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.toggleOverlayHotkey).setDefaultValue("key.keyboard.h").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleOverlayHotkey = newValue).build());

@@ -34,15 +34,12 @@ public class ClickSpamModule {
     }
 
     private static boolean isModifierHeld(String keyTranslation) {
-        if (keyTranslation == null || keyTranslation.isEmpty()) return true;
+        if (keyTranslation == null || keyTranslation.isEmpty() || keyTranslation.equals("key.keyboard.unknown")) return true;
         try {
             if (InputUtil.isKeyPressed(mc.getWindow(), org.lwjgl.glfw.GLFW.GLFW_KEY_F3)) {
                 return false;
             }
-            InputUtil.Key key = InputUtil.fromTranslationKey(keyTranslation);
-            int code = key.getCode();
-            if (code == -1) return true;
-            return InputUtil.isKeyPressed(mc.getWindow(), code);
+            return net.rev.tutorialmod.TutorialModClient.isKeyDown(keyTranslation);
         } catch (Exception e) {
             return true;
         }

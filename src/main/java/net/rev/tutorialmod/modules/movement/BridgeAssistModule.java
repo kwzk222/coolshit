@@ -53,7 +53,7 @@ public class BridgeAssistModule {
 
         Vec3d velocity = player.getVelocity();
         Vec3d moveDir;
-        if (velocity.horizontalLengthSquared() < 1e-6) {
+        if (velocity.horizontalLengthSquared() < 1e-4) {
             float forward = 0;
             if (mc.options.forwardKey.isPressed()) forward += 1;
             if (mc.options.backKey.isPressed()) forward -= 1;
@@ -62,7 +62,6 @@ public class BridgeAssistModule {
             if (mc.options.rightKey.isPressed()) sideways -= 1;
 
             if (forward == 0 && sideways == 0) {
-                // Stationary - maintain current sneak if we were already sneaking
                 if (lastAutoSneak) {
                     mc.options.sneakKey.setPressed(true);
                 } else {
@@ -70,37 +69,39 @@ public class BridgeAssistModule {
                 }
                 return;
             }
-            // sideways is positive for Left, negative for Right in Input but here we used keys directly.
-            // In MC polar, 0 is South (+Z), -90 is East (+X).
-            Vec3d fwd = Vec3d.fromPolar(0, player.getYaw());
-            Vec3d side = Vec3d.fromPolar(0, player.getYaw() - 90); // Left
-            moveDir = fwd.multiply(forward).add(side.multiply(sideways)).normalize();
+
+            float yaw = player.getYaw();
+            if (forward < 0) yaw += 180;
+            float sideYaw = 90;
+            if (forward < 0) sideYaw = -90;
+            if (sideways != 0) yaw -= sideways * sideYaw * (forward != 0 ? 0.5f : 1f);
+            moveDir = Vec3d.fromPolar(0, yaw);
         } else {
             moveDir = new Vec3d(velocity.x, 0, velocity.z).normalize();
         }
 
         Box box = player.getBoundingBox();
         java.util.List<Vec3d> samplePoints = new java.util.ArrayList<>();
+        double margin = 0.05;
 
-        // Define trailing sides based on movement direction
-        if (moveDir.x > 0.1) { // Moving East (+X), trailing is West (minX)
-            samplePoints.add(new Vec3d(box.minX, box.minY, box.minZ));
-            samplePoints.add(new Vec3d(box.minX, box.minY, box.maxZ));
-            samplePoints.add(new Vec3d(box.minX, box.minY, (box.minZ + box.maxZ) * 0.5));
-        } else if (moveDir.x < -0.1) { // Moving West (-X), trailing is East (maxX)
-            samplePoints.add(new Vec3d(box.maxX, box.minY, box.minZ));
-            samplePoints.add(new Vec3d(box.maxX, box.minY, box.maxZ));
-            samplePoints.add(new Vec3d(box.maxX, box.minY, (box.minZ + box.maxZ) * 0.5));
+        if (moveDir.x > 0.01) { // Moving East (+X), trailing is West (minX)
+            for (double z = box.minZ; z <= box.maxZ; z += (box.maxZ - box.minZ) / 4.0) {
+                samplePoints.add(new Vec3d(box.minX - margin, box.minY, z));
+            }
+        } else if (moveDir.x < -0.01) { // Moving West (-X), trailing is East (maxX)
+            for (double z = box.minZ; z <= box.maxZ; z += (box.maxZ - box.minZ) / 4.0) {
+                samplePoints.add(new Vec3d(box.maxX + margin, box.minY, z));
+            }
         }
 
-        if (moveDir.z > 0.1) { // Moving South (+Z), trailing is North (minZ)
-            samplePoints.add(new Vec3d(box.minX, box.minY, box.minZ));
-            samplePoints.add(new Vec3d(box.maxX, box.minY, box.minZ));
-            samplePoints.add(new Vec3d((box.minX + box.maxX) * 0.5, box.minY, box.minZ));
-        } else if (moveDir.z < -0.1) { // Moving North (-Z), trailing is South (maxZ)
-            samplePoints.add(new Vec3d(box.minX, box.minY, box.maxZ));
-            samplePoints.add(new Vec3d(box.maxX, box.minY, box.maxZ));
-            samplePoints.add(new Vec3d((box.minX + box.maxX) * 0.5, box.minY, box.maxZ));
+        if (moveDir.z > 0.01) { // Moving South (+Z), trailing is North (minZ)
+            for (double x = box.minX; x <= box.maxX; x += (box.maxX - box.minX) / 4.0) {
+                samplePoints.add(new Vec3d(x, box.minY, box.minZ - margin));
+            }
+        } else if (moveDir.z < -0.01) { // Moving North (-Z), trailing is South (maxZ)
+            for (double x = box.minX; x <= box.maxX; x += (box.maxX - box.minX) / 4.0) {
+                samplePoints.add(new Vec3d(x, box.minY, box.maxZ + margin));
+            }
         }
 
         boolean shouldSneak = false;
@@ -114,7 +115,7 @@ public class BridgeAssistModule {
         if (shouldSneak) {
             mc.options.sneakKey.setPressed(true);
             lastAutoSneak = true;
-            sneakHoldCounter = 3; // Hysteresis: keep sneaking for at least 3 ticks
+            sneakHoldCounter = 5; // Hysteresis: keep sneaking for at least 5 ticks
         } else {
             if (sneakHoldCounter > 0) {
                 sneakHoldCounter--;
@@ -140,10 +141,13 @@ public class BridgeAssistModule {
 
     private boolean isManualSneakPressed() {
         try {
-            return InputUtil.isKeyPressed(mc.getWindow(),
-                InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey()).getCode());
-        } catch (Exception e) {
-            return false;
-        }
+            InputUtil.Key key = InputUtil.fromTranslationKey(mc.options.sneakKey.getBoundKeyTranslationKey());
+            if (key.getCategory() == InputUtil.Type.KEYSYM) {
+                return InputUtil.isKeyPressed(mc.getWindow(), key.getCode());
+            } else if (key.getCategory() == InputUtil.Type.MOUSE) {
+                return org.lwjgl.glfw.GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), key.getCode()) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+            }
+        } catch (Exception e) {}
+        return false;
     }
 }

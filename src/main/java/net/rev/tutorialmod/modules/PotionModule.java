@@ -75,7 +75,7 @@ public class PotionModule {
             if (InputUtil.isKeyPressed(client.getWindow(), org.lwjgl.glfw.GLFW.GLFW_KEY_F3)) {
                 return false;
             }
-            return InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.potionHotkey).getCode());
+            return net.rev.tutorialmod.TutorialModClient.isKeyDown(TutorialMod.CONFIG.potionHotkey);
         } catch (Exception e) {
             return false;
         }

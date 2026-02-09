@@ -46,7 +46,7 @@ public class JumpResetModule {
             if (InputUtil.isKeyPressed(client.getWindow(), org.lwjgl.glfw.GLFW.GLFW_KEY_F3)) {
                 return false;
             }
-            return InputUtil.isKeyPressed(client.getWindow(), InputUtil.fromTranslationKey(TutorialMod.CONFIG.jumpResetHotkey).getCode());
+            return net.rev.tutorialmod.TutorialModClient.isKeyDown(TutorialMod.CONFIG.jumpResetHotkey);
         } catch (Exception e) {
             return false;
         }
