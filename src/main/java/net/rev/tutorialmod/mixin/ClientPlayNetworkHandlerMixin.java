@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import net.minecraft.network.packet.s2c.play.EntityPositionS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityS2CPacket;
+import net.rev.tutorialmod.mixin.EntityS2CPacketAccessor;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -69,14 +70,9 @@ public class ClientPlayNetworkHandlerMixin {
 
     @Inject(method = "onEntity", at = @At("HEAD"))
     private void onEntity(EntityS2CPacket packet, CallbackInfo ci) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world != null) {
-            Entity entity = packet.getEntity(client.world);
-            if (entity != null) {
-                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
-                    TutorialModClient.getInstance().getESPModule().updateVanishedPlayer(entity.getId(), entity.getX(), entity.getY(), entity.getZ());
-                }
-            }
+        if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+            EntityS2CPacketAccessor accessor = (EntityS2CPacketAccessor) packet;
+            TutorialModClient.getInstance().getESPModule().updateVanishedPlayerRelative(accessor.getId(), accessor.getDeltaX(), accessor.getDeltaY(), accessor.getDeltaZ());
         }
     }
 

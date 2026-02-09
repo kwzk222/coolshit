@@ -15,7 +15,8 @@
 		"MinecraftClientAccessor",
 		"GameOptionsAccessor",
 		"ScreenMixin",
-		"ScreenAccessor"
+		"ScreenAccessor",
+		"WorldRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

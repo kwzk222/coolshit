@@ -273,9 +273,6 @@ public class TutorialModClient implements ClientModInitializer {
             espOverlayManager.stop();
         }
 
-        if (espOverlayManager.isRunning() && client.player != null) {
-            espModule.onTick();
-        }
 
         if (overlayManager.isRunning() && client.player != null) {
             String enemyInfoString = TutorialMod.CONFIG.showEnemyInfo ? enemyInfo.getFormattedEnemyInfo() : null;
