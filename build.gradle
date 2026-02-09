@@ -77,6 +77,18 @@ task overlayJar(type: Jar) {
     }
 }
 
+task espOverlayJar(type: Jar) {
+    archiveFileName = 'esp_overlay.jar'
+    from sourceSets.overlay.output
+    from {
+        configurations.overlayRuntimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': 'overlay.ESPOverlayApp'
+    }
+}
+
 processResources {
 	inputs.property "version", project.version
 
@@ -87,7 +99,11 @@ processResources {
     from(tasks.overlayJar.outputs) {
         into '/'
     }
+    from(tasks.espOverlayJar.outputs) {
+        into '/'
+    }
     dependsOn 'overlayJar'
+    dependsOn 'espOverlayJar'
 }
 
 tasks.withType(JavaCompile).configureEach {

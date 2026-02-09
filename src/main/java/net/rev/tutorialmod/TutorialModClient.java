@@ -44,14 +44,14 @@ import net.rev.tutorialmod.mixin.GameOptionsAccessor;
 import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
 import net.rev.tutorialmod.modules.AutoTotem;
+import net.rev.tutorialmod.modules.ESPModule;
+import net.rev.tutorialmod.modules.ESPOverlayManager;
 import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.PotionModule;
 import net.rev.tutorialmod.modules.TriggerBot;
 import net.rev.tutorialmod.modules.misc.ClickSpamModule;
-import net.rev.tutorialmod.modules.movement.BridgeAssistModule;
 import net.rev.tutorialmod.modules.movement.ClutchModule;
-import net.rev.tutorialmod.modules.movement.JumpResetModule;
 import net.rev.tutorialmod.modules.movement.ParkourModule;
 
 public class TutorialModClient implements ClientModInitializer {
@@ -72,10 +72,10 @@ public class TutorialModClient implements ClientModInitializer {
     private EnemyInfo enemyInfo;
     private PotionModule potionModule;
     private ParkourModule parkourModule;
-    private JumpResetModule jumpResetModule;
     private ClutchModule clutchModule;
-    private BridgeAssistModule bridgeAssistModule;
+    private ESPModule espModule;
     private static OverlayManager overlayManager;
+    private static ESPOverlayManager espOverlayManager;
 
     public AutoTotem getAutoTotem() {
         return autoTotem;
@@ -89,8 +89,12 @@ public class TutorialModClient implements ClientModInitializer {
         return enemyInfo;
     }
 
-    public JumpResetModule getJumpResetModule() {
-        return jumpResetModule;
+    public ESPModule getESPModule() {
+        return espModule;
+    }
+
+    public static ESPOverlayManager getESPOverlayManager() {
+        return espOverlayManager;
     }
 
 
@@ -100,13 +104,13 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean teammateWasPressed = false;
     private boolean triggerBotToggleWasPressed = false;
     private boolean overlayToggleWasPressed = false;
+    private boolean espToggleWasPressed = false;
     private boolean parkourToggleWasPressed = false;
     private boolean clutchToggleWasPressed = false;
     private boolean miningResetWasPressed = false;
     private boolean sprintModeWasPressed = false;
     private boolean sneakModeWasPressed = false;
     private boolean autoWaterDrainModeWasPressed = false;
-    private boolean bridgeAssistWasPressed = false;
 
     // --- State: Combat Swap ---
     private enum SwapAction { NONE, SWITCH_BACK, SWITCH_TO_ORIGINAL_THEN_MACE, SWITCH_BACK_FROM_MACE }
@@ -180,16 +184,18 @@ public class TutorialModClient implements ClientModInitializer {
         enemyInfo = new EnemyInfo();
         potionModule = new PotionModule();
         parkourModule = new ParkourModule();
-        jumpResetModule = new JumpResetModule();
         clutchModule = new ClutchModule();
-        bridgeAssistModule = new BridgeAssistModule();
+        espModule = new ESPModule();
         overlayManager = new OverlayManager();
+        espOverlayManager = new ESPOverlayManager();
         autoTotem.init();
         parkourModule.init();
-        bridgeAssistModule.init();
 
         // Add shutdown hook to stop overlay process
-        Runtime.getRuntime().addShutdownHook(new Thread(overlayManager::stop));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            overlayManager.stop();
+            espOverlayManager.stop();
+        }));
 
         // Register Event Listeners
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
@@ -259,6 +265,18 @@ public class TutorialModClient implements ClientModInitializer {
             overlayManager.stop();
         }
 
+        // --- ESP Overlay Logic ---
+        boolean shouldESPBeRunning = TutorialMod.CONFIG.showESP;
+        if (shouldESPBeRunning && !espOverlayManager.isRunning() && client.player != null) {
+            espOverlayManager.start();
+        } else if ((!shouldESPBeRunning || client.player == null) && espOverlayManager.isRunning()) {
+            espOverlayManager.stop();
+        }
+
+        if (espOverlayManager.isRunning() && client.player != null) {
+            espModule.onTick();
+        }
+
         if (overlayManager.isRunning() && client.player != null) {
             String enemyInfoString = TutorialMod.CONFIG.showEnemyInfo ? enemyInfo.getFormattedEnemyInfo() : null;
             if (enemyInfoString != null) {
@@ -293,10 +311,6 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (potionModule != null) {
             potionModule.onTick(client);
-        }
-
-        if (jumpResetModule != null) {
-            jumpResetModule.onTick(client);
         }
 
         handleAutoWaterDrain(client);
@@ -441,15 +455,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
         autoWaterDrainModeWasPressed = isAutoWaterDrainModePressed;
 
-        // --- Toggle Bridge Assist Hotkey ---
-        boolean isBridgeAssistPressed = isKeyDown(TutorialMod.CONFIG.bridgeAssistHotkey);
-        if (isBridgeAssistPressed && !bridgeAssistWasPressed) {
-            TutorialMod.CONFIG.bridgeAssistEnabled = !TutorialMod.CONFIG.bridgeAssistEnabled;
-            TutorialMod.CONFIG.save();
-            TutorialMod.sendUpdateMessage("Bridge Assist set to " + (TutorialMod.CONFIG.bridgeAssistEnabled ? "ON" : "OFF"));
-        }
-        bridgeAssistWasPressed = isBridgeAssistPressed;
-
         // --- Open Settings Hotkey ---
         boolean isOpenSettingsPressed = isKeyDown(TutorialMod.CONFIG.openSettingsHotkey);
         if (isOpenSettingsPressed && !openSettingsWasPressed) {
@@ -503,6 +508,20 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
         overlayToggleWasPressed = isToggleOverlayPressed;
+
+        // --- Toggle ESP Hotkey ---
+        boolean isToggleESPPressed = isKeyDown(TutorialMod.CONFIG.toggleESPHotkey);
+        if (isToggleESPPressed && !espToggleWasPressed) {
+            TutorialMod.CONFIG.showESP = !TutorialMod.CONFIG.showESP;
+            TutorialMod.CONFIG.save();
+            TutorialMod.sendUpdateMessage("ESP Overlay set to " + (TutorialMod.CONFIG.showESP ? "ON" : "OFF"));
+            if (TutorialMod.CONFIG.showESP) {
+                espOverlayManager.start();
+            } else {
+                espOverlayManager.stop();
+            }
+        }
+        espToggleWasPressed = isToggleESPPressed;
 
         // --- Toggle Parkour Hotkey ---
         boolean isParkourTogglePressed = isKeyDown(TutorialMod.CONFIG.parkourHotkey);

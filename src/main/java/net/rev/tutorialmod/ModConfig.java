@@ -68,11 +68,6 @@ public class ModConfig {
     public boolean parkourEnabled = false;
     public double parkourPredict = 0.12;
     public double parkourMaxDropHeight = 0.6;
-    public boolean bridgeAssistEnabled = false;
-    public double bridgeAssistPredict = 0.16;
-    public double bridgeAssistStartSneakHeight = 0.7;
-    public double bridgeAssistStopSneakHeight = 0.5;
-    public int bridgeAssistMinHoldTicks = 3;
 
     // --- Clutch ---
     public boolean clutchEnabled = false;
@@ -153,9 +148,9 @@ public class ModConfig {
     public String triggerBotToggleHotkey = "key.keyboard.k";
     public String triggerBotHotkey = "key.keyboard.unknown";
     public String toggleOverlayHotkey = "key.keyboard.h";
+    public String toggleESPHotkey = "key.keyboard.y";
     public String parkourHotkey = "key.keyboard.p";
     public String clutchHotkey = "key.keyboard.j";
-    public String bridgeAssistHotkey = "key.keyboard.left.alt";
     public String miningResetHotkey = "key.keyboard.unknown";
     public String sprintModeHotkey = "key.keyboard.n";
     public String sneakModeHotkey = "key.keyboard.b";
@@ -201,6 +196,11 @@ public class ModConfig {
     public String overlayFontName = "Consolas";
     public boolean overlayLocked = false;
 
+    // --- ESP Overlay ---
+    public boolean showESP = false;
+    public boolean espAntiVanish = true;
+    public int espRefreshRate = 20; // FPS (approx)
+
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;
     public boolean showHpDecimals = false;
@@ -218,13 +218,6 @@ public class ModConfig {
     public double potionStrengthThreshold = 30.0;
     public double potionSpeedThreshold = 30.0;
     public double potionFireResThreshold = 30.0;
-
-    // --- Jump Reset ---
-    public boolean jumpResetEnabled = false;
-    public String jumpResetHotkey = "key.keyboard.b";
-    public int jumpResetDelay = 0;
-    public int jumpResetFailChance = 0;
-    public int jumpResetMaxExtraDelay = 5;
 
 
     public List<String> teammates = new ArrayList<>();

@@ -10,6 +10,9 @@ import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import net.minecraft.network.packet.s2c.play.EntityPositionS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -44,12 +47,6 @@ public class ClientPlayNetworkHandlerMixin {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
-        if (packet.getStatus() == 2 && packet.getEntity(client.world) == client.player) {
-            if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getJumpResetModule() != null) {
-                TutorialModClient.getInstance().getJumpResetModule().onHurt();
-            }
-        }
-
         if (packet.getStatus() == 35 && packet.getEntity(client.world) == client.player) {
             if (!TutorialMod.CONFIG.autoTotemEnabled || !TutorialMod.CONFIG.autoTotemRefillOnPop) {
                 return;
@@ -60,6 +57,33 @@ public class ClientPlayNetworkHandlerMixin {
             if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getAutoTotem() != null) {
                 TutorialModClient.getInstance().getAutoTotem().handleTotemPop();
             }
+        }
+    }
+
+    @Inject(method = "onEntityPosition", at = @At("HEAD"))
+    private void onEntityPosition(EntityPositionS2CPacket packet, CallbackInfo ci) {
+        if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+            TutorialModClient.getInstance().getESPModule().updateVanishedPlayer(packet.entityId(), packet.change().position().x, packet.change().position().y, packet.change().position().z);
+        }
+    }
+
+    @Inject(method = "onEntityUpdate", at = @At("HEAD"))
+    private void onEntityUpdate(EntityS2CPacket packet, CallbackInfo ci) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.world != null) {
+            Entity entity = packet.getEntity(client.world);
+            if (entity != null) {
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().updateVanishedPlayer(entity.getId(), entity.getX(), entity.getY(), entity.getZ());
+                }
+            }
+        }
+    }
+
+    @Inject(method = "onGameJoin", at = @At("RETURN"))
+    private void onGameJoin(GameJoinS2CPacket packet, CallbackInfo ci) {
+        if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+            TutorialModClient.getInstance().getESPModule().syncWindowBounds();
         }
     }
 }
