@@ -117,6 +117,7 @@ public class ESPOverlayApp {
 
     private static class ESPPanel extends JPanel {
         private List<BoxData> boxes = new ArrayList<>();
+        private boolean debugMode = true; // Set to true to see if overlay exists
 
         public ESPPanel() {
             setOpaque(false);
@@ -154,6 +155,14 @@ public class ESPOverlayApp {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g;
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            if (debugMode) {
+                g2d.setColor(new Color(255, 0, 0, 30));
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.setColor(Color.RED);
+                g2d.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
+                g2d.drawString("ESP Overlay Active", 10, 20);
+            }
 
             for (BoxData box : boxes) {
                 g2d.setColor(Color.WHITE);

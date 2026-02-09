@@ -4,8 +4,7 @@
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
 		"BowItemMixin",
-		"PlayerInventoryMixin",
-		"EntityS2CPacketAccessor"
+		"PlayerInventoryMixin"
 	],
 	"client": [
 		"ClientPlayerInteractionManagerMixin",
@@ -17,7 +16,8 @@
 		"GameOptionsAccessor",
 		"ScreenMixin",
 		"ScreenAccessor",
-		"WorldRendererMixin"
+		"WorldRendererMixin",
+		"EntityS2CPacketAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

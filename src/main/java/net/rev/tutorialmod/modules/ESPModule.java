@@ -41,19 +41,11 @@ public class ESPModule {
         long now = System.currentTimeMillis();
         long refreshInterval = 1000 / Math.max(1, TutorialMod.CONFIG.espRefreshRate);
 
-        // Always calculate projection to keep it smooth with camera movement,
-        // but throttle the socket updates if desired.
-        // Actually, if we throttle, it will jitter.
-        // The user complained it "doesn't seem to change anything", so let's just update as fast as possible for now
-        // unless they specifically set a very low refresh rate.
-        if (TutorialMod.CONFIG.espRefreshRate < 60) {
-            if (now - lastRefreshTime < refreshInterval) {
-                return;
-            }
+        if (now - lastRefreshTime < refreshInterval) {
+            return;
         }
         lastRefreshTime = now;
 
-        // Clean up old vanished players (not updated for 5 seconds)
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
         updateESP(tickCounter, camera, projMat, viewMat);
@@ -77,11 +69,7 @@ public class ESPModule {
 
         VanishedPlayerData data = vanishedPlayers.get(entityId);
         if (data != null) {
-            // Delta values are in 1/4096th of a block
-            double dx = deltaX / 4096.0;
-            double dy = deltaY / 4096.0;
-            double dz = deltaZ / 4096.0;
-            data.pos = data.pos.add(dx, dy, dz);
+            data.pos = data.pos.add(deltaX / 4096.0, deltaY / 4096.0, deltaZ / 4096.0);
             data.lastUpdate = System.currentTimeMillis();
         }
     }
@@ -91,11 +79,9 @@ public class ESPModule {
         Vec3d cameraPos = camera.getCameraPos();
         float tickDelta = tickCounter.getTickProgress(true);
 
-        // Process visible players
         for (PlayerEntity player : client.world.getPlayers()) {
             if (player == client.player || !player.isAlive() || player.isInvisibleTo(client.player)) continue;
 
-            // Interpolated position for smooth movement
             double x = MathHelper.lerp(tickDelta, player.lastRenderX, player.getX());
             double y = MathHelper.lerp(tickDelta, player.lastRenderY, player.getY());
             double z = MathHelper.lerp(tickDelta, player.lastRenderZ, player.getZ());
@@ -103,7 +89,6 @@ public class ESPModule {
             appendEntityBox(boxesData, player, new Vec3d(x, y, z), projMat, viewMat, cameraPos, "");
         }
 
-        // Process vanished players
         if (TutorialMod.CONFIG.espAntiVanish) {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
                 appendVanishedBox(boxesData, entry.getValue().pos, projMat, viewMat, cameraPos);
@@ -114,8 +99,7 @@ public class ESPModule {
     }
 
     private void appendEntityBox(StringBuilder data, Entity entity, Vec3d pos, Matrix4f projMat, Matrix4f viewMat, Vec3d cameraPos, String label) {
-        double height = entity.getHeight();
-        projectAndAppend(data, pos, height, projMat, viewMat, cameraPos, label);
+        projectAndAppend(data, pos, entity.getHeight(), projMat, viewMat, cameraPos, label);
     }
 
     private void appendVanishedBox(StringBuilder data, Vec3d pos, Matrix4f projMat, Matrix4f viewMat, Vec3d cameraPos) {
@@ -123,10 +107,8 @@ public class ESPModule {
     }
 
     private void projectAndAppend(StringBuilder data, Vec3d worldPos, double height, Matrix4f projMat, Matrix4f viewMat, Vec3d cameraPos, String label) {
-        // Use camera-relative coordinates
         Vec3d relPos = worldPos.subtract(cameraPos);
 
-        // Project bottom center and top center
         Vector4f bottom2D = project(relPos, projMat, viewMat);
         Vector4f top2D = project(relPos.add(0, height, 0), projMat, viewMat);
 
@@ -137,17 +119,9 @@ public class ESPModule {
             int ty = (int) top2D.y;
 
             int boxHeight = Math.abs(by - ty);
-            // Constant aspect ratio for stability
             int boxWidth = (int) (boxHeight * 0.6);
             int boxX = bx - boxWidth / 2;
-            int boxY = ty;
-
-            // Basic off-screen check
-            int winW = client.getWindow().getWidth();
-            int winH = client.getWindow().getHeight();
-            if (boxX + boxWidth < -100 || boxX > winW + 100 || boxY + boxHeight < -100 || boxY > winH + 100) {
-                return;
-            }
+            int boxY = Math.min(by, ty); // Use the topmost Y
 
             if (data.length() > 0) data.append(";");
             data.append(boxX).append(",")
@@ -160,14 +134,22 @@ public class ESPModule {
 
     private Vector4f project(Vec3d relPos, Matrix4f projMat, Matrix4f viewMat) {
         Vector4f vec = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
-        // modelViewMatrix in render() usually already includes camera translation if called with world coords?
-        // Actually, in WorldRenderer.render, it's typically just rotation if you pass camera-relative coords.
-        vec.mul(viewMat);
-        vec.mul(projMat);
 
-        if (vec.w > 0.001f) {
-            float x = (vec.x / vec.w + 1.0f) / 2.0f * client.getWindow().getWidth();
-            float y = (1.0f - vec.y / vec.w) / 2.0f * client.getWindow().getHeight();
+        // Multiplications order matters in JOML: vec = matrix * vec
+        // but Matrix4f.transform(vec) is vec = matrix * vec
+        // vec.mul(matrix) is usually vec = vec * matrix (post-multiplication)
+        // Minecraft/JOML usually uses row vectors? No, OpenGL is column vectors.
+        // Let's use Matrix4f.transform(vec) or project properly.
+
+        Vector4f viewPos = new Vector4f();
+        viewMat.transform(vec, viewPos);
+
+        Vector4f clipPos = new Vector4f();
+        projMat.transform(viewPos, clipPos);
+
+        if (clipPos.w > 0.1f) {
+            float x = (clipPos.x / clipPos.w + 1.0f) / 2.0f * client.getWindow().getWidth();
+            float y = (1.0f - clipPos.y / clipPos.w) / 2.0f * client.getWindow().getHeight();
             return new Vector4f(x, y, 0, 0);
         }
         return null;
@@ -187,8 +169,6 @@ public class ESPModule {
     public void syncWindowBounds() {
         if (net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().isRunning()) {
             var window = client.getWindow();
-
-            // Using GLFW to get precise logical coordinates for the client area
             int[] left = new int[1], top = new int[1], right = new int[1], bottom = new int[1];
             GLFW.glfwGetWindowFrameSize(window.getHandle(), left, top, right, bottom);
 
