@@ -9,7 +9,6 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
 import org.joml.Vector4f;
 
 import java.util.Locale;
@@ -37,7 +36,6 @@ public class ESPModule {
             return;
         }
 
-        // Handle periodic sync and requested syncs
         if (needsSync) {
             syncWindowBounds();
             needsSync = false;
@@ -52,13 +50,32 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Construct a reliable View Matrix from camera rotation.
-        // The View Matrix is the inverse of the Camera pose.
-        Quaternionf viewRot = new Quaternionf(camera.getRotation());
-        viewRot.conjugate(); // Inverse of rotation
+        Matrix4f combinedMatrix;
 
-        Matrix4f viewMatrix = new Matrix4f().rotation(viewRot);
-        Matrix4f combinedMatrix = new Matrix4f(projectionMatrix).mul(viewMatrix);
+        if (TutorialMod.CONFIG.espManualProjection) {
+            // Manual construction of matrices to bypass unreliable parameters
+            float fov = (float) TutorialMod.CONFIG.espManualFov;
+            float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
+            float near = 0.05f;
+            float far = 1000f;
+
+            Matrix4f manualProj = new Matrix4f().perspective((float)Math.toRadians(fov), aspect, near, far);
+            Matrix4f manualView = new Matrix4f()
+                .rotateX((float)Math.toRadians(camera.getPitch()))
+                .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
+
+            combinedMatrix = manualProj.mul(manualView);
+        } else {
+            // Use the rotation-only part of the provided View Matrix
+            Matrix4f viewMatrix = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(viewMatrix);
+        }
+
+        // Debugging info for the user
+        if (TutorialMod.CONFIG.espDebugMode && now % 2000 < 50) {
+            String matrixInfo = String.format(Locale.ROOT, "M23:%.2f W:%.2f", combinedMatrix.m23(), combinedMatrix.m33());
+            net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("DEBUG_TEXT " + matrixInfo);
+        }
 
         updateESP(tickCounter, camera, combinedMatrix);
     }
@@ -147,12 +164,11 @@ public class ESPModule {
         Vector4f vec = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
         combinedMatrix.transform(vec);
 
-        if (vec.w > 0.01f) {
-            // NDC coordinates (-1 to 1)
+        // Standard perspective divide using W
+        if (vec.w > 0.1f) {
             float ndcX = (vec.x / vec.w) * (float)TutorialMod.CONFIG.espFovScale * (float)TutorialMod.CONFIG.espAspectRatioScale;
             float ndcY = (vec.y / vec.w) * (float)TutorialMod.CONFIG.espFovScale;
 
-            // Screen space percentages (0 to 1)
             float x = (ndcX + 1.0f) * 0.5f;
             float y = (1.0f - ndcY) * 0.5f;
 
@@ -173,7 +189,6 @@ public class ESPModule {
         int w = window.getWidth();
         int h = window.getHeight();
 
-        // Apply User Calibration
         x += TutorialMod.CONFIG.espOffsetX;
         y += TutorialMod.CONFIG.espOffsetY;
         w += TutorialMod.CONFIG.espWidthAdjust;

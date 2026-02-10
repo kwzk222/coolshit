@@ -19,7 +19,6 @@ public class ESPOverlayApp {
     private static final int PORT = 25567;
 
     public static void main(String[] args) {
-        // Force 1:1 pixel mapping to match Minecraft's physical framebuffer.
         System.setProperty("sun.java2d.uiScale", "1.0");
 
         SwingUtilities.invokeLater(() -> {
@@ -86,6 +85,8 @@ public class ESPOverlayApp {
             panel.updateBoxes(content.substring(6));
         } else if (content.startsWith("DEBUG ")) {
             panel.setDebugMode(Boolean.parseBoolean(content.substring(6)));
+        } else if (content.startsWith("DEBUG_TEXT ")) {
+            panel.setDebugText(content.substring(11));
         } else if (content.equals("CLEAR")) {
             panel.clear();
         } else if (content.equals("HIDE")) {
@@ -126,6 +127,7 @@ public class ESPOverlayApp {
     private static class ESPPanel extends JPanel {
         private List<BoxData> boxes = new ArrayList<>();
         private boolean debugMode = true;
+        private String debugText = "";
 
         public ESPPanel() {
             setOpaque(false);
@@ -133,6 +135,11 @@ public class ESPOverlayApp {
 
         public void setDebugMode(boolean enabled) {
             this.debugMode = enabled;
+            repaint();
+        }
+
+        public void setDebugText(String text) {
+            this.debugText = text;
             repaint();
         }
 
@@ -173,20 +180,18 @@ public class ESPOverlayApp {
             int panelH = getHeight();
 
             if (debugMode) {
-                // Red Border
                 g2d.setColor(new Color(255, 0, 0, 100));
                 g2d.setStroke(new BasicStroke(4.0f));
                 g2d.drawRect(0, 0, panelW - 1, panelH - 1);
 
-                // Center Crosshair
                 g2d.setStroke(new BasicStroke(1.0f));
                 g2d.drawLine(panelW / 2 - 20, panelH / 2, panelW / 2 + 20, panelH / 2);
                 g2d.drawLine(panelW / 2, panelH / 2 - 20, panelW / 2, panelH / 2 + 20);
 
-                // Labels
                 g2d.setFont(new Font("Arial", Font.BOLD, 14));
                 g2d.drawString("ESP Overlay (" + panelW + "x" + panelH + ")", 10, 20);
                 g2d.drawString("CENTER: " + (panelW / 2) + ", " + (panelH / 2), 10, 40);
+                g2d.drawString(debugText, 10, 60);
             }
 
             for (BoxData box : boxes) {
