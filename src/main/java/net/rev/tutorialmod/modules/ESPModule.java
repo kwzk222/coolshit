@@ -106,8 +106,10 @@ public class ESPModule {
         Vec3d camPos = camera.getCameraPos();
         float yaw = (float) Math.toRadians(camera.getYaw());
         float pitch = (float) Math.toRadians(camera.getPitch());
+
         float width = (float) mc.getWindow().getWidth();
         float height = (float) mc.getWindow().getHeight();
+
         float fov = (float) TutorialMod.CONFIG.espManualFov;
         float aspectRatio = (width / height) * (float)TutorialMod.CONFIG.espAspectRatioScale;
 
@@ -168,7 +170,6 @@ public class ESPModule {
 
     private void appendBox(StringBuilder sb, BoxData data, String label, int color, String distLabel, String texture) {
         if (sb.length() > 0) sb.append(";");
-        // Using | as delimiter to avoid issues with paths containing commas
         sb.append(String.format(Locale.ROOT, "%d|%d|%d|%d|%s|%d|%s|%s",
             (int)data.x, (int)data.y, (int)data.w, (int)data.h, label, color, distLabel, texture));
     }
@@ -372,21 +373,37 @@ public class ESPModule {
         String key = id.toString();
         if (texturePathCache.containsKey(key)) return texturePathCache.get(key);
 
-        Identifier texRes = Identifier.of(id.getNamespace(), "textures/block/" + id.getPath() + ".png");
-        File outFile = new File(textureDir, id.getNamespace() + "_" + id.getPath() + ".png");
+        String path = id.getPath();
+        Identifier texRes = Identifier.of(id.getNamespace(), "textures/block/" + path + ".png");
+
+        File outFile = new File(textureDir, id.getNamespace() + "_" + path + ".png");
 
         if (!outFile.exists()) {
-            mc.getResourceManager().getResource(texRes).ifPresent(res -> {
+            mc.getResourceManager().getResource(texRes).ifPresentOrElse(res -> {
                 try {
                     BufferedImage img = ImageIO.read(res.getInputStream());
-                    ImageIO.write(img, "png", outFile);
-                } catch (IOException ignored) {}
+                    if (img != null) {
+                        ImageIO.write(img, "png", outFile);
+                    }
+                } catch (IOException e) {
+                    TutorialMod.LOGGER.error("Failed to extract texture for " + key, e);
+                }
+            }, () -> {
+                // Try fallback side texture
+                Identifier sideRes = Identifier.of(id.getNamespace(), "textures/block/" + path + "_side.png");
+                mc.getResourceManager().getResource(sideRes).ifPresent(res -> {
+                     try {
+                        BufferedImage img = ImageIO.read(res.getInputStream());
+                        if (img != null) ImageIO.write(img, "png", outFile);
+                    } catch (IOException ignored) {}
+                });
             });
         }
 
         if (outFile.exists()) {
-            texturePathCache.put(key, outFile.getAbsolutePath());
-            return outFile.getAbsolutePath();
+            String absPath = outFile.getAbsolutePath();
+            texturePathCache.put(key, absPath);
+            return absPath;
         }
         return "";
     }

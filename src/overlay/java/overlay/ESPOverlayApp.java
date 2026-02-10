@@ -23,7 +23,8 @@ public class ESPOverlayApp {
     private static final int PORT = 25567;
 
     public static void main(String[] args) {
-        // Removed sun.java2d.uiScale=1.0 to match Minecraft's logical coordinate system
+        // Force 1:1 pixel mapping to match Minecraft's physical framebuffer
+        System.setProperty("sun.java2d.uiScale", "1.0");
 
         SwingUtilities.invokeLater(() -> {
             frame = new JFrame("TutorialMod ESP Overlay");
@@ -134,8 +135,8 @@ public class ESPOverlayApp {
             if (!data.isEmpty()) {
                 String[] items = data.split(";");
                 for (String item : items) {
-                    // Changed delimiter to |
-                    String[] parts = item.split("\\|");
+                    // Use -1 limit to keep empty trailing strings
+                    String[] parts = item.split("\\|", -1);
                     if (parts.length >= 4) {
                         try {
                             int x = Integer.parseInt(parts[0]);
@@ -143,7 +144,7 @@ public class ESPOverlayApp {
                             int w = Integer.parseInt(parts[2]);
                             int h = Integer.parseInt(parts[3]);
                             String label = parts.length > 4 ? parts[4] : "";
-                            int color = parts.length > 5 && !parts[5].isEmpty() ? Integer.parseInt(parts[5]) : 0xFFFFFF;
+                            int color = (parts.length > 5 && !parts[5].isEmpty()) ? Integer.parseInt(parts[5]) : 0xFFFFFF;
                             String distLabel = parts.length > 6 ? parts[6] : "";
                             String texturePath = parts.length > 7 ? parts[7] : "";
                             newBoxes.add(new BoxData(x, y, w, h, label, color, distLabel, texturePath));
@@ -151,7 +152,9 @@ public class ESPOverlayApp {
                             if (!texturePath.isEmpty() && !imageCache.containsKey(texturePath)) {
                                 try {
                                     File f = new File(texturePath);
-                                    if (f.exists()) imageCache.put(texturePath, ImageIO.read(f));
+                                    if (f.exists()) {
+                                        imageCache.put(texturePath, ImageIO.read(f));
+                                    }
                                 } catch (Exception ignored) {}
                             }
                         } catch (Exception ignored) {}
@@ -189,7 +192,7 @@ public class ESPOverlayApp {
                 if (!box.texturePath.isEmpty() && imageCache.containsKey(box.texturePath)) {
                     BufferedImage img = imageCache.get(box.texturePath);
                     g2d.drawImage(img, bx, by, bw, bh, null);
-                    g2d.setColor(Color.BLACK);
+                    g2d.setColor(new Color(box.color | 0xAA000000, true));
                     g2d.setStroke(new BasicStroke(1.0f));
                     g2d.drawRect(bx, by, bw, bh);
                 } else {
