@@ -19,8 +19,8 @@ public class ESPOverlayApp {
     private static final int PORT = 25567;
 
     public static void main(String[] args) {
-        // Force 1.0 UI Scale to avoid DPI confusion between Minecraft and Swing
-        System.setProperty("sun.java2d.uiScale", "1.0");
+        // Remove forced uiScale to let Windows handle DPI scaling for the window position
+        // This should make logical coordinate matching much easier.
 
         SwingUtilities.invokeLater(() -> {
             frame = new JFrame("TutorialMod ESP Overlay");
@@ -141,10 +141,11 @@ public class ESPOverlayApp {
                     String[] parts = item.split(",");
                     if (parts.length >= 4) {
                         try {
-                            int x = Integer.parseInt(parts[0]);
-                            int y = Integer.parseInt(parts[1]);
-                            int w = Integer.parseInt(parts[2]);
-                            int h = Integer.parseInt(parts[3]);
+                            // Now expecting percentages (0.0 - 1.0)
+                            float x = Float.parseFloat(parts[0]);
+                            float y = Float.parseFloat(parts[1]);
+                            float w = Float.parseFloat(parts[2]);
+                            float h = Float.parseFloat(parts[3]);
                             String label = parts.length > 4 ? parts[4] : "";
                             newBoxes.add(new BoxData(x, y, w, h, label));
                         } catch (Exception ignored) {}
@@ -166,34 +167,42 @@ public class ESPOverlayApp {
             Graphics2D g2d = (Graphics2D) g;
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+            int panelW = getWidth();
+            int panelH = getHeight();
+
             if (debugMode) {
                 g2d.setColor(Color.RED);
-                g2d.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
+                g2d.drawRect(0, 0, panelW - 1, panelH - 1);
                 g2d.setFont(new Font("Arial", Font.PLAIN, 12));
-                g2d.drawString("ESP Overlay (1:1) " + getWidth() + "x" + getHeight(), 5, 15);
+                g2d.drawString("ESP Overlay (Logical) " + panelW + "x" + panelH, 5, 15);
             }
 
             for (BoxData box : boxes) {
+                int bx = (int) (box.xf * panelW);
+                int by = (int) (box.yf * panelH);
+                int bw = (int) (box.wf * panelW);
+                int bh = (int) (box.hf * panelH);
+
                 g2d.setStroke(new BasicStroke(2.0f));
                 g2d.setColor(Color.BLACK);
-                g2d.drawRect(box.x - 1, box.y - 1, box.w + 2, box.h + 2);
+                g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
                 g2d.setColor(Color.WHITE);
-                g2d.drawRect(box.x, box.y, box.w, box.h);
+                g2d.drawRect(bx, by, bw, bh);
                 if (!box.label.isEmpty()) {
                     g2d.setFont(new Font("Consolas", Font.BOLD, 12));
                     FontMetrics fm = g2d.getFontMetrics();
                     int labelWidth = fm.stringWidth(box.label);
-                    g2d.drawString(box.label, box.x + (box.w - labelWidth) / 2, box.y - 2);
+                    g2d.drawString(box.label, bx + (bw - labelWidth) / 2, by - 2);
                 }
             }
         }
     }
 
     private static class BoxData {
-        int x, y, w, h;
+        float xf, yf, wf, hf;
         String label;
-        BoxData(int x, int y, int w, int h, String label) {
-            this.x = x; this.y = y; this.w = w; this.h = h; this.label = label;
+        BoxData(float xf, float yf, float wf, float hf, String label) {
+            this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label;
         }
     }
 }

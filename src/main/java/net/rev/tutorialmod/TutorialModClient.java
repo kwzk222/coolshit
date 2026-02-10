@@ -139,6 +139,8 @@ public class TutorialModClient implements ClientModInitializer {
 
     private int originalSlotBeforeDrain = -1;
     private int drainRestoreTicks = -1;
+
+    private boolean lastScreenWasNull = true;
     private int drainPendingSlot = -1;
     private int drainSwitchToTicks = -1;
     private int drainSwitchBackTimer = -1;
@@ -273,8 +275,10 @@ public class TutorialModClient implements ClientModInitializer {
             espOverlayManager.stop();
         }
 
-        if (espOverlayManager.isRunning() && client.player != null) {
-            espModule.onTick();
+        boolean screenChanged = (client.currentScreen == null) != lastScreenWasNull;
+        if (screenChanged) {
+            espModule.triggerSync();
+            lastScreenWasNull = (client.currentScreen == null);
         }
 
 
