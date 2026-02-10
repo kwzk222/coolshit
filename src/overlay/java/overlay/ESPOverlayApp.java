@@ -157,7 +157,8 @@ public class ESPOverlayApp {
                             float h = Float.parseFloat(parts[3]);
                             String label = parts.length > 4 ? parts[4] : "";
                             int color = parts.length > 5 ? Integer.parseInt(parts[5]) : 0xFFFFFF;
-                            newBoxes.add(new BoxData(x, y, w, h, label, color));
+                            String distLabel = parts.length > 6 ? parts[6] : "";
+                            newBoxes.add(new BoxData(x, y, w, h, label, color, distLabel));
                         } catch (Exception ignored) {}
                     }
                 }
@@ -203,25 +204,35 @@ public class ESPOverlayApp {
 
                 if (bw <= 0 || bh <= 0) continue;
 
-                // Set color (ensuring alpha is opaque if not provided)
                 Color c = new Color(box.color | 0xFF000000, true);
 
                 g2d.setStroke(new BasicStroke(2.0f));
-                // Black outline
                 g2d.setColor(Color.BLACK);
                 g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
-                // Main color
                 g2d.setColor(c);
                 g2d.drawRect(bx, by, bw, bh);
 
-                if (!box.label.isEmpty()) {
+                int labelY = by - 4;
+                if (!box.label.isEmpty() || !box.distLabel.isEmpty()) {
                     g2d.setFont(new Font("Consolas", Font.BOLD, 12));
                     FontMetrics fm = g2d.getFontMetrics();
-                    int labelWidth = fm.stringWidth(box.label);
-                    g2d.setColor(new Color(0, 0, 0, 150));
-                    g2d.fillRect(bx + (bw - labelWidth) / 2 - 2, by - 15, labelWidth + 4, 13);
-                    g2d.setColor(Color.WHITE);
-                    g2d.drawString(box.label, bx + (bw - labelWidth) / 2, by - 4);
+
+                    if (!box.label.isEmpty()) {
+                        int labelWidth = fm.stringWidth(box.label);
+                        g2d.setColor(new Color(0, 0, 0, 150));
+                        g2d.fillRect(bx + (bw - labelWidth) / 2 - 2, labelY - 11, labelWidth + 4, 13);
+                        g2d.setColor(Color.WHITE);
+                        g2d.drawString(box.label, bx + (bw - labelWidth) / 2, labelY);
+                        labelY -= 15;
+                    }
+
+                    if (!box.distLabel.isEmpty()) {
+                        int distWidth = fm.stringWidth(box.distLabel);
+                        g2d.setColor(new Color(0, 0, 0, 150));
+                        g2d.fillRect(bx + (bw - distWidth) / 2 - 2, labelY - 11, distWidth + 4, 13);
+                        g2d.setColor(Color.WHITE);
+                        g2d.drawString(box.distLabel, bx + (bw - distWidth) / 2, labelY);
+                    }
                 }
             }
         }
@@ -231,8 +242,9 @@ public class ESPOverlayApp {
         float xf, yf, wf, hf;
         String label;
         int color;
-        BoxData(float xf, float yf, float wf, float hf, String label, int color) {
-            this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label; this.color = color;
+        String distLabel;
+        BoxData(float xf, float yf, float wf, float hf, String label, int color, String distLabel) {
+            this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label; this.color = color; this.distLabel = distLabel;
         }
     }
 }

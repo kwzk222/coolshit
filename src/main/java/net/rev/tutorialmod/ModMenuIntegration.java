@@ -112,18 +112,31 @@ public class ModMenuIntegration implements ModMenuApi {
             espGeneral.add(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.toggleESPHotkey).setDefaultValue("key.keyboard.y").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleESPHotkey = newValue).build());
             espOverlay.addEntry(espGeneral.build());
 
+            int maxBlocks = net.minecraft.client.MinecraftClient.getInstance().options.getClampedViewDistance() * 16;
             SubCategoryBuilder espFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Players"), TutorialMod.CONFIG.espPlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espPlayers = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Villagers"), TutorialMod.CONFIG.espVillagers).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espVillagers = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Hostile Mobs"), TutorialMod.CONFIG.espHostiles).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHostiles = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Passive Mobs"), TutorialMod.CONFIG.espPassives).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espPassives = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Tamed Mobs"), TutorialMod.CONFIG.espTamed).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espTamed = newValue).build());
-            espFilters.add(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.espMinRange * 10), 0, 1280).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMinRange = newValue / 10.0).build());
-            espFilters.add(entryBuilder.startLongSlider(Text.literal("Max Range"), (long)(TutorialMod.CONFIG.espMaxRange * 10), 0, 1280).setDefaultValue(640).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMaxRange = newValue / 10.0).build());
+            espFilters.add(entryBuilder.startLongSlider(Text.literal("Min Range (Blocks)"), (long)(TutorialMod.CONFIG.espMinRange), 0, maxBlocks).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMinRange = newValue.doubleValue()).build());
+            espFilters.add(entryBuilder.startLongSlider(Text.literal("Max Range (Blocks)"), (long)(TutorialMod.CONFIG.espMaxRange), 0, maxBlocks).setDefaultValue(maxBlocks).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMaxRange = newValue.doubleValue()).build());
             espOverlay.addEntry(espFilters.build());
 
             SubCategoryBuilder espVisuals = entryBuilder.startSubCategory(Text.literal("Visuals"));
-            espVisuals.add(entryBuilder.startBooleanToggle(Text.literal("Show Names"), TutorialMod.CONFIG.espShowNames).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNames = newValue).build());
+            SubCategoryBuilder espNameSub = entryBuilder.startSubCategory(Text.literal("Show Names"));
+            espNameSub.add(entryBuilder.startBooleanToggle(Text.literal("Players"), TutorialMod.CONFIG.espShowNamesPlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNamesPlayers = newValue).build());
+            espNameSub.add(entryBuilder.startBooleanToggle(Text.literal("Villagers"), TutorialMod.CONFIG.espShowNamesVillagers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNamesVillagers = newValue).build());
+            espNameSub.add(entryBuilder.startBooleanToggle(Text.literal("Hostiles"), TutorialMod.CONFIG.espShowNamesHostiles).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNamesHostiles = newValue).build());
+            espNameSub.add(entryBuilder.startBooleanToggle(Text.literal("Passives"), TutorialMod.CONFIG.espShowNamesPassives).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNamesPassives = newValue).build());
+            espNameSub.add(entryBuilder.startBooleanToggle(Text.literal("Tamed"), TutorialMod.CONFIG.espShowNamesTamed).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNamesTamed = newValue).build());
+            espVisuals.add(espNameSub.build());
+
+            SubCategoryBuilder espDistSub = entryBuilder.startSubCategory(Text.literal("Distance Label (Players)"));
+            espDistSub.add(entryBuilder.startBooleanToggle(Text.literal("Show Distance"), TutorialMod.CONFIG.espShowDistance).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowDistance = newValue).build());
+            espDistSub.add(entryBuilder.startLongSlider(Text.literal("Hide Distance Threshold (Blocks)"), (long)TutorialMod.CONFIG.espDistanceHideThreshold, 0, 100).setTooltip(Text.literal("Distance label disappears if player is closer than this.")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espDistanceHideThreshold = newValue.doubleValue()).build());
+            espVisuals.add(espDistSub.build());
+
             espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Width Factor"), (long)(TutorialMod.CONFIG.espBoxWidthFactor * 100), 5, 100).setTooltip(Text.literal("Adjusts how 'fat' the boxes are. Default is 45.")).setDefaultValue(45).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxWidthFactor = newValue / 100.0).build());
             espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Scale"), (long)(TutorialMod.CONFIG.espBoxScale * 100), 10, 300).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxScale = newValue / 100.0).build());
             espVisuals.add(entryBuilder.startColorField(Text.literal("Teammate Color"), TutorialMod.CONFIG.espColorTeammate).setDefaultValue(0x00FF00).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorTeammate = newValue).build());

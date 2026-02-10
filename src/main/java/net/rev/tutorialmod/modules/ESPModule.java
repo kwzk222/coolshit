@@ -118,23 +118,32 @@ public class ESPModule {
             if (dist < TutorialMod.CONFIG.espMinRange || dist > TutorialMod.CONFIG.espMaxRange) continue;
 
             int color = -1;
-            String label = TutorialMod.CONFIG.espShowNames ? entity.getName().getString() : "";
+            String label = "";
+            String distLabel = "";
 
             if (entity instanceof PlayerEntity player) {
                 if (!TutorialMod.CONFIG.espPlayers || player.isInvisibleTo(client.player)) continue;
+                if (TutorialMod.CONFIG.espShowNamesPlayers) label = player.getName().getString();
+                if (TutorialMod.CONFIG.espShowDistance && dist >= TutorialMod.CONFIG.espDistanceHideThreshold) {
+                    distLabel = String.format(Locale.ROOT, "%.1fb", dist);
+                }
                 color = TutorialMod.CONFIG.teamManager.isTeammate(player.getName().getString())
                         ? TutorialMod.CONFIG.espColorTeammate : TutorialMod.CONFIG.espColorEnemy;
             } else if (entity instanceof VillagerEntity) {
                 if (!TutorialMod.CONFIG.espVillagers) continue;
+                if (TutorialMod.CONFIG.espShowNamesVillagers) label = entity.getName().getString();
                 color = TutorialMod.CONFIG.espColorVillager;
             } else if (entity instanceof TameableEntity tameable && tameable.isTamed()) {
                 if (!TutorialMod.CONFIG.espTamed) continue;
+                if (TutorialMod.CONFIG.espShowNamesTamed) label = entity.getName().getString();
                 color = TutorialMod.CONFIG.espColorTamed;
             } else if (entity instanceof Monster) {
                 if (!TutorialMod.CONFIG.espHostiles) continue;
+                if (TutorialMod.CONFIG.espShowNamesHostiles) label = entity.getName().getString();
                 color = TutorialMod.CONFIG.espColorHostile;
             } else if (entity instanceof PassiveEntity) {
                 if (!TutorialMod.CONFIG.espPassives) continue;
+                if (TutorialMod.CONFIG.espShowNamesPassives) label = entity.getName().getString();
                 color = TutorialMod.CONFIG.espColorPassive;
             }
 
@@ -144,54 +153,67 @@ public class ESPModule {
                 double z = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
 
                 Vec3d relPos = new Vec3d(x, y, z).subtract(cameraPos);
-                projectAndAppend(boxesData, relPos, entity.getHeight(), combinedMatrix, label, color);
+                projectAndAppend(boxesData, relPos, entity.getHeight(), combinedMatrix, label, color, distLabel);
             }
         }
 
         if (TutorialMod.CONFIG.espAntiVanish) {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
                 Vec3d relPos = entry.getValue().pos.subtract(cameraPos);
-                projectAndAppend(boxesData, relPos, 1.8, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy);
+                projectAndAppend(boxesData, relPos, 1.8, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "");
             }
         }
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
     }
 
-    private void projectAndAppend(StringBuilder data, Vec3d relPos, double height, Matrix4f combinedMatrix, String label, int color) {
-        Vector4f bottom2D = project(relPos, combinedMatrix);
-        Vector4f top2D = project(relPos.add(0, height, 0), combinedMatrix);
+    private void projectAndAppend(StringBuilder data, Vec3d relPos, double height, Matrix4f combinedMatrix, String label, int color, String distLabel) {
+        Vector4f clipFeet = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
+        combinedMatrix.transform(clipFeet);
 
-        if (bottom2D != null && top2D != null) {
-            float bx = bottom2D.x;
-            float by = bottom2D.y;
-            float ty = top2D.y;
+        Vector4f clipHead = new Vector4f((float)relPos.x, (float)relPos.y + (float)height, (float)relPos.z, 1.0f);
+        combinedMatrix.transform(clipHead);
 
-            float boxHeight = Math.abs(by - ty) * (float)TutorialMod.CONFIG.espBoxScale;
-            float boxWidth = boxHeight * (float)TutorialMod.CONFIG.espBoxWidthFactor;
-            float boxX = bx - boxWidth / 2f;
-            float boxY = Math.min(by, ty);
+        float epsilon = 0.05f;
+        boolean feetInFront = clipFeet.w > epsilon;
+        boolean headInFront = clipHead.w > epsilon;
 
-            if (data.length() > 0) data.append(";");
-            // Protocol: x,y,w,h,label,color
-            data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s,%d", boxX, boxY, boxWidth, boxHeight, label, color));
+        if (!feetInFront && !headInFront) return;
+
+        // Clip the segment to the near plane if necessary
+        if (!feetInFront) {
+            float t = (epsilon - clipFeet.w) / (clipHead.w - clipFeet.w);
+            clipFeet.set(
+                clipFeet.x + t * (clipHead.x - clipFeet.x),
+                clipFeet.y + t * (clipHead.y - clipFeet.y),
+                clipFeet.z + t * (clipHead.z - clipFeet.z),
+                epsilon
+            );
+        } else if (!headInFront) {
+            float t = (epsilon - clipHead.w) / (clipFeet.w - clipHead.w);
+            clipHead.set(
+                clipHead.x + t * (clipFeet.x - clipHead.x),
+                clipHead.y + t * (clipFeet.y - clipHead.y),
+                clipHead.z + t * (clipFeet.z - clipHead.z),
+                epsilon
+            );
         }
-    }
 
-    private Vector4f project(Vec3d relPos, Matrix4f combinedMatrix) {
-        Vector4f vec = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
-        combinedMatrix.transform(vec);
+        // Project to normalized screen percentages
+        float bx = ((clipFeet.x / clipFeet.w) * (float)TutorialMod.CONFIG.espFovScale * (float)TutorialMod.CONFIG.espAspectRatioScale + 1.0f) * 0.5f;
+        float by = (1.0f - (clipFeet.y / clipFeet.w) * (float)TutorialMod.CONFIG.espFovScale) * 0.5f;
 
-        if (vec.w > 0.01f) {
-            float ndcX = (vec.x / vec.w) * (float)TutorialMod.CONFIG.espFovScale * (float)TutorialMod.CONFIG.espAspectRatioScale;
-            float ndcY = (vec.y / vec.w) * (float)TutorialMod.CONFIG.espFovScale;
+        float tx = ((clipHead.x / clipHead.w) * (float)TutorialMod.CONFIG.espFovScale * (float)TutorialMod.CONFIG.espAspectRatioScale + 1.0f) * 0.5f;
+        float ty = (1.0f - (clipHead.y / clipHead.w) * (float)TutorialMod.CONFIG.espFovScale) * 0.5f;
 
-            float x = (ndcX + 1.0f) * 0.5f;
-            float y = (1.0f - ndcY) * 0.5f;
+        float boxHeight = Math.abs(by - ty) * (float)TutorialMod.CONFIG.espBoxScale;
+        float boxWidth = boxHeight * (float)TutorialMod.CONFIG.espBoxWidthFactor;
+        float boxX = bx - boxWidth / 2f;
+        float boxY = Math.min(by, ty);
 
-            return new Vector4f(x, y, 0, 0);
-        }
-        return null;
+        if (data.length() > 0) data.append(";");
+        // Protocol: x,y,w,h,label,color,distLabel
+        data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s,%d,%s", boxX, boxY, boxWidth, boxHeight, label, color, distLabel));
     }
 
     public void syncWindowBounds() {

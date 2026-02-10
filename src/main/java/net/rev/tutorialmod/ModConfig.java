@@ -222,7 +222,13 @@ public class ModConfig {
     public double espMinRange = 0.0;
 
     // ESP Visuals
-    public boolean espShowNames = true;
+    public boolean espShowNamesPlayers = true;
+    public boolean espShowNamesVillagers = true;
+    public boolean espShowNamesHostiles = true;
+    public boolean espShowNamesPassives = true;
+    public boolean espShowNamesTamed = true;
+    public boolean espShowDistance = true;
+    public double espDistanceHideThreshold = 0.0;
     public double espBoxWidthFactor = 0.45;
     public int espColorTeammate = 0x00FF00;
     public int espColorEnemy = 0xFF0000;
