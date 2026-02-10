@@ -32,12 +32,10 @@ public class ModMenuIntegration implements ModMenuApi {
                 int buttonHeight = 20;
                 int x = screen.width - buttonWidth - 10;
                 int y = screen.height - 26;
-
                 ButtonWidget saveButton = ButtonWidget.builder(Text.literal("Save"), button -> {
                     TutorialMod.CONFIG.save();
                     TutorialMod.sendUpdateMessage("Settings saved successfully.");
                 }).dimensions(x, y, buttonWidth, buttonHeight).build();
-
                 ((ScreenAccessor) screen).invokeAddDrawableChild(saveButton);
             });
 
@@ -219,7 +217,6 @@ public class ModMenuIntegration implements ModMenuApi {
             chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Replace in Chat"), TutorialMod.CONFIG.replaceInChat).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.replaceInChat = newValue).build());
             chat.addEntry(entryBuilder.startBooleanToggle(Text.literal("Replace in Commands"), TutorialMod.CONFIG.replaceInCommands).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.replaceInCommands = newValue).build());
             chat.addEntry(entryBuilder.startStrField(Text.literal("Coordinate Format"), TutorialMod.CONFIG.format).setDefaultValue("{bx} {by} {bz} {dim} {facing}").setSaveConsumer(newValue -> TutorialMod.CONFIG.format = newValue).build());
-
             for (int i = 1; i <= 5; i++) {
                 final int macroNum = i;
                 ModConfig.Macro macro;
@@ -241,27 +238,27 @@ public class ModMenuIntegration implements ModMenuApi {
             ConfigCategory misc = builder.getOrCreateCategory(Text.literal("Misc"));
             misc.addEntry(entryBuilder.startStrField(Text.literal("Open Settings Hotkey"), TutorialMod.CONFIG.openSettingsHotkey).setDefaultValue("key.keyboard.right.shift").setSaveConsumer(newValue -> TutorialMod.CONFIG.openSettingsHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey).setDefaultValue("key.keyboard.m").setSaveConsumer(newValue -> TutorialMod.CONFIG.masterToggleHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("ESP Toggle Hotkey"), TutorialMod.CONFIG.toggleESPHotkey).setDefaultValue("key.keyboard.y").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleESPHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Teammate Toggle Hotkey"), TutorialMod.CONFIG.teammateHotkey).setDefaultValue("key.keyboard.g").setSaveConsumer(newValue -> TutorialMod.CONFIG.teammateHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintModeHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Sneak Mode Toggle Hotkey"), TutorialMod.CONFIG.sneakModeHotkey).setDefaultValue("key.keyboard.b").setSaveConsumer(newValue -> TutorialMod.CONFIG.sneakModeHotkey = newValue).build());
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Hotkeys Active in Inventory"), TutorialMod.CONFIG.activeInInventory).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.activeInInventory = newValue).build());
-
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue).build());
             misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue).build());
-
             SubCategoryBuilder extinguishSub = entryBuilder.startSubCategory(Text.literal("Auto Extinguish"));
             extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue).build());
             extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
             misc.addEntry(extinguishSub.build());
 
-            // 2.3 O-ESP (Moved here, renamed)
+            // 2.3 O-ESP (Placed before Overlay)
             ConfigCategory espOverlay = builder.getOrCreateCategory(Text.literal("O-ESP"));
 
             SubCategoryBuilder espGeneral = entryBuilder.startSubCategory(Text.literal("General"));
             espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.showESP).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showESP = newValue).build());
             espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Anti-Vanish Mode"), TutorialMod.CONFIG.espAntiVanish).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espAntiVanish = newValue).build());
             espGeneral.add(entryBuilder.startIntSlider(Text.literal("Refresh Rate"), TutorialMod.CONFIG.espRefreshRate, 1, 60).setTooltip(Text.literal("Units: FPS")).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRefreshRate = newValue).build());
+            espGeneral.add(entryBuilder.startIntSlider(Text.literal("Max Box Count"), TutorialMod.CONFIG.espMaxBoxes, 50, 2000).setTooltip(Text.literal("Throttles ESP frame rate if more boxes than this are on screen.")).setDefaultValue(500).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMaxBoxes = newValue).build());
             espGeneral.add(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.toggleESPHotkey).setDefaultValue("key.keyboard.y").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleESPHotkey = newValue).build());
             espOverlay.addEntry(espGeneral.build());
 
@@ -278,9 +275,11 @@ public class ModMenuIntegration implements ModMenuApi {
 
             SubCategoryBuilder xraySub = entryBuilder.startSubCategory(Text.literal("X-Ray"));
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.xrayEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayEnabled = newValue).build());
-            xraySub.add(entryBuilder.startStrList(Text.literal("Target Blocks"), TutorialMod.CONFIG.xrayBlocks).setDefaultValue(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore")).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayBlocks = newValue).build());
+            xraySub.add(entryBuilder.startStrList(Text.literal("Target Blocks"), TutorialMod.CONFIG.xrayBlocks).setTooltip(Text.literal("Format: block_id:range (e.g. diamond_ore:64)")).setDefaultValue(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore")).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayBlocks = newValue).build());
+            xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Clumping"), TutorialMod.CONFIG.xrayClumping).setTooltip(Text.literal("Groups adjacent blocks into one hitbox.")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayClumping = newValue).build());
+            xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Show Block Textures"), TutorialMod.CONFIG.xrayShowTextures).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayShowTextures = newValue).build());
             xraySub.add(entryBuilder.startColorField(Text.literal("X-Ray Color"), TutorialMod.CONFIG.xrayColor).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayColor = newValue).build());
-            xraySub.add(entryBuilder.startIntSlider(Text.literal("Scan Range (Blocks)"), TutorialMod.CONFIG.xrayRange, 8, 64).setDefaultValue(32).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayRange = newValue).build());
+            xraySub.add(entryBuilder.startIntSlider(Text.literal("Global Scan Range (Blocks)"), TutorialMod.CONFIG.xrayRange, 8, 64).setDefaultValue(32).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayRange = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Show Block Names"), TutorialMod.CONFIG.xrayShowNames).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayShowNames = newValue).build());
             espOverlay.addEntry(xraySub.build());
 

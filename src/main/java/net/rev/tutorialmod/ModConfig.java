@@ -239,10 +239,13 @@ public class ModConfig {
 
     // X-Ray
     public boolean xrayEnabled = true;
-    public List<String> xrayBlocks = new ArrayList<>(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore"));
+    public List<String> xrayBlocks = new ArrayList<>(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore", "minecraft:ancient_debris:64"));
     public int xrayColor = 0x00FFFF;
     public int xrayRange = 32;
     public boolean xrayShowNames = false;
+    public boolean xrayClumping = true;
+    public boolean xrayShowTextures = false;
+    public int espMaxBoxes = 500;
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;

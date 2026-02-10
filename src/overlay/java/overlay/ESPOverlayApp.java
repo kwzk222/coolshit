@@ -2,11 +2,15 @@ package overlay;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import javax.imageio.ImageIO;
 
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.User32;
@@ -71,7 +75,6 @@ public class ESPOverlayApp {
                     int y = Integer.parseInt(parts[1]);
                     int w = Integer.parseInt(parts[2]);
                     int h = Integer.parseInt(parts[3]);
-
                     if (w > 10 && h > 10) {
                         frame.setBounds(x, y, w, h);
                         if (!frame.isVisible()) {
@@ -85,8 +88,6 @@ public class ESPOverlayApp {
             panel.updateBoxes(content.substring(6));
         } else if (content.startsWith("DEBUG ")) {
             panel.setDebugMode(Boolean.parseBoolean(content.substring(6)));
-        } else if (content.startsWith("DEBUG_TEXT ")) {
-            panel.setDebugText(content.substring(11));
         } else if (content.equals("CLEAR")) {
             panel.clear();
         } else if (content.equals("HIDE")) {
@@ -100,34 +101,24 @@ public class ESPOverlayApp {
     private static void setClickThrough(boolean enabled) {
         if (!System.getProperty("os.name").toLowerCase().contains("win")) return;
         try {
-            WinClickThrough.setClickThrough(frame, enabled);
+            HWND hwnd = new HWND();
+            hwnd.setPointer(Native.getComponentPointer(frame));
+            int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
+            if (enabled) {
+                exStyle |= WinUser.WS_EX_TRANSPARENT | WinUser.WS_EX_LAYERED;
+            } else {
+                exStyle &= ~WinUser.WS_EX_TRANSPARENT;
+            }
+            User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
         } catch (Throwable t) {
             t.printStackTrace();
         }
     }
 
-    private static class WinClickThrough {
-        public static void setClickThrough(JFrame frame, boolean enabled) {
-            try {
-                HWND hwnd = new HWND();
-                hwnd.setPointer(Native.getComponentPointer(frame));
-                int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
-                if (enabled) {
-                    exStyle |= WinUser.WS_EX_TRANSPARENT | WinUser.WS_EX_LAYERED;
-                } else {
-                    exStyle &= ~WinUser.WS_EX_TRANSPARENT;
-                }
-                User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     private static class ESPPanel extends JPanel {
         private List<BoxData> boxes = new ArrayList<>();
+        private Map<String, BufferedImage> imageCache = new HashMap<>();
         private boolean debugMode = true;
-        private String debugText = "";
 
         public ESPPanel() {
             setOpaque(false);
@@ -135,11 +126,6 @@ public class ESPOverlayApp {
 
         public void setDebugMode(boolean enabled) {
             this.debugMode = enabled;
-            repaint();
-        }
-
-        public void setDebugText(String text) {
-            this.debugText = text;
             repaint();
         }
 
@@ -156,9 +142,17 @@ public class ESPOverlayApp {
                             float w = Float.parseFloat(parts[2]);
                             float h = Float.parseFloat(parts[3]);
                             String label = parts.length > 4 ? parts[4] : "";
-                            int color = parts.length > 5 ? Integer.parseInt(parts[5]) : 0xFFFFFF;
+                            int color = parts.length > 5 && !parts[5].isEmpty() ? Integer.parseInt(parts[5]) : 0xFFFFFF;
                             String distLabel = parts.length > 6 ? parts[6] : "";
-                            newBoxes.add(new BoxData(x, y, w, h, label, color, distLabel));
+                            String texturePath = parts.length > 7 ? parts[7] : "";
+                            newBoxes.add(new BoxData(x, y, w, h, label, color, distLabel, texturePath));
+
+                            if (!texturePath.isEmpty() && !imageCache.containsKey(texturePath)) {
+                                try {
+                                    File f = new File(texturePath);
+                                    if (f.exists()) imageCache.put(texturePath, ImageIO.read(f));
+                                } catch (Exception ignored) {}
+                            }
                         } catch (Exception ignored) {}
                     }
                 }
@@ -185,15 +179,6 @@ public class ESPOverlayApp {
                 g2d.setColor(new Color(255, 0, 0, 100));
                 g2d.setStroke(new BasicStroke(4.0f));
                 g2d.drawRect(0, 0, panelW - 1, panelH - 1);
-
-                g2d.setStroke(new BasicStroke(1.0f));
-                g2d.drawLine(panelW / 2 - 20, panelH / 2, panelW / 2 + 20, panelH / 2);
-                g2d.drawLine(panelW / 2, panelH / 2 - 20, panelW / 2, panelH / 2 + 20);
-
-                g2d.setFont(new Font("Arial", Font.BOLD, 14));
-                g2d.drawString("ESP Overlay (" + panelW + "x" + panelH + ")", 10, 20);
-                g2d.drawString("CENTER: " + (panelW / 2) + ", " + (panelH / 2), 10, 40);
-                g2d.drawString(debugText, 10, 60);
             }
 
             for (BoxData box : boxes) {
@@ -201,22 +186,28 @@ public class ESPOverlayApp {
                 int by = (int) (box.yf * panelH);
                 int bw = (int) (box.wf * panelW);
                 int bh = (int) (box.hf * panelH);
-
                 if (bw <= 0 || bh <= 0) continue;
 
-                Color c = new Color(box.color | 0xFF000000, true);
+                // 1. Draw Box or Texture
+                if (!box.texturePath.isEmpty() && imageCache.containsKey(box.texturePath)) {
+                    BufferedImage img = imageCache.get(box.texturePath);
+                    g2d.drawImage(img, bx, by, bw, bh, null);
+                    g2d.setColor(Color.BLACK);
+                    g2d.setStroke(new BasicStroke(1.0f));
+                    g2d.drawRect(bx, by, bw, bh);
+                } else {
+                    g2d.setStroke(new BasicStroke(2.0f));
+                    g2d.setColor(Color.BLACK);
+                    g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
+                    g2d.setColor(new Color(box.color | 0xFF000000, true));
+                    g2d.drawRect(bx, by, bw, bh);
+                }
 
-                g2d.setStroke(new BasicStroke(2.0f));
-                g2d.setColor(Color.BLACK);
-                g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
-                g2d.setColor(c);
-                g2d.drawRect(bx, by, bw, bh);
-
+                // 2. Draw Labels
                 int labelY = by - 4;
                 if (!box.label.isEmpty() || !box.distLabel.isEmpty()) {
                     g2d.setFont(new Font("Consolas", Font.BOLD, 12));
                     FontMetrics fm = g2d.getFontMetrics();
-
                     if (!box.label.isEmpty()) {
                         int labelWidth = fm.stringWidth(box.label);
                         g2d.setColor(new Color(0, 0, 0, 150));
@@ -225,7 +216,6 @@ public class ESPOverlayApp {
                         g2d.drawString(box.label, bx + (bw - labelWidth) / 2, labelY);
                         labelY -= 15;
                     }
-
                     if (!box.distLabel.isEmpty()) {
                         int distWidth = fm.stringWidth(box.distLabel);
                         g2d.setColor(new Color(0, 0, 0, 150));
@@ -240,11 +230,11 @@ public class ESPOverlayApp {
 
     private static class BoxData {
         float xf, yf, wf, hf;
-        String label;
+        String label, distLabel, texturePath;
         int color;
-        String distLabel;
-        BoxData(float xf, float yf, float wf, float hf, String label, int color, String distLabel) {
-            this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label; this.color = color; this.distLabel = distLabel;
+        BoxData(float xf, float yf, float wf, float hf, String label, int color, String distLabel, String texturePath) {
+            this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf;
+            this.label = label; this.color = color; this.distLabel = distLabel; this.texturePath = texturePath;
         }
     }
 }

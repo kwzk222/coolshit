@@ -1,39 +1,50 @@
 package net.rev.tutorialmod.modules;
 
-import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.mob.Monster;
+import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.TutorialModClient;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector4f;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ESPModule {
-    private final MinecraftClient client = MinecraftClient.getInstance();
+    private static final MinecraftClient mc = MinecraftClient.getInstance();
     private final Map<Integer, VanishedPlayerData> vanishedPlayers = new ConcurrentHashMap<>();
-    private final List<BlockPos> xrayPositions = new CopyOnWriteArrayList<>();
-    private long lastRefreshTime = 0;
-    private long lastXrayScanTime = 0;
+    private final Map<BlockPos, XRayBlock> xrayBoxes = new ConcurrentHashMap<>();
+    private final Map<String, String> texturePathCache = new ConcurrentHashMap<>();
+    private long lastXrayScan = 0;
+    private final ExecutorService xrayExecutor = Executors.newSingleThreadExecutor();
+    private int frameSkipCounter = 0;
     private boolean needsSync = true;
+    private final File textureDir;
+
+    public ESPModule() {
+        textureDir = new File(System.getProperty("java.io.tmpdir"), "tutorialmod_textures");
+        if (!textureDir.exists()) textureDir.mkdirs();
+    }
 
     public static class VanishedPlayerData {
         public Vec3d pos;
@@ -44,10 +55,29 @@ public class ESPModule {
         }
     }
 
+    public void updateVanishedPlayer(int id, double x, double y, double z) {
+        vanishedPlayers.put(id, new VanishedPlayerData(new Vec3d(x, y, z)));
+    }
+
+    public void updateVanishedPlayerRelative(int id, short dx, short dy, short dz) {
+        VanishedPlayerData data = vanishedPlayers.get(id);
+        if (data != null) {
+            data.pos = data.pos.add(dx / 4096.0, dy / 4096.0, dz / 4096.0);
+            data.lastUpdate = System.currentTimeMillis();
+        }
+    }
+
+    public void triggerSync() {
+        needsSync = true;
+    }
+
     public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f projectionMatrix, Matrix4f modelViewMatrix) {
-        if (!TutorialMod.CONFIG.showESP || client.player == null || client.world == null) {
+        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.showESP) {
+            if (TutorialModClient.getESPOverlayManager() != null) {
+                TutorialModClient.getESPOverlayManager().sendCommand("CLEAR");
+            }
             vanishedPlayers.clear();
-            xrayPositions.clear();
+            xrayBoxes.clear();
             return;
         }
 
@@ -58,241 +88,364 @@ public class ESPModule {
 
         long now = System.currentTimeMillis();
 
-        // Handle X-Ray Scanning (Main thread but periodic)
-        if (TutorialMod.CONFIG.xrayEnabled && now - lastXrayScanTime > 1000) {
-            lastXrayScanTime = now;
-            scanXray();
-        } else if (!TutorialMod.CONFIG.xrayEnabled) {
-            xrayPositions.clear();
-        }
+        // Dynamic throttling
+        int entityCount = 0;
+        for (Entity e : mc.world.getEntities()) entityCount++;
 
-        long refreshInterval = 1000 / Math.max(1, TutorialMod.CONFIG.espRefreshRate);
-        if (now - lastRefreshTime < refreshInterval) {
+        int totalApprox = entityCount + xrayBoxes.size() + vanishedPlayers.size();
+        int skipRate = totalApprox > TutorialMod.CONFIG.espMaxBoxes ? (totalApprox / TutorialMod.CONFIG.espMaxBoxes) : 0;
+        if (frameSkipCounter < skipRate) {
+            frameSkipCounter++;
             return;
         }
-        lastRefreshTime = now;
+        frameSkipCounter = 0;
+
+        if (now - lastXrayScan > 2000) {
+            lastXrayScan = now;
+            updateXRay();
+        }
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
+        Vec3d camPos = camera.getCameraPos();
+
         Matrix4f combinedMatrix;
+        float fov;
+        float aspectRatio;
 
         if (TutorialMod.CONFIG.espManualProjection) {
-            float fov = (float) TutorialMod.CONFIG.espManualFov;
-            float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
-            float near = 0.05f;
-            float far = 1000f;
+            float width = (float) mc.getWindow().getWidth();
+            float height = (float) mc.getWindow().getHeight();
+            fov = (float) TutorialMod.CONFIG.espManualFov;
+            aspectRatio = (width / height) * (float)TutorialMod.CONFIG.espAspectRatioScale;
 
-            Matrix4f manualProj = new Matrix4f().perspective((float)Math.toRadians(fov), aspect, near, far);
-            Matrix4f manualView = new Matrix4f()
-                .rotateX((float)Math.toRadians(camera.getPitch()))
-                .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
-
-            combinedMatrix = manualProj.mul(manualView);
-        } else {
             Quaternionf viewRot = new Quaternionf(camera.getRotation());
             viewRot.conjugate();
-            Matrix4f viewMatrix = new Matrix4f().rotation(viewRot);
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(viewMatrix);
+            combinedMatrix = new Matrix4f().rotation(viewRot);
+        } else {
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
+            fov = -1;
+            aspectRatio = -1;
         }
 
-        updateESP(tickCounter, camera, combinedMatrix);
+        ESPOverlayManager om = TutorialModClient.getESPOverlayManager();
+        if (om == null) return;
+
+        StringBuilder boxesData = new StringBuilder();
+
+        // Entities
+        for (Entity entity : mc.world.getEntities()) {
+            if (entity == mc.player) continue;
+            if (!shouldShow(entity)) continue;
+
+            Vec3d entityPos = new Vec3d(entity.getX(), entity.getY(), entity.getZ());
+            double dist = entityPos.distanceTo(camPos);
+            if (dist < TutorialMod.CONFIG.espMinRange || dist > TutorialMod.CONFIG.espMaxRange) continue;
+
+            BoxData data = projectBox(entity.getBoundingBox(), camPos, combinedMatrix, fov, aspectRatio);
+            if (data == null) continue;
+
+            int color = getEntityColor(entity);
+            String name = shouldShowName(entity) ? entity.getName().getString() : "";
+            String distLabel = (entity instanceof PlayerEntity && TutorialMod.CONFIG.espShowDistance && dist >= TutorialMod.CONFIG.espDistanceHideThreshold) ? (int)dist + "m" : "";
+
+            appendBox(boxesData, data, name, color, distLabel, "");
+        }
+
+        // Vanished Players
+        for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
+            // Refinement: Skip if entity is already known to world
+            if (mc.world.getEntityById(entry.getKey()) != null) continue;
+
+            Vec3d pos = entry.getValue().pos;
+            double dist = pos.distanceTo(camPos);
+            if (dist > TutorialMod.CONFIG.espMaxRange) continue;
+
+            Box box = new Box(pos.x - 0.3, pos.y, pos.z - 0.3, pos.x + 0.3, pos.y + 1.8, pos.z + 0.3);
+            BoxData data = projectBox(box, camPos, combinedMatrix, fov, aspectRatio);
+            if (data == null) continue;
+
+            appendBox(boxesData, data, "VANISHED", 0xFF0000, (int)dist + "m", "");
+        }
+
+        // X-Ray
+        for (XRayBlock xb : xrayBoxes.values()) {
+            double dist = Math.sqrt(xb.pos.getSquaredDistance(camPos.x, camPos.y, camPos.z));
+            if (dist > xb.range) continue;
+
+            BoxData data = projectBox(xb.box, camPos, combinedMatrix, fov, aspectRatio);
+            if (data == null) continue;
+
+            String name = TutorialMod.CONFIG.xrayShowNames ? xb.name : "";
+            String tex = TutorialMod.CONFIG.xrayShowTextures ? xb.texturePath : "";
+
+            appendBox(boxesData, data, name, TutorialMod.CONFIG.xrayColor, "", tex);
+        }
+
+        om.updateBoxes(boxesData.toString());
     }
 
-    private void scanXray() {
-        if (client.player == null || client.world == null) return;
+    private void appendBox(StringBuilder sb, BoxData data, String label, int color, String distLabel, String texture) {
+        if (sb.length() > 0) sb.append(";");
+        sb.append(String.format(Locale.ROOT, "%.6f,%.6f,%.6f,%.6f,%s,%d,%s,%s",
+            data.x, data.y, data.w, data.h, label, color, distLabel, texture));
+    }
 
-        List<BlockPos> found = new ArrayList<>();
-        BlockPos playerPos = client.player.getBlockPos();
-        World world = client.world;
-        int range = TutorialMod.CONFIG.xrayRange;
-        List<String> targets = TutorialMod.CONFIG.xrayBlocks;
+    private BoxData projectBox(Box box, Vec3d camPos, Matrix4f combinedMatrix, float fov, float aspectRatio) {
+        Vec3d[] corners = new Vec3d[]{
+            new Vec3d(box.minX, box.minY, box.minZ), new Vec3d(box.maxX, box.minY, box.minZ),
+            new Vec3d(box.minX, box.maxY, box.minZ), new Vec3d(box.maxX, box.maxY, box.minZ),
+            new Vec3d(box.minX, box.minY, box.maxZ), new Vec3d(box.maxX, box.minY, box.maxZ),
+            new Vec3d(box.minX, box.maxY, box.maxZ), new Vec3d(box.maxX, box.maxY, box.maxZ)
+        };
 
-        // Simple scan on main thread.
-        // For range 32, this is ~274k blocks.
-        // Optimization: only check loaded chunks.
-        for (int x = -range; x <= range; x++) {
-            for (int z = -range; z <= range; z++) {
-                BlockPos column = playerPos.add(x, 0, z);
-                if (!world.isChunkLoaded(column.getX() >> 4, column.getZ() >> 4)) continue;
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        boolean anyInFront = false;
 
-                for (int y = -range; y <= range; y++) {
-                    BlockPos pos = column.add(0, y, 0);
-                    Block block = world.getBlockState(pos).getBlock();
-                    String id = Registries.BLOCK.getId(block).toString();
-                    if (targets.contains(id)) {
-                        found.add(pos);
+        for (Vec3d corner : corners) {
+            Vector2d p;
+            if (TutorialMod.CONFIG.espManualProjection) {
+                p = projectManual(corner, camPos, combinedMatrix, fov, aspectRatio);
+            } else {
+                p = projectAuto(corner, camPos, combinedMatrix);
+            }
+
+            if (p != null) {
+                anyInFront = true;
+                minX = Math.min(minX, p.x);
+                minY = Math.min(minY, p.y);
+                maxX = Math.max(maxX, p.x);
+                maxY = Math.max(maxY, p.y);
+            }
+        }
+
+        if (!anyInFront) return null;
+
+        float w = maxX - minX;
+        float h = maxY - minY;
+
+        float finalW = w * (float)TutorialMod.CONFIG.espBoxScale;
+        float finalH = h * (float)TutorialMod.CONFIG.espBoxScale;
+        float finalX = minX + (w - finalW) / 2f;
+        float finalY = minY + (h - finalH) / 2f;
+
+        return new BoxData(finalX, finalY, finalW, finalH);
+    }
+
+    private Vector2d projectAuto(Vec3d pos, Vec3d camPos, Matrix4f combinedMatrix) {
+        Vec3d rel = pos.subtract(camPos);
+        Vector4f vec = new Vector4f((float)rel.x, (float)rel.y, (float)rel.z, 1.0f);
+        combinedMatrix.transform(vec);
+
+        if (vec.w < 0.05f) return null;
+
+        float x = ((vec.x / vec.w) + 1.0f) * 0.5f;
+        float y = (1.0f - (vec.y / vec.w)) * 0.5f;
+
+        return new Vector2d(x, y);
+    }
+
+    private Vector2d projectManual(Vec3d pos, Vec3d camPos, Matrix4f rotationMatrix, float fov, float aspectRatio) {
+        Vec3d rel = pos.subtract(camPos);
+        Vector4f vec = new Vector4f((float)rel.x, (float)rel.y, (float)rel.z, 1.0f);
+        rotationMatrix.transform(vec);
+
+        if (vec.z < 0.05f) return null;
+
+        float f = (float) (1.0 / Math.tan(Math.toRadians(fov) / 2.0));
+        float px = (vec.x * f / aspectRatio / vec.z);
+        float py = (vec.y * f / vec.z);
+
+        float x = (px + 1) * 0.5f;
+        float y = (1 - py) * 0.5f;
+
+        return new Vector2d(x, y);
+    }
+
+    private void updateXRay() {
+        if (!TutorialMod.CONFIG.xrayEnabled) {
+            xrayBoxes.clear();
+            return;
+        }
+
+        xrayExecutor.execute(() -> {
+            Map<BlockPos, XRayBlock> newBoxes = new HashMap<>();
+            BlockPos playerPos = mc.player.getBlockPos();
+            int globalRange = TutorialMod.CONFIG.xrayRange;
+
+            Map<Identifier, Integer> rangeMap = new HashMap<>();
+            for (String entry : TutorialMod.CONFIG.xrayBlocks) {
+                String[] parts = entry.split(":");
+                try {
+                    if (parts.length >= 3) {
+                        rangeMap.put(Identifier.of(parts[0], parts[1]), Integer.parseInt(parts[2]));
+                    } else if (parts.length == 2) {
+                        if (parts[0].contains("minecraft") || !parts[1].matches("\\d+")) {
+                             rangeMap.put(Identifier.of(parts[0], parts[1]), globalRange);
+                        } else {
+                             rangeMap.put(Identifier.ofVanilla(parts[0]), Integer.parseInt(parts[1]));
+                        }
+                    } else {
+                        rangeMap.put(Identifier.of(parts[0]), globalRange);
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            Set<BlockPos> visited = new HashSet<>();
+            int maxR = rangeMap.values().stream().max(Integer::compare).orElse(globalRange);
+
+            for (int dx = -maxR; dx <= maxR; dx++) {
+                for (int dy = -maxR; dy <= maxR; dy++) {
+                    for (int dz = -maxR; dz <= maxR; dz++) {
+                        BlockPos pos = playerPos.add(dx, dy, dz);
+                        if (visited.contains(pos)) continue;
+
+                        BlockState state = mc.world.getBlockState(pos);
+                        Identifier id = Registries.BLOCK.getId(state.getBlock());
+                        if (rangeMap.containsKey(id)) {
+                            int r = rangeMap.get(id);
+                            if (pos.getSquaredDistance(playerPos) <= r * r) {
+                                if (TutorialMod.CONFIG.xrayClumping) {
+                                    List<BlockPos> cluster = findCluster(pos, id, visited);
+                                    if (!cluster.isEmpty()) {
+                                        XRayBlock xb = createXRayBlock(cluster, state, r);
+                                        newBoxes.put(xb.pos, xb);
+                                    }
+                                } else {
+                                    visited.add(pos);
+                                    XRayBlock xb = new XRayBlock(pos, new Box(pos), state.getBlock().getName().getString(), r, getTexture(state));
+                                    newBoxes.put(pos, xb);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            xrayBoxes.clear();
+            xrayBoxes.putAll(newBoxes);
+        });
+    }
+
+    private List<BlockPos> findCluster(BlockPos start, Identifier targetId, Set<BlockPos> visited) {
+        List<BlockPos> cluster = new ArrayList<>();
+        Queue<BlockPos> queue = new LinkedList<>();
+        queue.add(start);
+        visited.add(start);
+
+        while (!queue.isEmpty()) {
+            BlockPos pos = queue.poll();
+            cluster.add(pos);
+
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (dx == 0 && dy == 0 && dz == 0) continue;
+                        BlockPos neighbor = pos.add(dx, dy, dz);
+                        if (!visited.contains(neighbor)) {
+                            BlockState s = mc.world.getBlockState(neighbor);
+                            if (Registries.BLOCK.getId(s.getBlock()).equals(targetId)) {
+                                visited.add(neighbor);
+                                queue.add(neighbor);
+                            }
+                        }
                     }
                 }
             }
         }
-        xrayPositions.clear();
-        xrayPositions.addAll(found);
+        return cluster;
     }
 
-    public void triggerSync() {
-        this.needsSync = true;
+    private XRayBlock createXRayBlock(List<BlockPos> cluster, BlockState state, int range) {
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, minZ = Double.MAX_VALUE;
+        double maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
+        for (BlockPos p : cluster) {
+            minX = Math.min(minX, p.getX()); minY = Math.min(minY, p.getY()); minZ = Math.min(minZ, p.getZ());
+            maxX = Math.max(maxX, p.getX() + 1); maxY = Math.max(maxY, p.getY() + 1); maxZ = Math.max(maxZ, p.getZ() + 1);
+        }
+        return new XRayBlock(cluster.get(0), new Box(minX, minY, minZ, maxX, maxY, maxZ),
+            state.getBlock().getName().getString(), range, getTexture(state));
     }
 
-    public void updateVanishedPlayer(int entityId, double x, double y, double z) {
-        if (!TutorialMod.CONFIG.espAntiVanish) return;
-        if (client.world != null && client.world.getEntityById(entityId) != null) {
-            vanishedPlayers.remove(entityId);
-            return;
+    private String getTexture(BlockState state) {
+        Identifier id = Registries.BLOCK.getId(state.getBlock());
+        String key = id.toString();
+        if (texturePathCache.containsKey(key)) return texturePathCache.get(key);
+
+        Identifier texRes = Identifier.of(id.getNamespace(), "textures/block/" + id.getPath() + ".png");
+        File outFile = new File(textureDir, id.getNamespace() + "_" + id.getPath() + ".png");
+
+        if (!outFile.exists()) {
+            mc.getResourceManager().getResource(texRes).ifPresent(res -> {
+                try {
+                    BufferedImage img = ImageIO.read(res.getInputStream());
+                    ImageIO.write(img, "png", outFile);
+                } catch (IOException ignored) {}
+            });
         }
-        vanishedPlayers.put(entityId, new VanishedPlayerData(new Vec3d(x, y, z)));
+
+        if (outFile.exists()) {
+            texturePathCache.put(key, outFile.getAbsolutePath());
+            return outFile.getAbsolutePath();
+        }
+        return "";
     }
 
-    public void updateVanishedPlayerRelative(int entityId, short deltaX, short deltaY, short deltaZ) {
-        if (!TutorialMod.CONFIG.espAntiVanish) return;
-        if (client.world != null && client.world.getEntityById(entityId) != null) {
-            vanishedPlayers.remove(entityId);
-            return;
-        }
-
-        VanishedPlayerData data = vanishedPlayers.get(entityId);
-        if (data != null) {
-            data.pos = data.pos.add(deltaX / 4096.0, deltaY / 4096.0, deltaZ / 4096.0);
-            data.lastUpdate = System.currentTimeMillis();
-        }
+    private boolean shouldShow(Entity entity) {
+        if (entity instanceof PlayerEntity) return TutorialMod.CONFIG.espPlayers;
+        if (entity instanceof VillagerEntity) return TutorialMod.CONFIG.espVillagers;
+        if (entity instanceof HostileEntity) return TutorialMod.CONFIG.espHostiles;
+        if (entity instanceof TameableEntity) return TutorialMod.CONFIG.espTamed;
+        if (entity instanceof PassiveEntity) return TutorialMod.CONFIG.espPassives;
+        return false;
     }
 
-    private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f combinedMatrix) {
-        StringBuilder boxesData = new StringBuilder();
-        Vec3d cameraPos = camera.getCameraPos();
-        float tickDelta = tickCounter.getTickProgress(true);
-
-        // 1. Entities
-        for (Entity entity : client.world.getEntities()) {
-            if (entity == client.player || !entity.isAlive()) continue;
-
-            double dist = entity.distanceTo(client.player);
-            if (dist < TutorialMod.CONFIG.espMinRange || dist > TutorialMod.CONFIG.espMaxRange) continue;
-
-            int color = -1;
-            String label = "";
-            String distLabel = "";
-
-            if (entity instanceof PlayerEntity player) {
-                if (!TutorialMod.CONFIG.espPlayers || player.isInvisibleTo(client.player)) continue;
-                if (TutorialMod.CONFIG.espShowNamesPlayers) label = player.getName().getString();
-                if (TutorialMod.CONFIG.espShowDistance && dist >= TutorialMod.CONFIG.espDistanceHideThreshold) {
-                    distLabel = String.format(Locale.ROOT, "%db", (int)dist);
-                }
-                color = TutorialMod.CONFIG.teamManager.isTeammate(player.getName().getString())
-                        ? TutorialMod.CONFIG.espColorTeammate : TutorialMod.CONFIG.espColorEnemy;
-            } else if (entity instanceof VillagerEntity) {
-                if (!TutorialMod.CONFIG.espVillagers) continue;
-                if (TutorialMod.CONFIG.espShowNamesVillagers) label = entity.getName().getString();
-                color = TutorialMod.CONFIG.espColorVillager;
-            } else if (entity instanceof TameableEntity tameable && tameable.isTamed()) {
-                if (!TutorialMod.CONFIG.espTamed) continue;
-                if (TutorialMod.CONFIG.espShowNamesTamed) label = entity.getName().getString();
-                color = TutorialMod.CONFIG.espColorTamed;
-            } else if (entity instanceof Monster) {
-                if (!TutorialMod.CONFIG.espHostiles) continue;
-                if (TutorialMod.CONFIG.espShowNamesHostiles) label = entity.getName().getString();
-                color = TutorialMod.CONFIG.espColorHostile;
-            } else if (entity instanceof PassiveEntity) {
-                if (!TutorialMod.CONFIG.espPassives) continue;
-                if (TutorialMod.CONFIG.espShowNamesPassives) label = entity.getName().getString();
-                color = TutorialMod.CONFIG.espColorPassive;
-            }
-
-            if (color != -1) {
-                double x = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
-                double y = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
-                double z = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
-
-                Vec3d relPos = new Vec3d(x, y, z).subtract(cameraPos);
-                projectAndAppend(boxesData, relPos, entity.getHeight(), combinedMatrix, label, color, distLabel);
-            }
-        }
-
-        // 2. Vanished Players
-        if (TutorialMod.CONFIG.espAntiVanish) {
-            for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
-                Vec3d relPos = entry.getValue().pos.subtract(cameraPos);
-                projectAndAppend(boxesData, relPos, 1.8, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "");
-            }
-        }
-
-        // 3. X-Ray Blocks
-        if (TutorialMod.CONFIG.xrayEnabled) {
-            int color = TutorialMod.CONFIG.xrayColor;
-            boolean showNames = TutorialMod.CONFIG.xrayShowNames;
-            for (BlockPos pos : xrayPositions) {
-                Vec3d relPos = new Vec3d(pos.getX(), pos.getY(), pos.getZ()).subtract(cameraPos);
-                String label = showNames ? Registries.BLOCK.getId(client.world.getBlockState(pos).getBlock()).getPath() : "";
-                projectAndAppend(boxesData, relPos, 1.0, combinedMatrix, label, color, "");
-            }
-        }
-
-        net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
+    private boolean shouldShowName(Entity entity) {
+        if (entity instanceof PlayerEntity) return TutorialMod.CONFIG.espShowNamesPlayers;
+        if (entity instanceof VillagerEntity) return TutorialMod.CONFIG.espShowNamesVillagers;
+        if (entity instanceof HostileEntity) return TutorialMod.CONFIG.espShowNamesHostiles;
+        if (entity instanceof TameableEntity) return TutorialMod.CONFIG.espShowNamesTamed;
+        if (entity instanceof PassiveEntity) return TutorialMod.CONFIG.espShowNamesPassives;
+        return false;
     }
 
-    private void projectAndAppend(StringBuilder data, Vec3d relPos, double height, Matrix4f combinedMatrix, String label, int color, String distLabel) {
-        Vector4f clipFeet = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
-        combinedMatrix.transform(clipFeet);
-
-        Vector4f clipHead = new Vector4f((float)relPos.x, (float)relPos.y + (float)height, (float)relPos.z, 1.0f);
-        combinedMatrix.transform(clipHead);
-
-        float epsilon = 0.01f;
-        boolean feetInFront = clipFeet.w > epsilon;
-        boolean headInFront = clipHead.w > epsilon;
-
-        if (!feetInFront && !headInFront) return;
-
-        // Clip to near plane
-        if (!feetInFront) {
-            float t = (epsilon - clipFeet.w) / (clipHead.w - clipFeet.w);
-            clipFeet.lerp(clipHead, t);
-            clipFeet.w = epsilon;
-        } else if (!headInFront) {
-            float t = (epsilon - clipHead.w) / (clipFeet.w - clipHead.w);
-            clipHead.lerp(clipFeet, t);
-            clipHead.w = epsilon;
+    private int getEntityColor(Entity entity) {
+        if (entity instanceof PlayerEntity) {
+            if (TutorialMod.CONFIG.teamManager.isTeammate(entity.getName().getString())) return TutorialMod.CONFIG.espColorTeammate;
+            return TutorialMod.CONFIG.espColorEnemy;
         }
-
-        // Perspective divide
-        float fovScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espFovScale : 1.0f;
-        float aspectScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espAspectRatioScale : 1.0f;
-
-        float bx = ((clipFeet.x / clipFeet.w) * fovScale * aspectScale + 1.0f) * 0.5f;
-        float by = (1.0f - (clipFeet.y / clipFeet.w) * fovScale) * 0.5f;
-
-        float tx = ((clipHead.x / clipHead.w) * fovScale * aspectScale + 1.0f) * 0.5f;
-        float ty = (1.0f - (clipHead.y / clipHead.w) * fovScale) * 0.5f;
-
-        float boxHeight = Math.abs(by - ty) * (float)TutorialMod.CONFIG.espBoxScale;
-        float boxWidth = boxHeight * (float)TutorialMod.CONFIG.espBoxWidthFactor;
-        float boxX = bx - boxWidth / 2f;
-        float boxY = Math.min(by, ty);
-
-        if (data.length() > 0) data.append(";");
-        data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s,%d,%s", boxX, boxY, boxWidth, boxHeight, label, color, distLabel));
+        if (entity instanceof VillagerEntity) return TutorialMod.CONFIG.espColorVillager;
+        if (entity instanceof HostileEntity) return TutorialMod.CONFIG.espColorHostile;
+        if (entity instanceof TameableEntity) return TutorialMod.CONFIG.espColorTamed;
+        if (entity instanceof PassiveEntity) return TutorialMod.CONFIG.espColorPassive;
+        return 0xFFFFFF;
     }
 
     public void syncWindowBounds() {
-        if (net.rev.tutorialmod.TutorialModClient.getESPOverlayManager() == null || !net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().isRunning()) {
-            return;
+        if (TutorialModClient.getESPOverlayManager() == null || !TutorialModClient.getESPOverlayManager().isRunning()) return;
+        var window = mc.getWindow();
+        TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "WINDOW_SYNC %d,%d,%d,%d", window.getX() + TutorialMod.CONFIG.espOffsetX, window.getY() + TutorialMod.CONFIG.espOffsetY, window.getWidth() + TutorialMod.CONFIG.espWidthAdjust, window.getHeight() + TutorialMod.CONFIG.espHeightAdjust));
+        TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + TutorialMod.CONFIG.espDebugMode);
+    }
+
+    private static class Vector2d {
+        float x, y;
+        Vector2d(float x, float y) { this.x = x; this.y = y; }
+    }
+
+    private static class BoxData {
+        float x, y, w, h;
+        BoxData(float x, float y, float w, float h) { this.x = x; this.y = y; this.w = w; this.h = h; }
+    }
+
+    private static class XRayBlock {
+        BlockPos pos;
+        Box box;
+        String name;
+        int range;
+        String texturePath;
+        XRayBlock(BlockPos pos, Box box, String name, int range, String texturePath) {
+            this.pos = pos; this.box = box; this.name = name; this.range = range; this.texturePath = texturePath;
         }
-
-        var window = client.getWindow();
-        int x = window.getX();
-        int y = window.getY();
-        int w = window.getWidth();
-        int h = window.getHeight();
-
-        x += TutorialMod.CONFIG.espOffsetX;
-        y += TutorialMod.CONFIG.espOffsetY;
-        w += TutorialMod.CONFIG.espWidthAdjust;
-        h += TutorialMod.CONFIG.espHeightAdjust;
-
-        net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(
-            String.format(Locale.ROOT, "WINDOW_SYNC %d,%d,%d,%d", x, y, w, h)
-        );
-
-        net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + TutorialMod.CONFIG.espDebugMode);
     }
 }
