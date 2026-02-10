@@ -157,11 +157,9 @@ public class ESPOverlayApp {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             if (debugMode) {
-                g2d.setColor(new Color(255, 0, 0, 20));
-                g2d.fillRect(0, 0, getWidth(), getHeight());
                 g2d.setColor(Color.RED);
                 g2d.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
-                g2d.drawString("ESP Overlay Active (Logical Size: " + getWidth() + "x" + getHeight() + ")", 10, 20);
+                g2d.drawString("ESP Overlay Active (" + getWidth() + "x" + getHeight() + ")", 5, 12);
             }
 
             for (BoxData box : boxes) {

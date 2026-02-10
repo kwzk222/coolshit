@@ -12,8 +12,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.glfw.GLFW;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -50,7 +48,7 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Use the game's actual matrices
+        // Compute combined matrix for projection
         Matrix4f combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
         updateESP(tickCounter, camera, combinedMatrix);
     }
@@ -80,8 +78,8 @@ public class ESPModule {
 
     private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f combinedMatrix) {
         StringBuilder boxesData = new StringBuilder();
-        float tickDelta = tickCounter.getTickProgress(true);
         Vec3d cameraPos = camera.getCameraPos();
+        float tickDelta = tickCounter.getTickProgress(true);
 
         for (PlayerEntity player : client.world.getPlayers()) {
             if (player == client.player || !player.isAlive() || player.isInvisibleTo(client.player)) continue;
@@ -139,8 +137,10 @@ public class ESPModule {
         combinedMatrix.transform(vec);
 
         if (vec.w > 0.001f) {
-            float x = (vec.x / vec.w + 1.0f) / 2.0f * client.getWindow().getWidth();
-            float y = (1.0f - vec.y / vec.w) / 2.0f * client.getWindow().getHeight();
+            float width = (float) client.getWindow().getWidth();
+            float height = (float) client.getWindow().getHeight();
+            float x = (vec.x / vec.w + 1.0f) * 0.5f * width;
+            float y = (1.0f - vec.y / vec.w) * 0.5f * height;
             return new Vector4f(x, y, 0, 0);
         }
         return null;
@@ -160,15 +160,19 @@ public class ESPModule {
     public void syncWindowBounds() {
         if (net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().isRunning()) {
             var window = client.getWindow();
+            long handle = window.getHandle();
 
-            // Re-evaluating alignment.
-            // If it's to the left and down:
-            // Shifted left = X is too small. Shifted down = Y is too large.
-            // If I was using window.getX() + leftBorder, and it was shifted left, maybe window.getX() is already logical client X?
-            // Actually, let's try raw window.getX() and window.getY().
+            // Try to get precise logical coordinates
+            int[] winX = new int[1], winY = new int[1];
+            GLFW.glfwGetWindowPos(handle, winX, winY);
 
-            int x = window.getX();
-            int y = window.getY();
+            int[] left = new int[1], top = new int[1], right = new int[1], bottom = new int[1];
+            GLFW.glfwGetWindowFrameSize(handle, left, top, right, bottom);
+
+            // On Windows, the reported window X/Y is often the edge of the border.
+            // Adding the frame size components should lead to the client area.
+            int x = winX[0] + left[0];
+            int y = winY[0] + top[0];
             int w = window.getWidth();
             int h = window.getHeight();
 
