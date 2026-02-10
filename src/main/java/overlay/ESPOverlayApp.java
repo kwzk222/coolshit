@@ -16,9 +16,12 @@ import com.sun.jna.platform.win32.WinUser;
 public class ESPOverlayApp {
     private static JFrame frame;
     private static ESPPanel panel;
-    private static final int PORT = 25567; // Different port from Coords Overlay
+    private static final int PORT = 25567;
 
     public static void main(String[] args) {
+        // Force 1.0 UI Scale to avoid DPI confusion between Minecraft and Swing
+        System.setProperty("sun.java2d.uiScale", "1.0");
+
         SwingUtilities.invokeLater(() -> {
             frame = new JFrame("TutorialMod ESP Overlay");
             frame.setUndecorated(true);
@@ -31,7 +34,7 @@ public class ESPOverlayApp {
             panel = new ESPPanel();
             frame.setContentPane(panel);
 
-            frame.setSize(800, 600); // Default size
+            frame.setSize(800, 600);
             frame.setLocationRelativeTo(null);
             frame.setVisible(false);
         });
@@ -78,6 +81,8 @@ public class ESPOverlayApp {
             }
         } else if (content.startsWith("BOXES ")) {
             panel.updateBoxes(content.substring(6));
+        } else if (content.startsWith("DEBUG ")) {
+            panel.setDebugMode(Boolean.parseBoolean(content.substring(6)));
         } else if (content.equals("CLEAR")) {
             panel.clear();
         } else if (content.equals("HIDE")) {
@@ -117,10 +122,15 @@ public class ESPOverlayApp {
 
     private static class ESPPanel extends JPanel {
         private List<BoxData> boxes = new ArrayList<>();
-        private boolean debugMode = true; // Set to true to see if overlay exists
+        private boolean debugMode = true;
 
         public ESPPanel() {
             setOpaque(false);
+        }
+
+        public void setDebugMode(boolean enabled) {
+            this.debugMode = enabled;
+            repaint();
         }
 
         public void updateBoxes(String data) {
@@ -159,7 +169,8 @@ public class ESPOverlayApp {
             if (debugMode) {
                 g2d.setColor(Color.RED);
                 g2d.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
-                g2d.drawString("ESP Overlay Active (" + getWidth() + "x" + getHeight() + ")", 5, 12);
+                g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+                g2d.drawString("ESP Overlay (1:1) " + getWidth() + "x" + getHeight(), 5, 15);
             }
 
             for (BoxData box : boxes) {

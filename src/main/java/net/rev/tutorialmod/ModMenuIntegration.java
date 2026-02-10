@@ -282,6 +282,18 @@ public class ModMenuIntegration implements ModMenuApi {
             espSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.showESP).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showESP = newValue).build());
             espSub.add(entryBuilder.startBooleanToggle(Text.literal("Anti-Vanish Mode"), TutorialMod.CONFIG.espAntiVanish).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espAntiVanish = newValue).build());
             espSub.add(entryBuilder.startIntSlider(Text.literal("Refresh Rate (FPS)"), TutorialMod.CONFIG.espRefreshRate, 1, 60).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRefreshRate = newValue).build());
+            espSub.add(entryBuilder.startLongSlider(Text.literal("Scale Factor (%)"), (long)(TutorialMod.CONFIG.espScaleFactor * 100), 50, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espScaleFactor = newValue / 100.0).build());
+            espSub.add(entryBuilder.startIntSlider(Text.literal("Offset X"), TutorialMod.CONFIG.espOffsetX, -200, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espOffsetX = newValue).build());
+            espSub.add(entryBuilder.startIntSlider(Text.literal("Offset Y"), TutorialMod.CONFIG.espOffsetY, -200, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espOffsetY = newValue).build());
+            espSub.add(entryBuilder.startIntSlider(Text.literal("Width Adjustment"), TutorialMod.CONFIG.espWidthAdjust, -200, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espWidthAdjust = newValue).build());
+            espSub.add(entryBuilder.startIntSlider(Text.literal("Height Adjustment"), TutorialMod.CONFIG.espHeightAdjust, -200, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHeightAdjust = newValue).build());
+            espSub.add(entryBuilder.startLongSlider(Text.literal("Box Scale (%)"), (long)(TutorialMod.CONFIG.espBoxScale * 100), 10, 300).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxScale = newValue / 100.0).build());
+            espSub.add(entryBuilder.startBooleanToggle(Text.literal("Debug Mode (Red Tint)"), TutorialMod.CONFIG.espDebugMode).setDefaultValue(true).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espDebugMode = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getESPOverlayManager() != null) {
+                    TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + newValue);
+                }
+            }).build());
             overlay.addEntry(espSub.build());
 
             SubCategoryBuilder enemyInfoSubCategory = entryBuilder.startSubCategory(Text.literal("Enemy Info"));

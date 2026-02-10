@@ -200,6 +200,13 @@ public class ModConfig {
     public boolean showESP = false;
     public boolean espAntiVanish = true;
     public int espRefreshRate = 20; // FPS (approx)
+    public double espScaleFactor = 1.0;
+    public int espOffsetX = 0;
+    public int espOffsetY = 0;
+    public int espWidthAdjust = 0;
+    public int espHeightAdjust = 0;
+    public double espBoxScale = 1.0;
+    public boolean espDebugMode = true;
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;
