@@ -141,6 +141,7 @@ public class TutorialModClient implements ClientModInitializer {
     private int drainRestoreTicks = -1;
 
     private boolean lastScreenWasNull = true;
+    private int espSyncBurstTicks = 0;
     private int drainPendingSlot = -1;
     private int drainSwitchToTicks = -1;
     private int drainSwitchBackTimer = -1;
@@ -279,6 +280,15 @@ public class TutorialModClient implements ClientModInitializer {
         if (screenChanged) {
             espModule.triggerSync();
             lastScreenWasNull = (client.currentScreen == null);
+            // If we just unpaused (screen became null), start a small sync burst
+            if (client.currentScreen == null) {
+                espSyncBurstTicks = 20; // 1 second at 20tps
+            }
+        }
+
+        if (espSyncBurstTicks > 0) {
+            espModule.triggerSync();
+            espSyncBurstTicks--;
         }
 
 

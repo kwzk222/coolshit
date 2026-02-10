@@ -32,7 +32,7 @@ fabricApi {
 sourceSets {
     overlay {
         java {
-            srcDirs = ['src/main/java/overlay']
+            srcDirs = ['src/overlay/java']
         }
         resources {
             srcDirs = []

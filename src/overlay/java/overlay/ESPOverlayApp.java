@@ -19,8 +19,9 @@ public class ESPOverlayApp {
     private static final int PORT = 25567;
 
     public static void main(String[] args) {
-        // Remove forced uiScale to let Windows handle DPI scaling for the window position
-        // This should make logical coordinate matching much easier.
+        // Force 1:1 pixel mapping to match Minecraft's physical framebuffer.
+        // This makes coordinate matching (logical vs physical) much simpler.
+        System.setProperty("sun.java2d.uiScale", "1.0");
 
         SwingUtilities.invokeLater(() -> {
             frame = new JFrame("TutorialMod ESP Overlay");
@@ -34,8 +35,9 @@ public class ESPOverlayApp {
             panel = new ESPPanel();
             frame.setContentPane(panel);
 
-            frame.setSize(800, 600);
-            frame.setLocationRelativeTo(null);
+            // Initial size, will be synced
+            frame.setSize(1, 1);
+            frame.setLocation(0, 0);
             frame.setVisible(false);
         });
 
@@ -72,10 +74,13 @@ public class ESPOverlayApp {
                     int y = Integer.parseInt(parts[1]);
                     int w = Integer.parseInt(parts[2]);
                     int h = Integer.parseInt(parts[3]);
-                    frame.setBounds(x, y, w, h);
-                    if (!frame.isVisible()) {
-                        frame.setVisible(true);
-                        setClickThrough(true);
+
+                    if (w > 10 && h > 10) {
+                        frame.setBounds(x, y, w, h);
+                        if (!frame.isVisible()) {
+                            frame.setVisible(true);
+                            setClickThrough(true);
+                        }
                     }
                 } catch (Exception ignored) {}
             }
@@ -141,7 +146,6 @@ public class ESPOverlayApp {
                     String[] parts = item.split(",");
                     if (parts.length >= 4) {
                         try {
-                            // Now expecting percentages (0.0 - 1.0)
                             float x = Float.parseFloat(parts[0]);
                             float y = Float.parseFloat(parts[1]);
                             float w = Float.parseFloat(parts[2]);
@@ -171,10 +175,11 @@ public class ESPOverlayApp {
             int panelH = getHeight();
 
             if (debugMode) {
-                g2d.setColor(Color.RED);
+                g2d.setColor(new Color(255, 0, 0, 100));
+                g2d.setStroke(new BasicStroke(5.0f));
                 g2d.drawRect(0, 0, panelW - 1, panelH - 1);
-                g2d.setFont(new Font("Arial", Font.PLAIN, 12));
-                g2d.drawString("ESP Overlay (Logical) " + panelW + "x" + panelH, 5, 15);
+                g2d.setFont(new Font("Arial", Font.BOLD, 16));
+                g2d.drawString("ESP Overlay Active (" + panelW + "x" + panelH + ")", 10, 25);
             }
 
             for (BoxData box : boxes) {
@@ -183,16 +188,21 @@ public class ESPOverlayApp {
                 int bw = (int) (box.wf * panelW);
                 int bh = (int) (box.hf * panelH);
 
+                // Simple 2D Box
                 g2d.setStroke(new BasicStroke(2.0f));
                 g2d.setColor(Color.BLACK);
                 g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
                 g2d.setColor(Color.WHITE);
                 g2d.drawRect(bx, by, bw, bh);
+
                 if (!box.label.isEmpty()) {
                     g2d.setFont(new Font("Consolas", Font.BOLD, 12));
                     FontMetrics fm = g2d.getFontMetrics();
                     int labelWidth = fm.stringWidth(box.label);
-                    g2d.drawString(box.label, bx + (bw - labelWidth) / 2, by - 2);
+                    g2d.setColor(new Color(0, 0, 0, 150));
+                    g2d.fillRect(bx + (bw - labelWidth) / 2 - 2, by - 15, labelWidth + 4, 13);
+                    g2d.setColor(Color.WHITE);
+                    g2d.drawString(box.label, bx + (bw - labelWidth) / 2, by - 4);
                 }
             }
         }

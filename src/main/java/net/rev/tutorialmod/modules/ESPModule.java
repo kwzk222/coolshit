@@ -10,8 +10,8 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
-import org.lwjgl.glfw.GLFW;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -36,6 +36,7 @@ public class ESPModule {
             return;
         }
 
+        // Handle periodic sync and requested syncs
         if (needsSync) {
             syncWindowBounds();
             needsSync = false;
@@ -50,8 +51,11 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Minecraft 1.21.1: clipPos = projectionMatrix * modelViewMatrix * relPos
-        Matrix4f combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
+        // Minecraft 1.21.1 View Matrix typically includes translation to camera.
+        // We strip the translation and use camera-relative positions to maintain high precision.
+        Matrix4f viewRotationOnly = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+        Matrix4f combinedMatrix = new Matrix4f(projectionMatrix).mul(viewRotationOnly);
+
         updateESP(tickCounter, camera, combinedMatrix);
     }
 
@@ -94,13 +98,14 @@ public class ESPModule {
             double y = MathHelper.lerp(tickDelta, player.lastRenderY, player.getY());
             double z = MathHelper.lerp(tickDelta, player.lastRenderZ, player.getZ());
 
-            // Positions are relative to the camera for precision
-            appendEntityBox(boxesData, player, new Vec3d(x, y, z).subtract(cameraPos), combinedMatrix, "");
+            Vec3d relPos = new Vec3d(x, y, z).subtract(cameraPos);
+            appendEntityBox(boxesData, player, relPos, combinedMatrix, player.getName().getString());
         }
 
         if (TutorialMod.CONFIG.espAntiVanish) {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
-                appendVanishedBox(boxesData, entry.getValue().pos.subtract(cameraPos), combinedMatrix);
+                Vec3d relPos = entry.getValue().pos.subtract(cameraPos);
+                appendVanishedBox(boxesData, relPos, combinedMatrix);
             }
         }
 
@@ -130,7 +135,8 @@ public class ESPModule {
             float boxY = Math.min(by, ty);
 
             if (data.length() > 0) data.append(";");
-            data.append(String.format("%.4f,%.4f,%.4f,%.4f,%s", boxX, boxY, boxWidth, boxHeight, label));
+            // CRITICAL: Use Locale.ROOT to ensure decimal dots (.) are used in all locales (avoiding comma separator issues)
+            data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s", boxX, boxY, boxWidth, boxHeight, label));
         }
     }
 
@@ -160,6 +166,8 @@ public class ESPModule {
         var window = client.getWindow();
 
         // Logical coordinates for Swing (assuming no forced uiScale)
+        // Since we force uiScale=1.0 in ESPOverlayApp, Swing uses physical pixels.
+        // Minecraft's getX() etc return physical pixels.
         int x = window.getX();
         int y = window.getY();
         int w = window.getWidth();
@@ -171,8 +179,9 @@ public class ESPModule {
         w += TutorialMod.CONFIG.espWidthAdjust;
         h += TutorialMod.CONFIG.espHeightAdjust;
 
+        // CRITICAL: Use Locale.ROOT for any formatting that involves numbers sent over the wire
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(
-            String.format("WINDOW_SYNC %d,%d,%d,%d", x, y, w, h)
+            String.format(Locale.ROOT, "WINDOW_SYNC %d,%d,%d,%d", x, y, w, h)
         );
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + TutorialMod.CONFIG.espDebugMode);
