@@ -212,6 +212,25 @@ public class ModConfig {
     public double espManualFov = 70.0;
     public boolean espDebugMode = true;
 
+    // ESP Filters
+    public boolean espPlayers = true;
+    public boolean espVillagers = false;
+    public boolean espHostiles = false;
+    public boolean espPassives = false;
+    public boolean espTamed = false;
+    public double espMaxRange = 64.0;
+    public double espMinRange = 0.0;
+
+    // ESP Visuals
+    public boolean espShowNames = true;
+    public double espBoxWidthFactor = 0.45;
+    public int espColorTeammate = 0x00FF00;
+    public int espColorEnemy = 0xFF0000;
+    public int espColorVillager = 0xFF00FF;
+    public int espColorHostile = 0xFFA500;
+    public int espColorPassive = 0xFFFF00;
+    public int espColorTamed = 0x0000FF;
+
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;
     public boolean showHpDecimals = false;

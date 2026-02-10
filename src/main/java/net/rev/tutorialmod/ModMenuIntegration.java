@@ -102,7 +102,58 @@ public class ModMenuIntegration implements ModMenuApi {
                 try { TutorialMod.CONFIG.autoTotemHotbarSlots = Arrays.stream(newValue.replace(" ", "").split(",")).map(s -> Integer.parseInt(s) - 1).collect(Collectors.toList()); } catch (NumberFormatException ignored) {}
             }).build());
 
-            // 1.3 Movement
+            // 1.3 ESP Overlay (New dedicated category)
+            ConfigCategory espOverlay = builder.getOrCreateCategory(Text.literal("ESP Overlay"));
+
+            SubCategoryBuilder espGeneral = entryBuilder.startSubCategory(Text.literal("General"));
+            espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.showESP).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showESP = newValue).build());
+            espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Anti-Vanish Mode"), TutorialMod.CONFIG.espAntiVanish).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espAntiVanish = newValue).build());
+            espGeneral.add(entryBuilder.startIntSlider(Text.literal("Refresh Rate"), TutorialMod.CONFIG.espRefreshRate, 1, 60).setTooltip(Text.literal("Units: FPS")).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRefreshRate = newValue).build());
+            espGeneral.add(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.toggleESPHotkey).setDefaultValue("key.keyboard.y").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleESPHotkey = newValue).build());
+            espOverlay.addEntry(espGeneral.build());
+
+            SubCategoryBuilder espFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
+            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Players"), TutorialMod.CONFIG.espPlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espPlayers = newValue).build());
+            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Villagers"), TutorialMod.CONFIG.espVillagers).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espVillagers = newValue).build());
+            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Hostile Mobs"), TutorialMod.CONFIG.espHostiles).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHostiles = newValue).build());
+            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Passive Mobs"), TutorialMod.CONFIG.espPassives).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espPassives = newValue).build());
+            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Tamed Mobs"), TutorialMod.CONFIG.espTamed).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espTamed = newValue).build());
+            espFilters.add(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.espMinRange * 10), 0, 1280).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMinRange = newValue / 10.0).build());
+            espFilters.add(entryBuilder.startLongSlider(Text.literal("Max Range"), (long)(TutorialMod.CONFIG.espMaxRange * 10), 0, 1280).setDefaultValue(640).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMaxRange = newValue / 10.0).build());
+            espOverlay.addEntry(espFilters.build());
+
+            SubCategoryBuilder espVisuals = entryBuilder.startSubCategory(Text.literal("Visuals"));
+            espVisuals.add(entryBuilder.startBooleanToggle(Text.literal("Show Names"), TutorialMod.CONFIG.espShowNames).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNames = newValue).build());
+            espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Width Factor"), (long)(TutorialMod.CONFIG.espBoxWidthFactor * 100), 5, 100).setTooltip(Text.literal("Adjusts how 'fat' the boxes are. Default is 45.")).setDefaultValue(45).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxWidthFactor = newValue / 100.0).build());
+            espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Scale"), (long)(TutorialMod.CONFIG.espBoxScale * 100), 10, 300).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxScale = newValue / 100.0).build());
+            espVisuals.add(entryBuilder.startColorField(Text.literal("Teammate Color"), TutorialMod.CONFIG.espColorTeammate).setDefaultValue(0x00FF00).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorTeammate = newValue).build());
+            espVisuals.add(entryBuilder.startColorField(Text.literal("Enemy Color"), TutorialMod.CONFIG.espColorEnemy).setDefaultValue(0xFF0000).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorEnemy = newValue).build());
+            espVisuals.add(entryBuilder.startColorField(Text.literal("Villager Color"), TutorialMod.CONFIG.espColorVillager).setDefaultValue(0xFF00FF).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorVillager = newValue).build());
+            espVisuals.add(entryBuilder.startColorField(Text.literal("Hostile Color"), TutorialMod.CONFIG.espColorHostile).setDefaultValue(0xFFA500).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHostile = newValue).build());
+            espVisuals.add(entryBuilder.startColorField(Text.literal("Passive Color"), TutorialMod.CONFIG.espColorPassive).setDefaultValue(0xFFFF00).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorPassive = newValue).build());
+            espVisuals.add(entryBuilder.startColorField(Text.literal("Tamed Color"), TutorialMod.CONFIG.espColorTamed).setDefaultValue(0x0000FF).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorTamed = newValue).build());
+            espOverlay.addEntry(espVisuals.build());
+
+            SubCategoryBuilder espCalibration = entryBuilder.startSubCategory(Text.literal("Calibration"));
+            espCalibration.add(entryBuilder.startLongSlider(Text.literal("Scale Factor"), (long)(TutorialMod.CONFIG.espScaleFactor * 100), 50, 200).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espScaleFactor = newValue / 100.0).build());
+            espCalibration.add(entryBuilder.startIntSlider(Text.literal("Offset X"), TutorialMod.CONFIG.espOffsetX, -200, 200).setTooltip(Text.literal("Units: Pixels")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espOffsetX = newValue).build());
+            espCalibration.add(entryBuilder.startIntSlider(Text.literal("Offset Y"), TutorialMod.CONFIG.espOffsetY, -200, 200).setTooltip(Text.literal("Units: Pixels")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espOffsetY = newValue).build());
+            espCalibration.add(entryBuilder.startIntSlider(Text.literal("Width Adjustment"), TutorialMod.CONFIG.espWidthAdjust, -200, 200).setTooltip(Text.literal("Units: Pixels")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espWidthAdjust = newValue).build());
+            espCalibration.add(entryBuilder.startIntSlider(Text.literal("Height Adjustment"), TutorialMod.CONFIG.espHeightAdjust, -200, 200).setTooltip(Text.literal("Units: Pixels")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHeightAdjust = newValue).build());
+            espCalibration.add(entryBuilder.startLongSlider(Text.literal("FOV Scale"), (long)(TutorialMod.CONFIG.espFovScale * 100), 10, 200).setTooltip(Text.literal("Adjusts the rate at which boxes move relative to mouse. Decrease if boxes move too fast.")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espFovScale = newValue / 100.0).build());
+            espCalibration.add(entryBuilder.startLongSlider(Text.literal("Aspect Ratio Scale"), (long)(TutorialMod.CONFIG.espAspectRatioScale * 100), 10, 200).setTooltip(Text.literal("Adjusts horizontal stretching.")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espAspectRatioScale = newValue / 100.0).build());
+            espCalibration.add(entryBuilder.startBooleanToggle(Text.literal("Use Manual Projection"), TutorialMod.CONFIG.espManualProjection).setTooltip(Text.literal("Enables a custom projection system if the automatic one is broken.")).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espManualProjection = newValue).build());
+            espCalibration.add(entryBuilder.startLongSlider(Text.literal("Manual FOV"), (long)TutorialMod.CONFIG.espManualFov, 30, 130).setTooltip(Text.literal("Adjust this to match your in-game FOV if using Manual Projection.")).setDefaultValue(70).setSaveConsumer(newValue -> TutorialMod.CONFIG.espManualFov = newValue.doubleValue()).build());
+            espCalibration.add(entryBuilder.startBooleanToggle(Text.literal("Debug Mode"), TutorialMod.CONFIG.espDebugMode).setTooltip(Text.literal("Draws a red tint/border and crosshair around the overlay area")).setDefaultValue(true).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espDebugMode = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getESPOverlayManager() != null) {
+                    TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + newValue);
+                }
+            }).build());
+            espOverlay.addEntry(espCalibration.build());
+
+
+            // 1.4 Movement
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
 
             SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water)"));
@@ -133,7 +184,7 @@ public class ModMenuIntegration implements ModMenuApi {
             parkourSub.add(entryBuilder.startLongSlider(Text.literal("Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0).build());
             movement.addEntry(parkourSub.build());
 
-            // 1.4 Potions
+            // 1.5 Potions
             ConfigCategory potionModule = builder.getOrCreateCategory(Text.literal("Potions"));
             potionModule.addEntry(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.potionModuleEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionModuleEnabled = newValue).build());
             potionModule.addEntry(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.potionHotkey).setDefaultValue("key.keyboard.left.alt").setSaveConsumer(newValue -> TutorialMod.CONFIG.potionHotkey = newValue).build());
@@ -145,7 +196,7 @@ public class ModMenuIntegration implements ModMenuApi {
             potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Speed Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionSpeedThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionSpeedThreshold = newValue / 10.0).build());
             potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Fire Res Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionFireResThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionFireResThreshold = newValue / 10.0).build());
 
-            // 1.5 Tool Switch
+            // 1.6 Tool Switch
             ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch Enabled"), TutorialMod.CONFIG.autoToolSwitchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Durability Safety Enabled"), TutorialMod.CONFIG.toolDurabilitySafetyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.toolDurabilitySafetyEnabled = newValue).build());
@@ -164,7 +215,7 @@ public class ModMenuIntegration implements ModMenuApi {
             miningResetSub.add(entryBuilder.startIntSlider(Text.literal("Mining Reset Delay"), TutorialMod.CONFIG.miningResetDelay, 0, 5).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetDelay = newValue).build());
             toolSwitch.addEntry(miningResetSub.build());
 
-            // 1.6 Trigger Bot
+            // 1.7 Trigger Bot
             ConfigCategory triggerBot = builder.getOrCreateCategory(Text.literal("Trigger Bot"));
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Trigger Bot Enabled"), TutorialMod.CONFIG.triggerBotEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotEnabled = newValue).build());
             triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.triggerBotToggleHotkey).setDefaultValue("key.keyboard.k").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotToggleHotkey = newValue).build());
@@ -192,7 +243,7 @@ public class ModMenuIntegration implements ModMenuApi {
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.triggerBotWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotWeaponOnly = newValue).build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit Only"), TutorialMod.CONFIG.attackOnCrit).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue).build());
 
-            // 1.7 UHC/Cart (Minecart Tech)
+            // 1.8 UHC/Cart (Minecart Tech)
             ConfigCategory minecartTech = builder.getOrCreateCategory(Text.literal("UHC/Cart"));
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement Enabled"), TutorialMod.CONFIG.tntMinecartPlacementEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue).build());
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence Enabled"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
@@ -241,7 +292,6 @@ public class ModMenuIntegration implements ModMenuApi {
             ConfigCategory misc = builder.getOrCreateCategory(Text.literal("Misc"));
             misc.addEntry(entryBuilder.startStrField(Text.literal("Open Settings Hotkey"), TutorialMod.CONFIG.openSettingsHotkey).setDefaultValue("key.keyboard.right.shift").setSaveConsumer(newValue -> TutorialMod.CONFIG.openSettingsHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey).setDefaultValue("key.keyboard.m").setSaveConsumer(newValue -> TutorialMod.CONFIG.masterToggleHotkey = newValue).build());
-            misc.addEntry(entryBuilder.startStrField(Text.literal("ESP Toggle Hotkey"), TutorialMod.CONFIG.toggleESPHotkey).setDefaultValue("key.keyboard.y").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleESPHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Teammate Toggle Hotkey"), TutorialMod.CONFIG.teammateHotkey).setDefaultValue("key.keyboard.g").setSaveConsumer(newValue -> TutorialMod.CONFIG.teammateHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintModeHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Sneak Mode Toggle Hotkey"), TutorialMod.CONFIG.sneakModeHotkey).setDefaultValue("key.keyboard.b").setSaveConsumer(newValue -> TutorialMod.CONFIG.sneakModeHotkey = newValue).build());
@@ -277,28 +327,6 @@ public class ModMenuIntegration implements ModMenuApi {
             overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Vertical Alignment"), TutorialMod.CONFIG.overlayVAlignment).setDefaultValue("Top").setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayVAlignment = newValue).build());
             overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Font Name"), TutorialMod.CONFIG.overlayFontName).setDefaultValue("Consolas").setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayFontName = newValue).build());
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lock Overlay"), TutorialMod.CONFIG.overlayLocked).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayLocked = newValue).build());
-
-            SubCategoryBuilder espSub = entryBuilder.startSubCategory(Text.literal("ESP Overlay"));
-            espSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.showESP).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showESP = newValue).build());
-            espSub.add(entryBuilder.startBooleanToggle(Text.literal("Anti-Vanish Mode"), TutorialMod.CONFIG.espAntiVanish).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espAntiVanish = newValue).build());
-            espSub.add(entryBuilder.startIntSlider(Text.literal("Refresh Rate"), TutorialMod.CONFIG.espRefreshRate, 1, 60).setTooltip(Text.literal("Units: FPS")).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRefreshRate = newValue).build());
-            espSub.add(entryBuilder.startLongSlider(Text.literal("Scale Factor"), (long)(TutorialMod.CONFIG.espScaleFactor * 100), 50, 200).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espScaleFactor = newValue / 100.0).build());
-            espSub.add(entryBuilder.startIntSlider(Text.literal("Offset X"), TutorialMod.CONFIG.espOffsetX, -200, 200).setTooltip(Text.literal("Units: Pixels")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espOffsetX = newValue).build());
-            espSub.add(entryBuilder.startIntSlider(Text.literal("Offset Y"), TutorialMod.CONFIG.espOffsetY, -200, 200).setTooltip(Text.literal("Units: Pixels")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espOffsetY = newValue).build());
-            espSub.add(entryBuilder.startIntSlider(Text.literal("Width Adjustment"), TutorialMod.CONFIG.espWidthAdjust, -200, 200).setTooltip(Text.literal("Units: Pixels")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espWidthAdjust = newValue).build());
-            espSub.add(entryBuilder.startIntSlider(Text.literal("Height Adjustment"), TutorialMod.CONFIG.espHeightAdjust, -200, 200).setTooltip(Text.literal("Units: Pixels")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHeightAdjust = newValue).build());
-            espSub.add(entryBuilder.startLongSlider(Text.literal("Box Scale"), (long)(TutorialMod.CONFIG.espBoxScale * 100), 10, 300).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxScale = newValue / 100.0).build());
-            espSub.add(entryBuilder.startLongSlider(Text.literal("FOV Scale"), (long)(TutorialMod.CONFIG.espFovScale * 100), 10, 200).setTooltip(Text.literal("Adjusts the rate at which boxes move relative to mouse. Decrease if boxes move too fast.")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espFovScale = newValue / 100.0).build());
-            espSub.add(entryBuilder.startLongSlider(Text.literal("Aspect Ratio Scale"), (long)(TutorialMod.CONFIG.espAspectRatioScale * 100), 10, 200).setTooltip(Text.literal("Adjusts horizontal stretching.")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espAspectRatioScale = newValue / 100.0).build());
-            espSub.add(entryBuilder.startBooleanToggle(Text.literal("Use Manual Projection"), TutorialMod.CONFIG.espManualProjection).setTooltip(Text.literal("Enables a custom projection system if the automatic one is broken.")).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espManualProjection = newValue).build());
-            espSub.add(entryBuilder.startLongSlider(Text.literal("Manual FOV"), (long)TutorialMod.CONFIG.espManualFov, 30, 130).setTooltip(Text.literal("Adjust this to match your in-game FOV if using Manual Projection.")).setDefaultValue(70).setSaveConsumer(newValue -> TutorialMod.CONFIG.espManualFov = newValue.doubleValue()).build());
-            espSub.add(entryBuilder.startBooleanToggle(Text.literal("Debug Mode"), TutorialMod.CONFIG.espDebugMode).setTooltip(Text.literal("Draws a red tint/border and crosshair around the overlay area")).setDefaultValue(true).setSaveConsumer(newValue -> {
-                TutorialMod.CONFIG.espDebugMode = newValue;
-                if (TutorialModClient.getInstance() != null && TutorialModClient.getESPOverlayManager() != null) {
-                    TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + newValue);
-                }
-            }).build());
-            overlay.addEntry(espSub.build());
 
             SubCategoryBuilder enemyInfoSubCategory = entryBuilder.startSubCategory(Text.literal("Enemy Info"));
             enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Enemy Info Enabled"), TutorialMod.CONFIG.showEnemyInfo).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.showEnemyInfo = newValue).build());

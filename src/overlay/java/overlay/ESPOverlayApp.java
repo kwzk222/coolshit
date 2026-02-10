@@ -156,7 +156,8 @@ public class ESPOverlayApp {
                             float w = Float.parseFloat(parts[2]);
                             float h = Float.parseFloat(parts[3]);
                             String label = parts.length > 4 ? parts[4] : "";
-                            newBoxes.add(new BoxData(x, y, w, h, label));
+                            int color = parts.length > 5 ? Integer.parseInt(parts[5]) : 0xFFFFFF;
+                            newBoxes.add(new BoxData(x, y, w, h, label, color));
                         } catch (Exception ignored) {}
                     }
                 }
@@ -202,10 +203,15 @@ public class ESPOverlayApp {
 
                 if (bw <= 0 || bh <= 0) continue;
 
+                // Set color (ensuring alpha is opaque if not provided)
+                Color c = new Color(box.color | 0xFF000000, true);
+
                 g2d.setStroke(new BasicStroke(2.0f));
+                // Black outline
                 g2d.setColor(Color.BLACK);
                 g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
-                g2d.setColor(Color.WHITE);
+                // Main color
+                g2d.setColor(c);
                 g2d.drawRect(bx, by, bw, bh);
 
                 if (!box.label.isEmpty()) {
@@ -224,8 +230,9 @@ public class ESPOverlayApp {
     private static class BoxData {
         float xf, yf, wf, hf;
         String label;
-        BoxData(float xf, float yf, float wf, float hf, String label) {
-            this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label;
+        int color;
+        BoxData(float xf, float yf, float wf, float hf, String label, int color) {
+            this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label; this.color = color;
         }
     }
 }

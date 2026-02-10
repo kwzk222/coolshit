@@ -4,11 +4,16 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.mob.Monster;
+import net.minecraft.entity.passive.PassiveEntity;
+import net.minecraft.entity.passive.TameableEntity;
+import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector4f;
 
 import java.util.Locale;
@@ -53,7 +58,6 @@ public class ESPModule {
         Matrix4f combinedMatrix;
 
         if (TutorialMod.CONFIG.espManualProjection) {
-            // Manual construction of matrices to bypass unreliable parameters
             float fov = (float) TutorialMod.CONFIG.espManualFov;
             float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
             float near = 0.05f;
@@ -66,15 +70,10 @@ public class ESPModule {
 
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            // Use the rotation-only part of the provided View Matrix
-            Matrix4f viewMatrix = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+            Quaternionf viewRot = new Quaternionf(camera.getRotation());
+            viewRot.conjugate();
+            Matrix4f viewMatrix = new Matrix4f().rotation(viewRot);
             combinedMatrix = new Matrix4f(projectionMatrix).mul(viewMatrix);
-        }
-
-        // Debugging info for the user
-        if (TutorialMod.CONFIG.espDebugMode && now % 2000 < 50) {
-            String matrixInfo = String.format(Locale.ROOT, "M23:%.2f W:%.2f", combinedMatrix.m23(), combinedMatrix.m33());
-            net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("DEBUG_TEXT " + matrixInfo);
         }
 
         updateESP(tickCounter, camera, combinedMatrix);
@@ -112,36 +111,54 @@ public class ESPModule {
         Vec3d cameraPos = camera.getCameraPos();
         float tickDelta = tickCounter.getTickProgress(true);
 
-        for (PlayerEntity player : client.world.getPlayers()) {
-            if (player == client.player || !player.isAlive() || player.isInvisibleTo(client.player)) continue;
+        for (Entity entity : client.world.getEntities()) {
+            if (entity == client.player || !entity.isAlive()) continue;
 
-            double x = MathHelper.lerp(tickDelta, player.lastRenderX, player.getX());
-            double y = MathHelper.lerp(tickDelta, player.lastRenderY, player.getY());
-            double z = MathHelper.lerp(tickDelta, player.lastRenderZ, player.getZ());
+            double dist = entity.distanceTo(client.player);
+            if (dist < TutorialMod.CONFIG.espMinRange || dist > TutorialMod.CONFIG.espMaxRange) continue;
 
-            Vec3d relPos = new Vec3d(x, y, z).subtract(cameraPos);
-            appendEntityBox(boxesData, player, relPos, combinedMatrix, player.getName().getString());
+            int color = -1;
+            String label = TutorialMod.CONFIG.espShowNames ? entity.getName().getString() : "";
+
+            if (entity instanceof PlayerEntity player) {
+                if (!TutorialMod.CONFIG.espPlayers || player.isInvisibleTo(client.player)) continue;
+                color = TutorialMod.CONFIG.teamManager.isTeammate(player.getName().getString())
+                        ? TutorialMod.CONFIG.espColorTeammate : TutorialMod.CONFIG.espColorEnemy;
+            } else if (entity instanceof VillagerEntity) {
+                if (!TutorialMod.CONFIG.espVillagers) continue;
+                color = TutorialMod.CONFIG.espColorVillager;
+            } else if (entity instanceof TameableEntity tameable && tameable.isTamed()) {
+                if (!TutorialMod.CONFIG.espTamed) continue;
+                color = TutorialMod.CONFIG.espColorTamed;
+            } else if (entity instanceof Monster) {
+                if (!TutorialMod.CONFIG.espHostiles) continue;
+                color = TutorialMod.CONFIG.espColorHostile;
+            } else if (entity instanceof PassiveEntity) {
+                if (!TutorialMod.CONFIG.espPassives) continue;
+                color = TutorialMod.CONFIG.espColorPassive;
+            }
+
+            if (color != -1) {
+                double x = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
+                double y = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
+                double z = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
+
+                Vec3d relPos = new Vec3d(x, y, z).subtract(cameraPos);
+                projectAndAppend(boxesData, relPos, entity.getHeight(), combinedMatrix, label, color);
+            }
         }
 
         if (TutorialMod.CONFIG.espAntiVanish) {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
                 Vec3d relPos = entry.getValue().pos.subtract(cameraPos);
-                appendVanishedBox(boxesData, relPos, combinedMatrix);
+                projectAndAppend(boxesData, relPos, 1.8, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy);
             }
         }
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
     }
 
-    private void appendEntityBox(StringBuilder data, Entity entity, Vec3d relPos, Matrix4f combinedMatrix, String label) {
-        projectAndAppend(data, relPos, entity.getHeight(), combinedMatrix, label);
-    }
-
-    private void appendVanishedBox(StringBuilder data, Vec3d relPos, Matrix4f combinedMatrix) {
-        projectAndAppend(data, relPos, 1.8, combinedMatrix, "Vanished");
-    }
-
-    private void projectAndAppend(StringBuilder data, Vec3d relPos, double height, Matrix4f combinedMatrix, String label) {
+    private void projectAndAppend(StringBuilder data, Vec3d relPos, double height, Matrix4f combinedMatrix, String label, int color) {
         Vector4f bottom2D = project(relPos, combinedMatrix);
         Vector4f top2D = project(relPos.add(0, height, 0), combinedMatrix);
 
@@ -151,12 +168,13 @@ public class ESPModule {
             float ty = top2D.y;
 
             float boxHeight = Math.abs(by - ty) * (float)TutorialMod.CONFIG.espBoxScale;
-            float boxWidth = boxHeight * 0.45f;
+            float boxWidth = boxHeight * (float)TutorialMod.CONFIG.espBoxWidthFactor;
             float boxX = bx - boxWidth / 2f;
             float boxY = Math.min(by, ty);
 
             if (data.length() > 0) data.append(";");
-            data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s", boxX, boxY, boxWidth, boxHeight, label));
+            // Protocol: x,y,w,h,label,color
+            data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s,%d", boxX, boxY, boxWidth, boxHeight, label, color));
         }
     }
 
@@ -164,8 +182,7 @@ public class ESPModule {
         Vector4f vec = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
         combinedMatrix.transform(vec);
 
-        // Standard perspective divide using W
-        if (vec.w > 0.1f) {
+        if (vec.w > 0.01f) {
             float ndcX = (vec.x / vec.w) * (float)TutorialMod.CONFIG.espFovScale * (float)TutorialMod.CONFIG.espAspectRatioScale;
             float ndcY = (vec.y / vec.w) * (float)TutorialMod.CONFIG.espFovScale;
 
