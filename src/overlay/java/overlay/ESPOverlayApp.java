@@ -23,7 +23,7 @@ public class ESPOverlayApp {
     private static final int PORT = 25567;
 
     public static void main(String[] args) {
-        System.setProperty("sun.java2d.uiScale", "1.0");
+        // Removed sun.java2d.uiScale=1.0 to match Minecraft's logical coordinate system
 
         SwingUtilities.invokeLater(() -> {
             frame = new JFrame("TutorialMod ESP Overlay");
@@ -134,13 +134,14 @@ public class ESPOverlayApp {
             if (!data.isEmpty()) {
                 String[] items = data.split(";");
                 for (String item : items) {
-                    String[] parts = item.split(",");
+                    // Changed delimiter to |
+                    String[] parts = item.split("\\|");
                     if (parts.length >= 4) {
                         try {
-                            float x = Float.parseFloat(parts[0]);
-                            float y = Float.parseFloat(parts[1]);
-                            float w = Float.parseFloat(parts[2]);
-                            float h = Float.parseFloat(parts[3]);
+                            int x = Integer.parseInt(parts[0]);
+                            int y = Integer.parseInt(parts[1]);
+                            int w = Integer.parseInt(parts[2]);
+                            int h = Integer.parseInt(parts[3]);
                             String label = parts.length > 4 ? parts[4] : "";
                             int color = parts.length > 5 && !parts[5].isEmpty() ? Integer.parseInt(parts[5]) : 0xFFFFFF;
                             String distLabel = parts.length > 6 ? parts[6] : "";
@@ -172,23 +173,19 @@ public class ESPOverlayApp {
             Graphics2D g2d = (Graphics2D) g;
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            int panelW = getWidth();
-            int panelH = getHeight();
-
             if (debugMode) {
                 g2d.setColor(new Color(255, 0, 0, 100));
                 g2d.setStroke(new BasicStroke(4.0f));
-                g2d.drawRect(0, 0, panelW - 1, panelH - 1);
+                g2d.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
             }
 
             for (BoxData box : boxes) {
-                int bx = (int) (box.xf * panelW);
-                int by = (int) (box.yf * panelH);
-                int bw = (int) (box.wf * panelW);
-                int bh = (int) (box.hf * panelH);
+                int bx = box.x;
+                int by = box.y;
+                int bw = box.w;
+                int bh = box.h;
                 if (bw <= 0 || bh <= 0) continue;
 
-                // 1. Draw Box or Texture
                 if (!box.texturePath.isEmpty() && imageCache.containsKey(box.texturePath)) {
                     BufferedImage img = imageCache.get(box.texturePath);
                     g2d.drawImage(img, bx, by, bw, bh, null);
@@ -203,7 +200,6 @@ public class ESPOverlayApp {
                     g2d.drawRect(bx, by, bw, bh);
                 }
 
-                // 2. Draw Labels
                 int labelY = by - 4;
                 if (!box.label.isEmpty() || !box.distLabel.isEmpty()) {
                     g2d.setFont(new Font("Consolas", Font.BOLD, 12));
@@ -229,11 +225,11 @@ public class ESPOverlayApp {
     }
 
     private static class BoxData {
-        float xf, yf, wf, hf;
+        int x, y, w, h;
         String label, distLabel, texturePath;
         int color;
-        BoxData(float xf, float yf, float wf, float hf, String label, int color, String distLabel, String texturePath) {
-            this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf;
+        BoxData(int x, int y, int w, int h, String label, int color, String distLabel, String texturePath) {
+            this.x = x; this.y = y; this.w = w; this.h = h;
             this.label = label; this.color = color; this.distLabel = distLabel; this.texturePath = texturePath;
         }
     }

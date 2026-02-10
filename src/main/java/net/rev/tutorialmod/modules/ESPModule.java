@@ -18,8 +18,6 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
-import org.joml.Vector4f;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -88,10 +86,8 @@ public class ESPModule {
 
         long now = System.currentTimeMillis();
 
-        // Dynamic throttling
         int entityCount = 0;
         for (Entity e : mc.world.getEntities()) entityCount++;
-
         int totalApprox = entityCount + xrayBoxes.size() + vanishedPlayers.size();
         int skipRate = totalApprox > TutorialMod.CONFIG.espMaxBoxes ? (totalApprox / TutorialMod.CONFIG.espMaxBoxes) : 0;
         if (frameSkipCounter < skipRate) {
@@ -108,25 +104,12 @@ public class ESPModule {
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
         Vec3d camPos = camera.getCameraPos();
-
-        Matrix4f combinedMatrix;
-        float fov;
-        float aspectRatio;
-
-        if (TutorialMod.CONFIG.espManualProjection) {
-            float width = (float) mc.getWindow().getWidth();
-            float height = (float) mc.getWindow().getHeight();
-            fov = (float) TutorialMod.CONFIG.espManualFov;
-            aspectRatio = (width / height) * (float)TutorialMod.CONFIG.espAspectRatioScale;
-
-            Quaternionf viewRot = new Quaternionf(camera.getRotation());
-            viewRot.conjugate();
-            combinedMatrix = new Matrix4f().rotation(viewRot);
-        } else {
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
-            fov = -1;
-            aspectRatio = -1;
-        }
+        float yaw = (float) Math.toRadians(camera.getYaw());
+        float pitch = (float) Math.toRadians(camera.getPitch());
+        float width = (float) mc.getWindow().getWidth();
+        float height = (float) mc.getWindow().getHeight();
+        float fov = (float) TutorialMod.CONFIG.espManualFov;
+        float aspectRatio = (width / height) * (float)TutorialMod.CONFIG.espAspectRatioScale;
 
         ESPOverlayManager om = TutorialModClient.getESPOverlayManager();
         if (om == null) return;
@@ -142,7 +125,7 @@ public class ESPModule {
             double dist = entityPos.distanceTo(camPos);
             if (dist < TutorialMod.CONFIG.espMinRange || dist > TutorialMod.CONFIG.espMaxRange) continue;
 
-            BoxData data = projectBox(entity.getBoundingBox(), camPos, combinedMatrix, fov, aspectRatio);
+            BoxData data = projectBox(entity.getBoundingBox(), camPos, yaw, pitch, fov, aspectRatio, width, height);
             if (data == null) continue;
 
             int color = getEntityColor(entity);
@@ -154,15 +137,13 @@ public class ESPModule {
 
         // Vanished Players
         for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
-            // Refinement: Skip if entity is already known to world
             if (mc.world.getEntityById(entry.getKey()) != null) continue;
-
             Vec3d pos = entry.getValue().pos;
             double dist = pos.distanceTo(camPos);
             if (dist > TutorialMod.CONFIG.espMaxRange) continue;
 
             Box box = new Box(pos.x - 0.3, pos.y, pos.z - 0.3, pos.x + 0.3, pos.y + 1.8, pos.z + 0.3);
-            BoxData data = projectBox(box, camPos, combinedMatrix, fov, aspectRatio);
+            BoxData data = projectBox(box, camPos, yaw, pitch, fov, aspectRatio, width, height);
             if (data == null) continue;
 
             appendBox(boxesData, data, "VANISHED", 0xFF0000, (int)dist + "m", "");
@@ -173,7 +154,7 @@ public class ESPModule {
             double dist = Math.sqrt(xb.pos.getSquaredDistance(camPos.x, camPos.y, camPos.z));
             if (dist > xb.range) continue;
 
-            BoxData data = projectBox(xb.box, camPos, combinedMatrix, fov, aspectRatio);
+            BoxData data = projectBox(xb.box, camPos, yaw, pitch, fov, aspectRatio, width, height);
             if (data == null) continue;
 
             String name = TutorialMod.CONFIG.xrayShowNames ? xb.name : "";
@@ -187,11 +168,12 @@ public class ESPModule {
 
     private void appendBox(StringBuilder sb, BoxData data, String label, int color, String distLabel, String texture) {
         if (sb.length() > 0) sb.append(";");
-        sb.append(String.format(Locale.ROOT, "%.6f,%.6f,%.6f,%.6f,%s,%d,%s,%s",
-            data.x, data.y, data.w, data.h, label, color, distLabel, texture));
+        // Using | as delimiter to avoid issues with paths containing commas
+        sb.append(String.format(Locale.ROOT, "%d|%d|%d|%d|%s|%d|%s|%s",
+            (int)data.x, (int)data.y, (int)data.w, (int)data.h, label, color, distLabel, texture));
     }
 
-    private BoxData projectBox(Box box, Vec3d camPos, Matrix4f combinedMatrix, float fov, float aspectRatio) {
+    private BoxData projectBox(Box box, Vec3d camPos, float yaw, float pitch, float fov, float aspectRatio, float width, float height) {
         Vec3d[] corners = new Vec3d[]{
             new Vec3d(box.minX, box.minY, box.minZ), new Vec3d(box.maxX, box.minY, box.minZ),
             new Vec3d(box.minX, box.maxY, box.minZ), new Vec3d(box.maxX, box.maxY, box.minZ),
@@ -199,68 +181,86 @@ public class ESPModule {
             new Vec3d(box.minX, box.maxY, box.maxZ), new Vec3d(box.maxX, box.maxY, box.maxZ)
         };
 
+        int[][] edges = {
+            {0,1}, {1,5}, {5,4}, {4,0},
+            {2,3}, {3,7}, {7,6}, {6,2},
+            {0,2}, {1,3}, {4,6}, {5,7}
+        };
+
         float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
         float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
-        boolean anyInFront = false;
+        boolean anyVisible = false;
+        float near = 0.05f;
 
-        for (Vec3d corner : corners) {
-            Vector2d p;
-            if (TutorialMod.CONFIG.espManualProjection) {
-                p = projectManual(corner, camPos, combinedMatrix, fov, aspectRatio);
+        for (int[] edge : edges) {
+            Vec3d p1 = corners[edge[0]];
+            Vec3d p2 = corners[edge[1]];
+
+            Vec3d r1 = rotate(p1.subtract(camPos), yaw, pitch);
+            Vec3d r2 = rotate(p2.subtract(camPos), yaw, pitch);
+
+            if (r1.z < near && r2.z < near) continue;
+
+            if (r1.z >= near && r2.z >= near) {
+                Vector2d proj1 = project(r1, fov, aspectRatio, width, height);
+                Vector2d proj2 = project(r2, fov, aspectRatio, width, height);
+                minX = Math.min(minX, Math.min(proj1.x, proj2.x));
+                minY = Math.min(minY, Math.min(proj1.y, proj2.y));
+                maxX = Math.max(maxX, Math.max(proj1.x, proj2.x));
+                maxY = Math.max(maxY, Math.max(proj1.y, proj2.y));
+                anyVisible = true;
             } else {
-                p = projectAuto(corner, camPos, combinedMatrix);
-            }
+                Vec3d in = r1.z >= near ? r1 : r2;
+                Vec3d out = r1.z < near ? r1 : r2;
+                float t = (near - (float)out.z) / (float)(in.z - out.z);
+                Vec3d clipped = out.add(in.subtract(out).multiply(t));
 
-            if (p != null) {
-                anyInFront = true;
-                minX = Math.min(minX, p.x);
-                minY = Math.min(minY, p.y);
-                maxX = Math.max(maxX, p.x);
-                maxY = Math.max(maxY, p.y);
+                Vector2d projIn = project(in, fov, aspectRatio, width, height);
+                Vector2d projClipped = project(clipped, fov, aspectRatio, width, height);
+                minX = Math.min(minX, Math.min(projIn.x, projClipped.x));
+                minY = Math.min(minY, Math.min(projIn.y, projClipped.y));
+                maxX = Math.max(maxX, Math.max(projIn.x, projClipped.x));
+                maxY = Math.max(maxY, Math.max(projIn.y, projClipped.y));
+                anyVisible = true;
             }
         }
 
-        if (!anyInFront) return null;
+        if (!anyVisible) return null;
 
         float w = maxX - minX;
         float h = maxY - minY;
 
-        float finalW = w * (float)TutorialMod.CONFIG.espBoxScale;
-        float finalH = h * (float)TutorialMod.CONFIG.espBoxScale;
-        float finalX = minX + (w - finalW) / 2f;
-        float finalY = minY + (h - finalH) / 2f;
+        double scale = TutorialMod.CONFIG.espScaleFactor;
+        int ox = TutorialMod.CONFIG.espOffsetX;
+        int oy = TutorialMod.CONFIG.espOffsetY;
+        int wa = TutorialMod.CONFIG.espWidthAdjust;
+        int ha = TutorialMod.CONFIG.espHeightAdjust;
+
+        float finalW = (float)(w * scale * TutorialMod.CONFIG.espBoxScale) + wa;
+        float finalH = (float)(h * scale * TutorialMod.CONFIG.espBoxScale) + ha;
+        float finalX = (float)(minX * scale) + ox + (w - finalW) / 2f;
+        float finalY = (float)(minY * scale) + oy + (h - finalH) / 2f;
 
         return new BoxData(finalX, finalY, finalW, finalH);
     }
 
-    private Vector2d projectAuto(Vec3d pos, Vec3d camPos, Matrix4f combinedMatrix) {
-        Vec3d rel = pos.subtract(camPos);
-        Vector4f vec = new Vector4f((float)rel.x, (float)rel.y, (float)rel.z, 1.0f);
-        combinedMatrix.transform(vec);
-
-        if (vec.w < 0.05f) return null;
-
-        float x = ((vec.x / vec.w) + 1.0f) * 0.5f;
-        float y = (1.0f - (vec.y / vec.w)) * 0.5f;
-
-        return new Vector2d(x, y);
+    private Vec3d rotate(Vec3d rel, float yaw, float pitch) {
+        double x = rel.x * Math.cos(yaw) + rel.z * Math.sin(yaw);
+        double z = rel.z * Math.cos(yaw) - rel.x * Math.sin(yaw);
+        double y = rel.y;
+        double tempZ = z * Math.cos(pitch) + y * Math.sin(pitch);
+        y = y * Math.cos(pitch) - z * Math.sin(pitch);
+        z = tempZ;
+        return new Vec3d(x, y, z);
     }
 
-    private Vector2d projectManual(Vec3d pos, Vec3d camPos, Matrix4f rotationMatrix, float fov, float aspectRatio) {
-        Vec3d rel = pos.subtract(camPos);
-        Vector4f vec = new Vector4f((float)rel.x, (float)rel.y, (float)rel.z, 1.0f);
-        rotationMatrix.transform(vec);
-
-        if (vec.z < 0.05f) return null;
-
+    private Vector2d project(Vec3d rotated, float fov, float aspectRatio, float width, float height) {
         float f = (float) (1.0 / Math.tan(Math.toRadians(fov) / 2.0));
-        float px = (vec.x * f / aspectRatio / vec.z);
-        float py = (vec.y * f / vec.z);
-
-        float x = (px + 1) * 0.5f;
-        float y = (1 - py) * 0.5f;
-
-        return new Vector2d(x, y);
+        float px = (float) (rotated.x * f / aspectRatio / rotated.z);
+        float py = (float) (rotated.y * f / rotated.z);
+        float screenX = (px + 1) * 0.5f * width;
+        float screenY = (1 - py) * 0.5f * height;
+        return new Vector2d(screenX, screenY);
     }
 
     private void updateXRay() {
