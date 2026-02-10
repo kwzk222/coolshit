@@ -206,6 +206,8 @@ public class ModConfig {
     public int espWidthAdjust = 0;
     public int espHeightAdjust = 0;
     public double espBoxScale = 1.0;
+    public double espFovScale = 1.0;
+    public double espAspectRatioScale = 1.0;
     public boolean espDebugMode = true;
 
     // --- Enemy Info ---

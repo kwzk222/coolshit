@@ -20,7 +20,6 @@ public class ESPOverlayApp {
 
     public static void main(String[] args) {
         // Force 1:1 pixel mapping to match Minecraft's physical framebuffer.
-        // This makes coordinate matching (logical vs physical) much simpler.
         System.setProperty("sun.java2d.uiScale", "1.0");
 
         SwingUtilities.invokeLater(() -> {
@@ -35,7 +34,6 @@ public class ESPOverlayApp {
             panel = new ESPPanel();
             frame.setContentPane(panel);
 
-            // Initial size, will be synced
             frame.setSize(1, 1);
             frame.setLocation(0, 0);
             frame.setVisible(false);
@@ -175,11 +173,20 @@ public class ESPOverlayApp {
             int panelH = getHeight();
 
             if (debugMode) {
+                // Red Border
                 g2d.setColor(new Color(255, 0, 0, 100));
-                g2d.setStroke(new BasicStroke(5.0f));
+                g2d.setStroke(new BasicStroke(4.0f));
                 g2d.drawRect(0, 0, panelW - 1, panelH - 1);
-                g2d.setFont(new Font("Arial", Font.BOLD, 16));
-                g2d.drawString("ESP Overlay Active (" + panelW + "x" + panelH + ")", 10, 25);
+
+                // Center Crosshair
+                g2d.setStroke(new BasicStroke(1.0f));
+                g2d.drawLine(panelW / 2 - 20, panelH / 2, panelW / 2 + 20, panelH / 2);
+                g2d.drawLine(panelW / 2, panelH / 2 - 20, panelW / 2, panelH / 2 + 20);
+
+                // Labels
+                g2d.setFont(new Font("Arial", Font.BOLD, 14));
+                g2d.drawString("ESP Overlay (" + panelW + "x" + panelH + ")", 10, 20);
+                g2d.drawString("CENTER: " + (panelW / 2) + ", " + (panelH / 2), 10, 40);
             }
 
             for (BoxData box : boxes) {
@@ -188,7 +195,8 @@ public class ESPOverlayApp {
                 int bw = (int) (box.wf * panelW);
                 int bh = (int) (box.hf * panelH);
 
-                // Simple 2D Box
+                if (bw <= 0 || bh <= 0) continue;
+
                 g2d.setStroke(new BasicStroke(2.0f));
                 g2d.setColor(Color.BLACK);
                 g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);

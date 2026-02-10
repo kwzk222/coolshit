@@ -9,6 +9,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector4f;
 
 import java.util.Locale;
@@ -51,10 +52,13 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Minecraft 1.21.1 View Matrix typically includes translation to camera.
-        // We strip the translation and use camera-relative positions to maintain high precision.
-        Matrix4f viewRotationOnly = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
-        Matrix4f combinedMatrix = new Matrix4f(projectionMatrix).mul(viewRotationOnly);
+        // Construct a reliable View Matrix from camera rotation.
+        // The View Matrix is the inverse of the Camera pose.
+        Quaternionf viewRot = new Quaternionf(camera.getRotation());
+        viewRot.conjugate(); // Inverse of rotation
+
+        Matrix4f viewMatrix = new Matrix4f().rotation(viewRot);
+        Matrix4f combinedMatrix = new Matrix4f(projectionMatrix).mul(viewMatrix);
 
         updateESP(tickCounter, camera, combinedMatrix);
     }
@@ -135,7 +139,6 @@ public class ESPModule {
             float boxY = Math.min(by, ty);
 
             if (data.length() > 0) data.append(";");
-            // CRITICAL: Use Locale.ROOT to ensure decimal dots (.) are used in all locales (avoiding comma separator issues)
             data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s", boxX, boxY, boxWidth, boxHeight, label));
         }
     }
@@ -144,10 +147,10 @@ public class ESPModule {
         Vector4f vec = new Vector4f((float)relPos.x, (float)relPos.y, (float)relPos.z, 1.0f);
         combinedMatrix.transform(vec);
 
-        if (vec.w > 0.05f) { // Point is in front of camera
+        if (vec.w > 0.01f) {
             // NDC coordinates (-1 to 1)
-            float ndcX = vec.x / vec.w;
-            float ndcY = vec.y / vec.w;
+            float ndcX = (vec.x / vec.w) * (float)TutorialMod.CONFIG.espFovScale * (float)TutorialMod.CONFIG.espAspectRatioScale;
+            float ndcY = (vec.y / vec.w) * (float)TutorialMod.CONFIG.espFovScale;
 
             // Screen space percentages (0 to 1)
             float x = (ndcX + 1.0f) * 0.5f;
@@ -165,9 +168,6 @@ public class ESPModule {
 
         var window = client.getWindow();
 
-        // Logical coordinates for Swing (assuming no forced uiScale)
-        // Since we force uiScale=1.0 in ESPOverlayApp, Swing uses physical pixels.
-        // Minecraft's getX() etc return physical pixels.
         int x = window.getX();
         int y = window.getY();
         int w = window.getWidth();
@@ -179,7 +179,6 @@ public class ESPModule {
         w += TutorialMod.CONFIG.espWidthAdjust;
         h += TutorialMod.CONFIG.espHeightAdjust;
 
-        // CRITICAL: Use Locale.ROOT for any formatting that involves numbers sent over the wire
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(
             String.format(Locale.ROOT, "WINDOW_SYNC %d,%d,%d,%d", x, y, w, h)
         );
