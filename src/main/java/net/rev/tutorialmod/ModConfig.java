@@ -196,7 +196,7 @@ public class ModConfig {
     public String overlayFontName = "Consolas";
     public boolean overlayLocked = false;
 
-    // --- ESP Overlay ---
+    // --- O-ESP ---
     public boolean showESP = false;
     public boolean espAntiVanish = true;
     public int espRefreshRate = 20; // FPS (approx)
@@ -236,6 +236,13 @@ public class ModConfig {
     public int espColorHostile = 0xFFA500;
     public int espColorPassive = 0xFFFF00;
     public int espColorTamed = 0x0000FF;
+
+    // X-Ray
+    public boolean xrayEnabled = true;
+    public List<String> xrayBlocks = new ArrayList<>(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore"));
+    public int xrayColor = 0x00FFFF;
+    public int xrayRange = 32;
+    public boolean xrayShowNames = false;
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;

@@ -529,7 +529,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (isToggleESPPressed && !espToggleWasPressed) {
             TutorialMod.CONFIG.showESP = !TutorialMod.CONFIG.showESP;
             TutorialMod.CONFIG.save();
-            TutorialMod.sendUpdateMessage("ESP Overlay set to " + (TutorialMod.CONFIG.showESP ? "ON" : "OFF"));
+            TutorialMod.sendUpdateMessage("O-ESP set to " + (TutorialMod.CONFIG.showESP ? "ON" : "OFF"));
             if (TutorialMod.CONFIG.showESP) {
                 espOverlayManager.start();
             } else {
