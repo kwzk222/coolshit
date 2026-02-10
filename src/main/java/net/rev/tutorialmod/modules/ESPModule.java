@@ -18,6 +18,7 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import org.joml.Matrix4f;
+import org.joml.Vector4f;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -103,15 +104,15 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        Vec3d camPos = camera.getCameraPos();
-        float yaw = (float) Math.toRadians(camera.getYaw());
-        float pitch = (float) Math.toRadians(camera.getPitch());
+        // Standard way to get camera position that works in 1.21.x
+        Vec3d camPos = mc.player.getCameraPosVec(tickCounter.getTickProgress(true));
 
-        float width = (float) mc.getWindow().getWidth();
-        float height = (float) mc.getWindow().getHeight();
+        // Window dimensions (Logical)
+        float width = (float) mc.getWindow().getScaledWidth();
+        float height = (float) mc.getWindow().getScaledHeight();
 
-        float fov = (float) TutorialMod.CONFIG.espManualFov;
-        float aspectRatio = (width / height) * (float)TutorialMod.CONFIG.espAspectRatioScale;
+        // Use Minecraft's native matrices for perfect alignment
+        Matrix4f combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
 
         ESPOverlayManager om = TutorialModClient.getESPOverlayManager();
         if (om == null) return;
@@ -127,7 +128,7 @@ public class ESPModule {
             double dist = entityPos.distanceTo(camPos);
             if (dist < TutorialMod.CONFIG.espMinRange || dist > TutorialMod.CONFIG.espMaxRange) continue;
 
-            BoxData data = projectBox(entity.getBoundingBox(), camPos, yaw, pitch, fov, aspectRatio, width, height);
+            BoxData data = projectBox(entity.getBoundingBox(), camPos, combinedMatrix, width, height);
             if (data == null) continue;
 
             int color = getEntityColor(entity);
@@ -145,7 +146,7 @@ public class ESPModule {
             if (dist > TutorialMod.CONFIG.espMaxRange) continue;
 
             Box box = new Box(pos.x - 0.3, pos.y, pos.z - 0.3, pos.x + 0.3, pos.y + 1.8, pos.z + 0.3);
-            BoxData data = projectBox(box, camPos, yaw, pitch, fov, aspectRatio, width, height);
+            BoxData data = projectBox(box, camPos, combinedMatrix, width, height);
             if (data == null) continue;
 
             appendBox(boxesData, data, "VANISHED", 0xFF0000, (int)dist + "m", "");
@@ -156,7 +157,7 @@ public class ESPModule {
             double dist = Math.sqrt(xb.pos.getSquaredDistance(camPos.x, camPos.y, camPos.z));
             if (dist > xb.range) continue;
 
-            BoxData data = projectBox(xb.box, camPos, yaw, pitch, fov, aspectRatio, width, height);
+            BoxData data = projectBox(xb.box, camPos, combinedMatrix, width, height);
             if (data == null) continue;
 
             String name = TutorialMod.CONFIG.xrayShowNames ? xb.name : "";
@@ -174,7 +175,7 @@ public class ESPModule {
             (int)data.x, (int)data.y, (int)data.w, (int)data.h, label, color, distLabel, texture));
     }
 
-    private BoxData projectBox(Box box, Vec3d camPos, float yaw, float pitch, float fov, float aspectRatio, float width, float height) {
+    private BoxData projectBox(Box box, Vec3d camPos, Matrix4f combinedMatrix, float width, float height) {
         Vec3d[] corners = new Vec3d[]{
             new Vec3d(box.minX, box.minY, box.minZ), new Vec3d(box.maxX, box.minY, box.minZ),
             new Vec3d(box.minX, box.maxY, box.minZ), new Vec3d(box.maxX, box.maxY, box.minZ),
@@ -194,34 +195,36 @@ public class ESPModule {
         float near = 0.05f;
 
         for (int[] edge : edges) {
-            Vec3d p1 = corners[edge[0]];
-            Vec3d p2 = corners[edge[1]];
+            Vector4f p1 = transform(corners[edge[0]], camPos, combinedMatrix);
+            Vector4f p2 = transform(corners[edge[1]], camPos, combinedMatrix);
 
-            Vec3d r1 = rotate(p1.subtract(camPos), yaw, pitch);
-            Vec3d r2 = rotate(p2.subtract(camPos), yaw, pitch);
+            if (p1.w < near && p2.w < near) continue;
 
-            if (r1.z < near && r2.z < near) continue;
-
-            if (r1.z >= near && r2.z >= near) {
-                Vector2d proj1 = project(r1, fov, aspectRatio, width, height);
-                Vector2d proj2 = project(r2, fov, aspectRatio, width, height);
-                minX = Math.min(minX, Math.min(proj1.x, proj2.x));
-                minY = Math.min(minY, Math.min(proj1.y, proj2.y));
-                maxX = Math.max(maxX, Math.max(proj1.x, proj2.x));
-                maxY = Math.max(maxY, Math.max(proj1.y, proj2.y));
+            if (p1.w >= near && p2.w >= near) {
+                Vector2d proj1 = toScreen(p1, width, height);
+                Vector2d proj2 = toScreen(p2, width, height);
+                minX = Math.min(minX, proj1.x); minY = Math.min(minY, proj1.y);
+                maxX = Math.max(maxX, proj1.x); maxY = Math.max(maxY, proj1.y);
+                minX = Math.min(minX, proj2.x); minY = Math.min(minY, proj2.y);
+                maxX = Math.max(maxX, proj2.x); maxY = Math.max(maxY, proj2.y);
                 anyVisible = true;
             } else {
-                Vec3d in = r1.z >= near ? r1 : r2;
-                Vec3d out = r1.z < near ? r1 : r2;
-                float t = (near - (float)out.z) / (float)(in.z - out.z);
-                Vec3d clipped = out.add(in.subtract(out).multiply(t));
+                Vector4f in = p1.w >= near ? p1 : p2;
+                Vector4f out = p1.w < near ? p1 : p2;
+                float t = (near - out.w) / (in.w - out.w);
+                Vector4f clipped = new Vector4f(
+                    out.x + (in.x - out.x) * t,
+                    out.y + (in.y - out.y) * t,
+                    out.z + (in.z - out.z) * t,
+                    near
+                );
 
-                Vector2d projIn = project(in, fov, aspectRatio, width, height);
-                Vector2d projClipped = project(clipped, fov, aspectRatio, width, height);
-                minX = Math.min(minX, Math.min(projIn.x, projClipped.x));
-                minY = Math.min(minY, Math.min(projIn.y, projClipped.y));
-                maxX = Math.max(maxX, Math.max(projIn.x, projClipped.x));
-                maxY = Math.max(maxY, Math.max(projIn.y, projClipped.y));
+                Vector2d projIn = toScreen(in, width, height);
+                Vector2d projClipped = toScreen(clipped, width, height);
+                minX = Math.min(minX, projIn.x); minY = Math.min(minY, projIn.y);
+                maxX = Math.max(maxX, projIn.x); maxY = Math.max(maxY, projIn.y);
+                minX = Math.min(minX, projClipped.x); minY = Math.min(minY, projClipped.y);
+                maxX = Math.max(maxX, projClipped.x); maxY = Math.max(maxY, projClipped.y);
                 anyVisible = true;
             }
         }
@@ -245,23 +248,17 @@ public class ESPModule {
         return new BoxData(finalX, finalY, finalW, finalH);
     }
 
-    private Vec3d rotate(Vec3d rel, float yaw, float pitch) {
-        double x = rel.x * Math.cos(yaw) + rel.z * Math.sin(yaw);
-        double z = rel.z * Math.cos(yaw) - rel.x * Math.sin(yaw);
-        double y = rel.y;
-        double tempZ = z * Math.cos(pitch) + y * Math.sin(pitch);
-        y = y * Math.cos(pitch) - z * Math.sin(pitch);
-        z = tempZ;
-        return new Vec3d(x, y, z);
+    private Vector4f transform(Vec3d pos, Vec3d camPos, Matrix4f combinedMatrix) {
+        Vec3d rel = pos.subtract(camPos);
+        Vector4f vec = new Vector4f((float)rel.x, (float)rel.y, (float)rel.z, 1.0f);
+        combinedMatrix.transform(vec);
+        return vec;
     }
 
-    private Vector2d project(Vec3d rotated, float fov, float aspectRatio, float width, float height) {
-        float f = (float) (1.0 / Math.tan(Math.toRadians(fov) / 2.0));
-        float px = (float) (rotated.x * f / aspectRatio / rotated.z);
-        float py = (float) (rotated.y * f / rotated.z);
-        float screenX = (px + 1) * 0.5f * width;
-        float screenY = (1 - py) * 0.5f * height;
-        return new Vector2d(screenX, screenY);
+    private Vector2d toScreen(Vector4f clipPos, float width, float height) {
+        float x = ((clipPos.x / clipPos.w) + 1.0f) * 0.5f * width;
+        float y = (1.0f - (clipPos.y / clipPos.w)) * 0.5f * height;
+        return new Vector2d(x, y);
     }
 
     private void updateXRay() {
@@ -374,30 +371,34 @@ public class ESPModule {
         if (texturePathCache.containsKey(key)) return texturePathCache.get(key);
 
         String path = id.getPath();
-        Identifier texRes = Identifier.of(id.getNamespace(), "textures/block/" + path + ".png");
+
+        // Try multiple possible paths for the block texture
+        String[] possiblePaths = {
+            "textures/block/" + path + ".png",
+            "textures/block/" + path + "_front.png",
+            "textures/block/" + path + "_side.png",
+            "textures/block/" + path + "_top.png",
+            "textures/item/" + path + ".png"
+        };
 
         File outFile = new File(textureDir, id.getNamespace() + "_" + path + ".png");
 
         if (!outFile.exists()) {
-            mc.getResourceManager().getResource(texRes).ifPresentOrElse(res -> {
-                try {
-                    BufferedImage img = ImageIO.read(res.getInputStream());
-                    if (img != null) {
-                        ImageIO.write(img, "png", outFile);
+            for (String p : possiblePaths) {
+                Identifier texRes = Identifier.of(id.getNamespace(), p);
+                var resource = mc.getResourceManager().getResource(texRes);
+                if (resource.isPresent()) {
+                    try (var is = resource.get().getInputStream()) {
+                        BufferedImage img = ImageIO.read(is);
+                        if (img != null) {
+                            ImageIO.write(img, "png", outFile);
+                            break;
+                        }
+                    } catch (Exception e) {
+                        TutorialMod.LOGGER.error("Error reading texture " + texRes, e);
                     }
-                } catch (IOException e) {
-                    TutorialMod.LOGGER.error("Failed to extract texture for " + key, e);
                 }
-            }, () -> {
-                // Try fallback side texture
-                Identifier sideRes = Identifier.of(id.getNamespace(), "textures/block/" + path + "_side.png");
-                mc.getResourceManager().getResource(sideRes).ifPresent(res -> {
-                     try {
-                        BufferedImage img = ImageIO.read(res.getInputStream());
-                        if (img != null) ImageIO.write(img, "png", outFile);
-                    } catch (IOException ignored) {}
-                });
-            });
+            }
         }
 
         if (outFile.exists()) {
@@ -405,6 +406,9 @@ public class ESPModule {
             texturePathCache.put(key, absPath);
             return absPath;
         }
+
+        // Final fallback: put a dummy entry in cache to avoid repeated failed lookups
+        texturePathCache.put(key, "");
         return "";
     }
 
@@ -441,7 +445,13 @@ public class ESPModule {
     public void syncWindowBounds() {
         if (TutorialModClient.getESPOverlayManager() == null || !TutorialModClient.getESPOverlayManager().isRunning()) return;
         var window = mc.getWindow();
-        TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "WINDOW_SYNC %d,%d,%d,%d", window.getX() + TutorialMod.CONFIG.espOffsetX, window.getY() + TutorialMod.CONFIG.espOffsetY, window.getWidth() + TutorialMod.CONFIG.espWidthAdjust, window.getHeight() + TutorialMod.CONFIG.espHeightAdjust));
+        // Use logical coordinates for sync
+        int x = (int)(window.getX() / window.getScaleFactor()) + TutorialMod.CONFIG.espOffsetX;
+        int y = (int)(window.getY() / window.getScaleFactor()) + TutorialMod.CONFIG.espOffsetY;
+        int w = window.getScaledWidth() + TutorialMod.CONFIG.espWidthAdjust;
+        int h = window.getScaledHeight() + TutorialMod.CONFIG.espHeightAdjust;
+
+        TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "WINDOW_SYNC %d,%d,%d,%d", x, y, w, h));
         TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + TutorialMod.CONFIG.espDebugMode);
     }
 

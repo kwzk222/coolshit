@@ -23,8 +23,7 @@ public class ESPOverlayApp {
     private static final int PORT = 25567;
 
     public static void main(String[] args) {
-        // Force 1:1 pixel mapping to match Minecraft's physical framebuffer
-        System.setProperty("sun.java2d.uiScale", "1.0");
+        // Standard OS scaling (Logical coordinates) to match the confirmred working 'red box'
 
         SwingUtilities.invokeLater(() -> {
             frame = new JFrame("TutorialMod ESP Overlay");
@@ -135,7 +134,6 @@ public class ESPOverlayApp {
             if (!data.isEmpty()) {
                 String[] items = data.split(";");
                 for (String item : items) {
-                    // Use -1 limit to keep empty trailing strings
                     String[] parts = item.split("\\|", -1);
                     if (parts.length >= 4) {
                         try {
