@@ -232,6 +232,10 @@ public class ESPOverlayApp {
             int panelW = getWidth();
             int panelH = getHeight();
 
+            // Apply global opacity
+            Composite originalComposite = g2d.getComposite();
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
+
             if (debugMode) {
                 g2d.setColor(new Color(255, 0, 0, 100));
                 g2d.setStroke(new BasicStroke(4.0f));
@@ -308,6 +312,8 @@ public class ESPOverlayApp {
                     }
                 }
             }
+
+            g2d.setComposite(originalComposite);
         }
 
         private BufferedImage getTexture(String name) {

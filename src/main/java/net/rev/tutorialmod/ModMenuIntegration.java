@@ -284,7 +284,7 @@ public class ModMenuIntegration implements ModMenuApi {
             xraySub.add(entryBuilder.startIntSlider(Text.literal("Scan Range (Blocks)"), TutorialMod.CONFIG.xrayRange, 8, 64).setDefaultValue(32).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayRange = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Show Block Names"), TutorialMod.CONFIG.xrayShowNames).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayShowNames = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Texture Mode"), TutorialMod.CONFIG.xrayTextureMode).setTooltip(Text.literal("Displays the block texture instead of a colored box.")).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayTextureMode = newValue).build());
-            xraySub.add(entryBuilder.startIntSlider(Text.literal("Texture Opacity"), TutorialMod.CONFIG.xrayTextureOpacity, 0, 100).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> {
+            xraySub.add(entryBuilder.startIntSlider(Text.literal("ESP Opacity"), TutorialMod.CONFIG.xrayTextureOpacity, 0, 100).setTooltip(Text.literal("Adjusts transparency for all ESP elements (boxes, textures, bars).")).setDefaultValue(100).setSaveConsumer(newValue -> {
                 TutorialMod.CONFIG.xrayTextureOpacity = newValue;
                 if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
                     TutorialModClient.getInstance().getESPModule().syncWindowBounds();

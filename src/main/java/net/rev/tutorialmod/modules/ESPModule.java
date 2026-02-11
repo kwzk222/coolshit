@@ -124,58 +124,49 @@ public class ESPModule {
         try {
             String path = blockId.contains(":") ? blockId.split(":")[1] : blockId;
 
-            // 1. Try item texture FIRST (requested for consistency)
-            Identifier textureId = Identifier.of("minecraft", "textures/item/" + path + ".png");
+            // Heuristic search for texture
+            List<Identifier> candidates = new ArrayList<>();
+            candidates.add(Identifier.of("minecraft", "textures/item/" + path + ".png"));
+            candidates.add(Identifier.of("minecraft", "textures/block/" + path + ".png"));
 
-            // Special cases for items that have different names than blocks
-            if (path.equals("chest")) {
-                textureId = Identifier.of("minecraft", "textures/item/chest.png");
-            } else if (path.equals("ender_chest")) {
-                textureId = Identifier.of("minecraft", "textures/item/ender_chest.png");
-            } else if (path.equals("trapped_chest")) {
-                textureId = Identifier.of("minecraft", "textures/item/trapped_chest.png");
+            // Special cases
+            if (path.contains("chest")) {
+                candidates.add(Identifier.of("minecraft", "textures/entity/chest/normal.png"));
+                candidates.add(Identifier.of("minecraft", "textures/entity/chest/ender.png"));
+                candidates.add(Identifier.of("minecraft", "textures/entity/chest/trapped.png"));
             }
 
-            var resource = client.getResourceManager().getResource(textureId);
-
-            // 2. Try block texture if item fails
-            if (resource.isEmpty()) {
-                textureId = Identifier.of("minecraft", "textures/block/" + path + ".png");
-                resource = client.getResourceManager().getResource(textureId);
+            String[] suffixes = {"_front", "_side", "_top", "_bottom", "_outside"};
+            for (String suffix : suffixes) {
+                candidates.add(Identifier.of("minecraft", "textures/block/" + path + suffix + ".png"));
             }
 
-            // 3. Try entity texture for chests if both fail (though item should work)
-            if (resource.isEmpty()) {
-                if (path.equals("chest")) {
-                    textureId = Identifier.of("minecraft", "textures/entity/chest/normal.png");
-                } else if (path.equals("ender_chest")) {
-                    textureId = Identifier.of("minecraft", "textures/entity/chest/ender.png");
-                } else if (path.equals("trapped_chest")) {
-                    textureId = Identifier.of("minecraft", "textures/entity/chest/trapped.png");
-                }
-                resource = client.getResourceManager().getResource(textureId);
-            }
+            var resourceManager = client.getResourceManager();
+            for (Identifier candidate : candidates) {
+                var resource = resourceManager.getResource(candidate);
+                if (resource.isPresent()) {
+                    File dir = new File(TEXTURE_DIR);
+                    if (!dir.exists()) dir.mkdirs();
 
-            // 4. Try with common suffixes
-            if (resource.isEmpty()) {
-                String[] suffixes = {"_front", "_side", "_top", "_bottom", "_outside"};
-                for (String suffix : suffixes) {
-                    textureId = Identifier.of("minecraft", "textures/block/" + path + suffix + ".png");
-                    resource = client.getResourceManager().getResource(textureId);
-                    if (resource.isPresent()) break;
-                }
-            }
-
-            if (resource.isPresent()) {
-                File dir = new File(TEXTURE_DIR);
-                if (!dir.exists()) dir.mkdirs();
-
-                File outFile = new File(dir, path + ".png");
-                try (InputStream is = resource.get().getInputStream()) {
-                    BufferedImage image = ImageIO.read(is);
-                    if (image != null) {
-                        ImageIO.write(image, "png", outFile);
-                        extractedTextures.add(blockId);
+                    File outFile = new File(dir, path + ".png");
+                    try (InputStream is = resource.get().getInputStream()) {
+                        BufferedImage image = ImageIO.read(is);
+                        if (image != null) {
+                            // If it's a large texture map (like chest), crop a square from it
+                            if (image.getWidth() > image.getHeight() || image.getWidth() > 32) {
+                                // Heuristic: take a 16x16 or 32x32 square from near the top-left or specified chest spots
+                                int cropSize = Math.min(image.getWidth(), image.getHeight());
+                                if (path.contains("chest") && image.getWidth() == 64 && image.getHeight() == 64) {
+                                    // Chest front face heuristic
+                                    image = image.getSubimage(14, 14, 14, 14);
+                                } else {
+                                    image = image.getSubimage(0, 0, cropSize, cropSize);
+                                }
+                            }
+                            ImageIO.write(image, "png", outFile);
+                            extractedTextures.add(blockId);
+                            return;
+                        }
                     }
                 }
             }
