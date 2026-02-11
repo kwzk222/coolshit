@@ -124,8 +124,23 @@ public class ESPModule {
             String path = blockId.contains(":") ? blockId.split(":")[1] : blockId;
             Identifier textureId = Identifier.of("minecraft", "textures/block/" + path + ".png");
 
+            // Special cases for chests
+            if (path.equals("chest")) {
+                textureId = Identifier.of("minecraft", "textures/entity/chest/normal.png");
+            } else if (path.equals("ender_chest")) {
+                textureId = Identifier.of("minecraft", "textures/entity/chest/ender.png");
+            } else if (path.equals("trapped_chest")) {
+                textureId = Identifier.of("minecraft", "textures/entity/chest/trapped.png");
+            }
+
             // Try to find the resource
             var resource = client.getResourceManager().getResource(textureId);
+            if (resource.isEmpty()) {
+                // Try item texture if block fails
+                textureId = Identifier.of("minecraft", "textures/item/" + path + ".png");
+                resource = client.getResourceManager().getResource(textureId);
+            }
+
             if (resource.isEmpty()) {
                 // Try with _front, _side, etc. if it's a common multi-sided block
                 String[] suffixes = {"_front", "_side", "_top", "_bottom", "_outside"};
@@ -437,12 +452,14 @@ public class ESPModule {
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
             boxY = minY;
         } else if (!texture.isEmpty()) {
-            // Unstretched square for textures
-            float size = Math.max(maxX - minX, maxY - minY) * (float)TutorialMod.CONFIG.espBoxScale;
-            boxWidth = size;
-            boxHeight = size;
-            boxX = (minX + maxX) / 2f - size / 2f;
-            boxY = (minY + maxY) / 2f - size / 2f;
+            // Unstretched square for textures, more stable
+            float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
+            float sizeH = Math.abs(maxY - minY) * (float)TutorialMod.CONFIG.xrayTextureScale;
+            float sizeW = sizeH / aspect;
+            boxWidth = sizeW;
+            boxHeight = sizeH;
+            boxX = (minX + maxX) / 2f - sizeW / 2f;
+            boxY = (minY + maxY) / 2f - sizeH / 2f;
         } else {
             boxWidth = (maxX - minX) * (float)TutorialMod.CONFIG.espBoxScale;
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
@@ -476,6 +493,10 @@ public class ESPModule {
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + TutorialMod.CONFIG.espDebugMode);
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "HEALTH_BAR_WIDTH %.4f", (float)TutorialMod.CONFIG.espHealthBarWidth));
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("HEALTH_BAR_INVERTED " + TutorialMod.CONFIG.espHealthBarInverted);
+        net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("HEALTH_BAR_SIDE " + TutorialMod.CONFIG.espHealthBarSide);
+        net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "HEALTH_BAR_COLORS %d,%d,%d,%d",
+            TutorialMod.CONFIG.espHealthBarColorFull, TutorialMod.CONFIG.espHealthBarColorMedium,
+            TutorialMod.CONFIG.espHealthBarColorLow, TutorialMod.CONFIG.espHealthBarColorEmpty));
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "TEXTURE_OPACITY %.4f", TutorialMod.CONFIG.xrayTextureOpacity / 100f));
     }
 }

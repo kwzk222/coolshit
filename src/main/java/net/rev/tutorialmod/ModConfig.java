@@ -232,6 +232,11 @@ public class ModConfig {
     public boolean espShowHealthBars = true;
     public double espHealthBarWidth = 0.1;
     public boolean espHealthBarInverted = false;
+    public String espHealthBarSide = "Right";
+    public int espHealthBarColorFull = 0x00FF00;
+    public int espHealthBarColorMedium = 0xFFFF00;
+    public int espHealthBarColorLow = 0xFF0000;
+    public int espHealthBarColorEmpty = 0x000000;
     public double espDistanceHideThreshold = 0.0;
     public double espBoxWidthFactor = 0.45;
     public int espColorTeammate = 0x00FF00;
@@ -249,6 +254,7 @@ public class ModConfig {
     public boolean xrayShowNames = false;
     public boolean xrayTextureMode = false;
     public int xrayTextureOpacity = 100;
+    public double xrayTextureScale = 0.8;
     public boolean xrayClumpingEnabled = true;
     public boolean xray26Adjacent = true;
 

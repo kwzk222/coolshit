@@ -290,6 +290,7 @@ public class ModMenuIntegration implements ModMenuApi {
                     TutorialModClient.getInstance().getESPModule().syncWindowBounds();
                 }
             }).build());
+            xraySub.add(entryBuilder.startLongSlider(Text.literal("Texture Scale"), (long)(TutorialMod.CONFIG.xrayTextureScale * 100), 10, 200).setTooltip(Text.literal("Units: %")).setDefaultValue(80).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayTextureScale = newValue / 100.0).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Clumping Enabled"), TutorialMod.CONFIG.xrayClumpingEnabled).setTooltip(Text.literal("Groups adjacent blocks of the same type into a single hitbox.")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayClumpingEnabled = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Use 26-Way Adjacency"), TutorialMod.CONFIG.xray26Adjacent).setTooltip(Text.literal("If disabled, uses 18-way adjacency (edges/faces only, no corners).")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xray26Adjacent = newValue).build());
             espOverlay.addEntry(xraySub.build());
@@ -318,6 +319,36 @@ public class ModMenuIntegration implements ModMenuApi {
             }).build());
             espHealthSub.add(entryBuilder.startBooleanToggle(Text.literal("Invert Drain Direction"), TutorialMod.CONFIG.espHealthBarInverted).setTooltip(Text.literal("If enabled, health drains from top to bottom.")).setDefaultValue(false).setSaveConsumer(newValue -> {
                 TutorialMod.CONFIG.espHealthBarInverted = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            espHealthSub.add(entryBuilder.startStrField(Text.literal("Side"), TutorialMod.CONFIG.espHealthBarSide).setDefaultValue("Right").setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espHealthBarSide = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            espHealthSub.add(entryBuilder.startColorField(Text.literal("Color (Full)"), TutorialMod.CONFIG.espHealthBarColorFull).setDefaultValue(0x00FF00).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espHealthBarColorFull = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            espHealthSub.add(entryBuilder.startColorField(Text.literal("Color (Medium)"), TutorialMod.CONFIG.espHealthBarColorMedium).setDefaultValue(0xFFFF00).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espHealthBarColorMedium = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            espHealthSub.add(entryBuilder.startColorField(Text.literal("Color (Low)"), TutorialMod.CONFIG.espHealthBarColorLow).setDefaultValue(0xFF0000).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espHealthBarColorLow = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            espHealthSub.add(entryBuilder.startColorField(Text.literal("Color (Empty)"), TutorialMod.CONFIG.espHealthBarColorEmpty).setDefaultValue(0x000000).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espHealthBarColorEmpty = newValue;
                 if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
                     TutorialModClient.getInstance().getESPModule().syncWindowBounds();
                 }

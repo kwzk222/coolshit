@@ -93,6 +93,10 @@ public class ESPOverlayApp {
             panel.setHealthBarWidth(Float.parseFloat(content.substring(17)));
         } else if (content.startsWith("HEALTH_BAR_INVERTED ")) {
             panel.setHealthBarInverted(Boolean.parseBoolean(content.substring(20)));
+        } else if (content.startsWith("HEALTH_BAR_SIDE ")) {
+            panel.setHealthBarSide(content.substring(16));
+        } else if (content.startsWith("HEALTH_BAR_COLORS ")) {
+            panel.setHealthBarColors(content.substring(18));
         } else if (content.startsWith("TEXTURE_OPACITY ")) {
             panel.setTextureOpacity(Float.parseFloat(content.substring(16)));
         } else if (content.startsWith("DEBUG_TEXT ")) {
@@ -140,6 +144,8 @@ public class ESPOverlayApp {
         private String debugText = "";
         private float healthBarWidth = 0.1f;
         private boolean healthBarInverted = false;
+        private String healthBarSide = "Right";
+        private int colorFull = 0x00FF00, colorMedium = 0xFFFF00, colorLow = 0xFF0000, colorEmpty = 0x000000;
         private float textureOpacity = 1.0f;
         private final Map<String, BufferedImage> textureCache = new HashMap<>();
         private static final String TEXTURE_DIR = "tutorialmod_textures";
@@ -164,6 +170,22 @@ public class ESPOverlayApp {
 
         public void setHealthBarInverted(boolean inverted) {
             this.healthBarInverted = inverted;
+        }
+
+        public void setHealthBarSide(String side) {
+            this.healthBarSide = side;
+        }
+
+        public void setHealthBarColors(String data) {
+            try {
+                String[] parts = data.split(",");
+                if (parts.length == 4) {
+                    colorFull = Integer.parseInt(parts[0]);
+                    colorMedium = Integer.parseInt(parts[1]);
+                    colorLow = Integer.parseInt(parts[2]);
+                    colorEmpty = Integer.parseInt(parts[3]);
+                }
+            } catch (Exception ignored) {}
         }
 
         public void setTextureOpacity(float opacity) {
@@ -307,24 +329,37 @@ public class ESPOverlayApp {
         private void drawHealthBar(Graphics2D g2d, int bx, int by, int bw, int bh, float health) {
             int barW = (int)(bw * healthBarWidth);
             if (barW < 2) barW = 2;
-            int barX = bx + bw + 3;
+
+            int barX;
+            if (healthBarSide.equalsIgnoreCase("Left")) {
+                barX = bx - barW - 3;
+            } else {
+                barX = bx + bw + 3;
+            }
+
             int barY = by;
             int barH = bh;
 
-            // Background (Black/Empty)
-            g2d.setColor(new Color(0, 0, 0, 150));
+            // Background (Empty)
+            g2d.setColor(new Color(colorEmpty | 0x99000000, true));
             g2d.fillRect(barX, barY, barW, barH);
 
-            // Health Color (Green to Red?) - User said "green should represent their hearts and black should represent empty hearts"
-            // So just Green.
-            g2d.setColor(Color.GREEN);
+            // Health Color based on threshold
+            int healthColor = colorFull;
+            if (health <= 0.25f) {
+                healthColor = colorLow;
+            } else if (health <= 0.5f) {
+                healthColor = colorMedium;
+            }
+
+            g2d.setColor(new Color(healthColor | 0xFF000000, true));
             int healthH = (int)(barH * Math.max(0, Math.min(1, health)));
 
             if (healthBarInverted) {
-                // Inverted: Health at bottom, black at top (drains from top)
+                // Drains from top
                 g2d.fillRect(barX, barY + (barH - healthH), barW, healthH);
             } else {
-                // Default: Health at top, black at bottom (shrinks upwards, drains from bottom)
+                // Drains from bottom (shrinks upwards)
                 g2d.fillRect(barX, barY, barW, healthH);
             }
 
