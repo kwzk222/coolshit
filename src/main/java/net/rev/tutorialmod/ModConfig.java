@@ -205,6 +205,7 @@ public class ModConfig {
     public int espOffsetY = 0;
     public int espWidthAdjust = 0;
     public int espHeightAdjust = 0;
+    public boolean espHideInMenus = true;
     public double espBoxScale = 1.0;
     public double espFovScale = 1.0;
     public double espAspectRatioScale = 1.0;
@@ -247,6 +248,7 @@ public class ModConfig {
     public int xrayRange = 32;
     public boolean xrayShowNames = false;
     public boolean xrayTextureMode = false;
+    public int xrayTextureOpacity = 100;
     public boolean xrayClumpingEnabled = true;
     public boolean xray26Adjacent = true;
 

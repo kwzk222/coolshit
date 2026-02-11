@@ -93,6 +93,8 @@ public class ESPOverlayApp {
             panel.setHealthBarWidth(Float.parseFloat(content.substring(17)));
         } else if (content.startsWith("HEALTH_BAR_INVERTED ")) {
             panel.setHealthBarInverted(Boolean.parseBoolean(content.substring(20)));
+        } else if (content.startsWith("TEXTURE_OPACITY ")) {
+            panel.setTextureOpacity(Float.parseFloat(content.substring(16)));
         } else if (content.startsWith("DEBUG_TEXT ")) {
             panel.setDebugText(content.substring(11));
         } else if (content.equals("CLEAR")) {
@@ -138,6 +140,7 @@ public class ESPOverlayApp {
         private String debugText = "";
         private float healthBarWidth = 0.1f;
         private boolean healthBarInverted = false;
+        private float textureOpacity = 1.0f;
         private final Map<String, BufferedImage> textureCache = new HashMap<>();
         private static final String TEXTURE_DIR = "tutorialmod_textures";
 
@@ -161,6 +164,10 @@ public class ESPOverlayApp {
 
         public void setHealthBarInverted(boolean inverted) {
             this.healthBarInverted = inverted;
+        }
+
+        public void setTextureOpacity(float opacity) {
+            this.textureOpacity = opacity;
         }
 
         public void updateBoxes(String data) {
@@ -231,7 +238,10 @@ public class ESPOverlayApp {
                 if (!box.texture.isEmpty()) {
                     BufferedImage img = getTexture(box.texture);
                     if (img != null) {
+                        Composite old = g2d.getComposite();
+                        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
                         g2d.drawImage(img, bx, by, bw, bh, null);
+                        g2d.setComposite(old);
                     } else {
                         // Fallback to outline if texture missing
                         g2d.setStroke(new BasicStroke(2.0f));

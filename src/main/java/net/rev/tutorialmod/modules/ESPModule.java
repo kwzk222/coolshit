@@ -62,6 +62,11 @@ public class ESPModule {
             return;
         }
 
+        if (TutorialMod.CONFIG.espHideInMenus && client.currentScreen != null) {
+            net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("CLEAR");
+            return;
+        }
+
         if (needsSync) {
             syncWindowBounds();
             needsSync = false;
@@ -431,6 +436,13 @@ public class ESPModule {
             boxWidth = boxHeight * (float)TutorialMod.CONFIG.espBoxWidthFactor;
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
             boxY = minY;
+        } else if (!texture.isEmpty()) {
+            // Unstretched square for textures
+            float size = Math.max(maxX - minX, maxY - minY) * (float)TutorialMod.CONFIG.espBoxScale;
+            boxWidth = size;
+            boxHeight = size;
+            boxX = (minX + maxX) / 2f - size / 2f;
+            boxY = (minY + maxY) / 2f - size / 2f;
         } else {
             boxWidth = (maxX - minX) * (float)TutorialMod.CONFIG.espBoxScale;
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
@@ -464,5 +476,6 @@ public class ESPModule {
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + TutorialMod.CONFIG.espDebugMode);
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "HEALTH_BAR_WIDTH %.4f", (float)TutorialMod.CONFIG.espHealthBarWidth));
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand("HEALTH_BAR_INVERTED " + TutorialMod.CONFIG.espHealthBarInverted);
+        net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "TEXTURE_OPACITY %.4f", TutorialMod.CONFIG.xrayTextureOpacity / 100f));
     }
 }

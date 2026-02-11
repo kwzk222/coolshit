@@ -261,6 +261,7 @@ public class ModMenuIntegration implements ModMenuApi {
             SubCategoryBuilder espGeneral = entryBuilder.startSubCategory(Text.literal("General"));
             espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.showESP).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showESP = newValue).build());
             espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Anti-Vanish Mode"), TutorialMod.CONFIG.espAntiVanish).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espAntiVanish = newValue).build());
+            espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Hide in Menus"), TutorialMod.CONFIG.espHideInMenus).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHideInMenus = newValue).build());
             espGeneral.add(entryBuilder.startIntSlider(Text.literal("Refresh Rate"), TutorialMod.CONFIG.espRefreshRate, 1, 60).setTooltip(Text.literal("Units: FPS")).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRefreshRate = newValue).build());
             espGeneral.add(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.toggleESPHotkey).setDefaultValue("key.keyboard.y").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleESPHotkey = newValue).build());
             espOverlay.addEntry(espGeneral.build());
@@ -283,6 +284,12 @@ public class ModMenuIntegration implements ModMenuApi {
             xraySub.add(entryBuilder.startIntSlider(Text.literal("Scan Range (Blocks)"), TutorialMod.CONFIG.xrayRange, 8, 64).setDefaultValue(32).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayRange = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Show Block Names"), TutorialMod.CONFIG.xrayShowNames).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayShowNames = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Texture Mode"), TutorialMod.CONFIG.xrayTextureMode).setTooltip(Text.literal("Displays the block texture instead of a colored box.")).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayTextureMode = newValue).build());
+            xraySub.add(entryBuilder.startIntSlider(Text.literal("Texture Opacity"), TutorialMod.CONFIG.xrayTextureOpacity, 0, 100).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.xrayTextureOpacity = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Clumping Enabled"), TutorialMod.CONFIG.xrayClumpingEnabled).setTooltip(Text.literal("Groups adjacent blocks of the same type into a single hitbox.")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayClumpingEnabled = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Use 26-Way Adjacency"), TutorialMod.CONFIG.xray26Adjacent).setTooltip(Text.literal("If disabled, uses 18-way adjacency (edges/faces only, no corners).")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xray26Adjacent = newValue).build());
             espOverlay.addEntry(xraySub.build());
