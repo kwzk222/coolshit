@@ -282,6 +282,7 @@ public class ModMenuIntegration implements ModMenuApi {
             xraySub.add(entryBuilder.startColorField(Text.literal("X-Ray Color"), TutorialMod.CONFIG.xrayColor).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayColor = newValue).build());
             xraySub.add(entryBuilder.startIntSlider(Text.literal("Scan Range (Blocks)"), TutorialMod.CONFIG.xrayRange, 8, 64).setDefaultValue(32).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayRange = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Show Block Names"), TutorialMod.CONFIG.xrayShowNames).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayShowNames = newValue).build());
+            xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Texture Mode"), TutorialMod.CONFIG.xrayTextureMode).setTooltip(Text.literal("Displays the block texture instead of a colored box.")).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayTextureMode = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Clumping Enabled"), TutorialMod.CONFIG.xrayClumpingEnabled).setTooltip(Text.literal("Groups adjacent blocks of the same type into a single hitbox.")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayClumpingEnabled = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Use 26-Way Adjacency"), TutorialMod.CONFIG.xray26Adjacent).setTooltip(Text.literal("If disabled, uses 18-way adjacency (edges/faces only, no corners).")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xray26Adjacent = newValue).build());
             espOverlay.addEntry(xraySub.build());
@@ -299,6 +300,22 @@ public class ModMenuIntegration implements ModMenuApi {
             espDistSub.add(entryBuilder.startBooleanToggle(Text.literal("Show Distance"), TutorialMod.CONFIG.espShowDistance).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowDistance = newValue).build());
             espDistSub.add(entryBuilder.startLongSlider(Text.literal("Hide Distance Threshold (Blocks)"), (long)TutorialMod.CONFIG.espDistanceHideThreshold, 0, 100).setTooltip(Text.literal("Distance label disappears if player is closer than this.")).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espDistanceHideThreshold = newValue.doubleValue()).build());
             espVisuals.add(espDistSub.build());
+
+            SubCategoryBuilder espHealthSub = entryBuilder.startSubCategory(Text.literal("Health Bars (Players)"));
+            espHealthSub.add(entryBuilder.startBooleanToggle(Text.literal("Show Health Bars"), TutorialMod.CONFIG.espShowHealthBars).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowHealthBars = newValue).build());
+            espHealthSub.add(entryBuilder.startLongSlider(Text.literal("Bar Width"), (long)(TutorialMod.CONFIG.espHealthBarWidth * 100), 1, 50).setTooltip(Text.literal("Units: % of hitbox width")).setDefaultValue(10).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espHealthBarWidth = newValue / 100.0;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            espHealthSub.add(entryBuilder.startBooleanToggle(Text.literal("Invert Drain Direction"), TutorialMod.CONFIG.espHealthBarInverted).setTooltip(Text.literal("If enabled, health drains from top to bottom.")).setDefaultValue(false).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espHealthBarInverted = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            espVisuals.add(espHealthSub.build());
 
             espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Width Factor"), (long)(TutorialMod.CONFIG.espBoxWidthFactor * 100), 5, 100).setTooltip(Text.literal("Adjusts how 'fat' the boxes are. Default is 45.")).setDefaultValue(45).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxWidthFactor = newValue / 100.0).build());
             espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Scale"), (long)(TutorialMod.CONFIG.espBoxScale * 100), 10, 300).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxScale = newValue / 100.0).build());

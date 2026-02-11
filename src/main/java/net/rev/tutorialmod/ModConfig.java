@@ -228,6 +228,9 @@ public class ModConfig {
     public boolean espShowNamesPassives = true;
     public boolean espShowNamesTamed = true;
     public boolean espShowDistance = true;
+    public boolean espShowHealthBars = true;
+    public double espHealthBarWidth = 0.1;
+    public boolean espHealthBarInverted = false;
     public double espDistanceHideThreshold = 0.0;
     public double espBoxWidthFactor = 0.45;
     public int espColorTeammate = 0x00FF00;
@@ -243,6 +246,7 @@ public class ModConfig {
     public int xrayColor = 0x00FFFF;
     public int xrayRange = 32;
     public boolean xrayShowNames = false;
+    public boolean xrayTextureMode = false;
     public boolean xrayClumpingEnabled = true;
     public boolean xray26Adjacent = true;
 
