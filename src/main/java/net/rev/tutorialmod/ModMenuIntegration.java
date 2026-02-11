@@ -282,6 +282,8 @@ public class ModMenuIntegration implements ModMenuApi {
             xraySub.add(entryBuilder.startColorField(Text.literal("X-Ray Color"), TutorialMod.CONFIG.xrayColor).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayColor = newValue).build());
             xraySub.add(entryBuilder.startIntSlider(Text.literal("Scan Range (Blocks)"), TutorialMod.CONFIG.xrayRange, 8, 64).setDefaultValue(32).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayRange = newValue).build());
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Show Block Names"), TutorialMod.CONFIG.xrayShowNames).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayShowNames = newValue).build());
+            xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Clumping Enabled"), TutorialMod.CONFIG.xrayClumpingEnabled).setTooltip(Text.literal("Groups adjacent blocks of the same type into a single hitbox.")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayClumpingEnabled = newValue).build());
+            xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Use 26-Way Adjacency"), TutorialMod.CONFIG.xray26Adjacent).setTooltip(Text.literal("If disabled, uses 18-way adjacency (edges/faces only, no corners).")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xray26Adjacent = newValue).build());
             espOverlay.addEntry(xraySub.build());
 
             SubCategoryBuilder espVisuals = entryBuilder.startSubCategory(Text.literal("Visuals"));

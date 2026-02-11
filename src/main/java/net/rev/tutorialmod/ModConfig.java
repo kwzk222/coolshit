@@ -243,6 +243,8 @@ public class ModConfig {
     public int xrayColor = 0x00FFFF;
     public int xrayRange = 32;
     public boolean xrayShowNames = false;
+    public boolean xrayClumpingEnabled = true;
+    public boolean xray26Adjacent = true;
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;
