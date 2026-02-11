@@ -323,12 +323,15 @@ public class ModMenuIntegration implements ModMenuApi {
                     TutorialModClient.getInstance().getESPModule().syncWindowBounds();
                 }
             }).build());
-            espHealthSub.add(entryBuilder.startStrField(Text.literal("Side"), TutorialMod.CONFIG.espHealthBarSide).setDefaultValue("Right").setSaveConsumer(newValue -> {
-                TutorialMod.CONFIG.espHealthBarSide = newValue;
-                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
-                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
-                }
-            }).build());
+            espHealthSub.add(entryBuilder.startStringDropdownMenu(Text.literal("Side"), TutorialMod.CONFIG.espHealthBarSide, s -> Text.literal(s))
+                .setSelections(Arrays.asList("Left", "Right"))
+                .setDefaultValue("Right")
+                .setSaveConsumer(newValue -> {
+                    TutorialMod.CONFIG.espHealthBarSide = newValue;
+                    if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                        TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                    }
+                }).build());
             espHealthSub.add(entryBuilder.startColorField(Text.literal("Color (Full)"), TutorialMod.CONFIG.espHealthBarColorFull).setDefaultValue(0x00FF00).setSaveConsumer(newValue -> {
                 TutorialMod.CONFIG.espHealthBarColorFull = newValue;
                 if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {

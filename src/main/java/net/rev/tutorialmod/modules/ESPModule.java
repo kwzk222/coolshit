@@ -32,6 +32,7 @@ public class ESPModule {
     private final Map<Integer, VanishedPlayerData> vanishedPlayers = new ConcurrentHashMap<>();
     private final List<XRayEntry> xrayEntries = new CopyOnWriteArrayList<>();
     private long lastRefreshTime = 0;
+    private boolean isScanning = false;
 
     public static class XRayEntry {
         public Vec3d pos;
@@ -74,10 +75,10 @@ public class ESPModule {
 
         long now = System.currentTimeMillis();
 
-        // Handle X-Ray Scanning (Main thread but periodic)
-        if (TutorialMod.CONFIG.xrayEnabled && now - lastXrayScanTime > 1000) {
+        // Handle X-Ray Scanning (Background thread)
+        if (TutorialMod.CONFIG.xrayEnabled && now - lastXrayScanTime > 5000 && !isScanning) {
             lastXrayScanTime = now;
-            scanXray();
+            new Thread(this::scanXray, "XRay-Scanner").start();
         } else if (!TutorialMod.CONFIG.xrayEnabled) {
             xrayEntries.clear();
         }
@@ -122,27 +123,41 @@ public class ESPModule {
 
         try {
             String path = blockId.contains(":") ? blockId.split(":")[1] : blockId;
-            Identifier textureId = Identifier.of("minecraft", "textures/block/" + path + ".png");
 
-            // Special cases for chests
+            // 1. Try item texture FIRST (requested for consistency)
+            Identifier textureId = Identifier.of("minecraft", "textures/item/" + path + ".png");
+
+            // Special cases for items that have different names than blocks
             if (path.equals("chest")) {
-                textureId = Identifier.of("minecraft", "textures/entity/chest/normal.png");
+                textureId = Identifier.of("minecraft", "textures/item/chest.png");
             } else if (path.equals("ender_chest")) {
-                textureId = Identifier.of("minecraft", "textures/entity/chest/ender.png");
+                textureId = Identifier.of("minecraft", "textures/item/ender_chest.png");
             } else if (path.equals("trapped_chest")) {
-                textureId = Identifier.of("minecraft", "textures/entity/chest/trapped.png");
+                textureId = Identifier.of("minecraft", "textures/item/trapped_chest.png");
             }
 
-            // Try to find the resource
             var resource = client.getResourceManager().getResource(textureId);
+
+            // 2. Try block texture if item fails
             if (resource.isEmpty()) {
-                // Try item texture if block fails
-                textureId = Identifier.of("minecraft", "textures/item/" + path + ".png");
+                textureId = Identifier.of("minecraft", "textures/block/" + path + ".png");
                 resource = client.getResourceManager().getResource(textureId);
             }
 
+            // 3. Try entity texture for chests if both fail (though item should work)
             if (resource.isEmpty()) {
-                // Try with _front, _side, etc. if it's a common multi-sided block
+                if (path.equals("chest")) {
+                    textureId = Identifier.of("minecraft", "textures/entity/chest/normal.png");
+                } else if (path.equals("ender_chest")) {
+                    textureId = Identifier.of("minecraft", "textures/entity/chest/ender.png");
+                } else if (path.equals("trapped_chest")) {
+                    textureId = Identifier.of("minecraft", "textures/entity/chest/trapped.png");
+                }
+                resource = client.getResourceManager().getResource(textureId);
+            }
+
+            // 4. Try with common suffixes
+            if (resource.isEmpty()) {
                 String[] suffixes = {"_front", "_side", "_top", "_bottom", "_outside"};
                 for (String suffix : suffixes) {
                     textureId = Identifier.of("minecraft", "textures/block/" + path + suffix + ".png");
@@ -171,30 +186,61 @@ public class ESPModule {
 
     private void scanXray() {
         if (client.player == null || client.world == null) return;
+        isScanning = true;
 
-        Map<String, List<BlockPos>> foundByBlock = new HashMap<>();
-        BlockPos playerPos = client.player.getBlockPos();
-        World world = client.world;
-        int range = TutorialMod.CONFIG.xrayRange;
-        List<String> targets = TutorialMod.CONFIG.xrayBlocks;
-        BlockPos.Mutable mutable = new BlockPos.Mutable();
+        try {
+            Map<String, List<BlockPos>> foundByBlock = new HashMap<>();
+            BlockPos playerPos = client.player.getBlockPos();
+            World world = client.world;
+            int defaultRange = TutorialMod.CONFIG.xrayRange;
+            List<String> targetsRaw = TutorialMod.CONFIG.xrayBlocks;
 
-        for (int x = -range; x <= range; x++) {
-            for (int z = -range; z <= range; z++) {
-                int cx = (playerPos.getX() + x) >> 4;
-                int cz = (playerPos.getZ() + z) >> 4;
-                if (!world.isChunkLoaded(cx, cz)) continue;
+            Map<String, Integer> targets = new HashMap<>();
+            int maxScanRange = defaultRange;
 
-                for (int y = -range; y <= range; y++) {
-                    mutable.set(playerPos.getX() + x, playerPos.getY() + y, playerPos.getZ() + z);
-                    Block block = world.getBlockState(mutable).getBlock();
-                    String id = Registries.BLOCK.getId(block).toString();
-                    if (targets.contains(id)) {
-                        foundByBlock.computeIfAbsent(id, k -> new ArrayList<>()).add(mutable.toImmutable());
+            for (String t : targetsRaw) {
+                if (t.contains(":")) {
+                    String[] parts = t.split(":");
+                    if (parts.length == 3) { // minecraft:diamond_ore:64
+                        String id = parts[0] + ":" + parts[1];
+                        int r = Integer.parseInt(parts[2]);
+                        targets.put(id, r);
+                        maxScanRange = Math.max(maxScanRange, r);
+                    } else if (parts.length == 2 && !parts[0].equals("minecraft")) { // diamond_ore:64
+                         String id = "minecraft:" + parts[0];
+                         int r = Integer.parseInt(parts[1]);
+                         targets.put(id, r);
+                         maxScanRange = Math.max(maxScanRange, r);
+                    } else {
+                        targets.put(t, defaultRange);
+                    }
+                } else {
+                    targets.put("minecraft:" + t, defaultRange);
+                }
+            }
+
+            BlockPos.Mutable mutable = new BlockPos.Mutable();
+
+            for (int x = -maxScanRange; x <= maxScanRange; x++) {
+                for (int z = -maxScanRange; z <= maxScanRange; z++) {
+                    int cx = (playerPos.getX() + x) >> 4;
+                    int cz = (playerPos.getZ() + z) >> 4;
+                    if (!world.isChunkLoaded(cx, cz)) continue;
+
+                    for (int y = -maxScanRange; y <= maxScanRange; y++) {
+                        mutable.set(playerPos.getX() + x, playerPos.getY() + y, playerPos.getZ() + z);
+                        Block block = world.getBlockState(mutable).getBlock();
+                        String id = Registries.BLOCK.getId(block).toString();
+
+                        if (targets.containsKey(id)) {
+                            int r = targets.get(id);
+                            if (Math.abs(x) <= r && Math.abs(y) <= r && Math.abs(z) <= r) {
+                                foundByBlock.computeIfAbsent(id, k -> new ArrayList<>()).add(mutable.toImmutable());
+                            }
+                        }
                     }
                 }
             }
-        }
 
         List<XRayEntry> finalEntries = new ArrayList<>();
         boolean showNames = TutorialMod.CONFIG.xrayShowNames;
@@ -222,8 +268,13 @@ public class ESPModule {
             }
         }
 
-        xrayEntries.clear();
-        xrayEntries.addAll(finalEntries);
+            xrayEntries.clear();
+            xrayEntries.addAll(finalEntries);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            isScanning = false;
+        }
     }
 
     private List<List<BlockPos>> findClumps(List<BlockPos> positions) {
@@ -452,10 +503,20 @@ public class ESPModule {
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
             boxY = minY;
         } else if (!texture.isEmpty()) {
-            // Unstretched square for textures, more stable
+            // Unstretched square for textures, stabilized against FOV distortion
             float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
-            float sizeH = Math.abs(maxY - minY) * (float)TutorialMod.CONFIG.xrayTextureScale;
+
+            // Counter-act perspective stretching at FOV edges by using actual distance
+            double cx = (box.minX + box.maxX) / 2.0;
+            double cy = (box.minY + box.maxY) / 2.0;
+            double cz = (box.minZ + box.maxZ) / 2.0;
+            float euclideanDist = (float)Math.sqrt(cx * cx + cy * cy + cz * cz);
+            float planeDist = Math.max(0.1f, points.get(0).w); // dist from camera plane
+            float stabilityFactor = planeDist / euclideanDist;
+
+            float sizeH = Math.abs(maxY - minY) * stabilityFactor * (float)TutorialMod.CONFIG.xrayTextureScale;
             float sizeW = sizeH / aspect;
+
             boxWidth = sizeW;
             boxHeight = sizeH;
             boxX = (minX + maxX) / 2f - sizeW / 2f;
