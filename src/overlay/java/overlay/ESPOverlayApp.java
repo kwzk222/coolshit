@@ -1,12 +1,16 @@
 package overlay;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.User32;
@@ -85,6 +89,16 @@ public class ESPOverlayApp {
             panel.updateBoxes(content.substring(6));
         } else if (content.startsWith("DEBUG ")) {
             panel.setDebugMode(Boolean.parseBoolean(content.substring(6)));
+        } else if (content.startsWith("HEALTH_BAR_WIDTH ")) {
+            panel.setHealthBarWidth(Float.parseFloat(content.substring(17)));
+        } else if (content.startsWith("HEALTH_BAR_INVERTED ")) {
+            panel.setHealthBarInverted(Boolean.parseBoolean(content.substring(20)));
+        } else if (content.startsWith("HEALTH_BAR_SIDE ")) {
+            panel.setHealthBarSide(content.substring(16));
+        } else if (content.startsWith("HEALTH_BAR_COLORS ")) {
+            panel.setHealthBarColors(content.substring(18));
+        } else if (content.startsWith("TEXTURE_OPACITY ")) {
+            panel.setTextureOpacity(Float.parseFloat(content.substring(16)));
         } else if (content.startsWith("DEBUG_TEXT ")) {
             panel.setDebugText(content.substring(11));
         } else if (content.equals("CLEAR")) {
@@ -128,6 +142,13 @@ public class ESPOverlayApp {
         private List<BoxData> boxes = new ArrayList<>();
         private boolean debugMode = true;
         private String debugText = "";
+        private float healthBarWidth = 0.1f;
+        private boolean healthBarInverted = false;
+        private String healthBarSide = "Right";
+        private int colorFull = 0x00FF00, colorMedium = 0xFFFF00, colorLow = 0xFF0000, colorEmpty = 0x000000;
+        private float textureOpacity = 1.0f;
+        private final Map<String, BufferedImage> textureCache = new HashMap<>();
+        private static final String TEXTURE_DIR = "tutorialmod_textures";
 
         public ESPPanel() {
             setOpaque(false);
@@ -141,6 +162,34 @@ public class ESPOverlayApp {
         public void setDebugText(String text) {
             this.debugText = text;
             repaint();
+        }
+
+        public void setHealthBarWidth(float width) {
+            this.healthBarWidth = width;
+        }
+
+        public void setHealthBarInverted(boolean inverted) {
+            this.healthBarInverted = inverted;
+        }
+
+        public void setHealthBarSide(String side) {
+            this.healthBarSide = side;
+        }
+
+        public void setHealthBarColors(String data) {
+            try {
+                String[] parts = data.split(",");
+                if (parts.length == 4) {
+                    colorFull = Integer.parseInt(parts[0]);
+                    colorMedium = Integer.parseInt(parts[1]);
+                    colorLow = Integer.parseInt(parts[2]);
+                    colorEmpty = Integer.parseInt(parts[3]);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        public void setTextureOpacity(float opacity) {
+            this.textureOpacity = opacity;
         }
 
         public void updateBoxes(String data) {
@@ -158,7 +207,9 @@ public class ESPOverlayApp {
                             String label = parts.length > 4 ? parts[4] : "";
                             int color = parts.length > 5 ? Integer.parseInt(parts[5]) : 0xFFFFFF;
                             String distLabel = parts.length > 6 ? parts[6] : "";
-                            newBoxes.add(new BoxData(x, y, w, h, label, color, distLabel));
+                            float health = parts.length > 7 ? Float.parseFloat(parts[7]) : -1f;
+                            String texture = parts.length > 8 ? parts[8] : "";
+                            newBoxes.add(new BoxData(x, y, w, h, label, color, distLabel, health, texture));
                         } catch (Exception ignored) {}
                     }
                 }
@@ -180,6 +231,10 @@ public class ESPOverlayApp {
 
             int panelW = getWidth();
             int panelH = getHeight();
+
+            // Apply global opacity
+            Composite originalComposite = g2d.getComposite();
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
 
             if (debugMode) {
                 g2d.setColor(new Color(255, 0, 0, 100));
@@ -206,11 +261,33 @@ public class ESPOverlayApp {
 
                 Color c = new Color(box.color | 0xFF000000, true);
 
-                g2d.setStroke(new BasicStroke(2.0f));
-                g2d.setColor(Color.BLACK);
-                g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
-                g2d.setColor(c);
-                g2d.drawRect(bx, by, bw, bh);
+                if (!box.texture.isEmpty()) {
+                    BufferedImage img = getTexture(box.texture);
+                    if (img != null) {
+                        Composite old = g2d.getComposite();
+                        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
+                        g2d.drawImage(img, bx, by, bw, bh, null);
+                        g2d.setComposite(old);
+                    } else {
+                        // Fallback to outline if texture missing
+                        g2d.setStroke(new BasicStroke(2.0f));
+                        g2d.setColor(Color.BLACK);
+                        g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
+                        g2d.setColor(c);
+                        g2d.drawRect(bx, by, bw, bh);
+                    }
+                } else {
+                    g2d.setStroke(new BasicStroke(2.0f));
+                    g2d.setColor(Color.BLACK);
+                    g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
+                    g2d.setColor(c);
+                    g2d.drawRect(bx, by, bw, bh);
+                }
+
+                // Health Bar
+                if (box.health >= 0) {
+                    drawHealthBar(g2d, bx, by, bw, bh, box.health);
+                }
 
                 int labelY = by - 4;
                 if (!box.label.isEmpty() || !box.distLabel.isEmpty()) {
@@ -235,6 +312,67 @@ public class ESPOverlayApp {
                     }
                 }
             }
+
+            g2d.setComposite(originalComposite);
+        }
+
+        private BufferedImage getTexture(String name) {
+            if (textureCache.containsKey(name)) return textureCache.get(name);
+            try {
+                File f = new File(TEXTURE_DIR, name + ".png");
+                if (f.exists()) {
+                    BufferedImage img = ImageIO.read(f);
+                    textureCache.put(name, img);
+                    return img;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            textureCache.put(name, null); // Don't try again if failed
+            return null;
+        }
+
+        private void drawHealthBar(Graphics2D g2d, int bx, int by, int bw, int bh, float health) {
+            int barW = (int)(bw * healthBarWidth);
+            if (barW < 2) barW = 2;
+
+            int barX;
+            if (healthBarSide.equalsIgnoreCase("Left")) {
+                barX = bx - barW - 3;
+            } else {
+                barX = bx + bw + 3;
+            }
+
+            int barY = by;
+            int barH = bh;
+
+            // Background (Empty)
+            g2d.setColor(new Color(colorEmpty | 0x99000000, true));
+            g2d.fillRect(barX, barY, barW, barH);
+
+            // Health Color based on threshold
+            int healthColor = colorFull;
+            if (health <= 0.25f) {
+                healthColor = colorLow;
+            } else if (health <= 0.5f) {
+                healthColor = colorMedium;
+            }
+
+            g2d.setColor(new Color(healthColor | 0xFF000000, true));
+            int healthH = (int)(barH * Math.max(0, Math.min(1, health)));
+
+            if (healthBarInverted) {
+                // Drains from top
+                g2d.fillRect(barX, barY + (barH - healthH), barW, healthH);
+            } else {
+                // Drains from bottom (shrinks upwards)
+                g2d.fillRect(barX, barY, barW, healthH);
+            }
+
+            // Outline
+            g2d.setColor(Color.BLACK);
+            g2d.setStroke(new BasicStroke(1.0f));
+            g2d.drawRect(barX, barY, barW, barH);
         }
     }
 
@@ -243,8 +381,11 @@ public class ESPOverlayApp {
         String label;
         int color;
         String distLabel;
-        BoxData(float xf, float yf, float wf, float hf, String label, int color, String distLabel) {
+        float health;
+        String texture;
+        BoxData(float xf, float yf, float wf, float hf, String label, int color, String distLabel, float health, String texture) {
             this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label; this.color = color; this.distLabel = distLabel;
+            this.health = health; this.texture = texture;
         }
     }
 }
