@@ -34,8 +34,9 @@ public class TrajectoriesModule {
         boolean isBow = stack.getItem() instanceof BowItem || offStack.getItem() instanceof BowItem;
         boolean isCrossbow = stack.getItem() instanceof CrossbowItem || offStack.getItem() instanceof CrossbowItem;
         boolean isPearl = stack.isOf(Items.ENDER_PEARL) || offStack.isOf(Items.ENDER_PEARL);
+        boolean isRod = stack.isOf(Items.FISHING_ROD) || offStack.isOf(Items.FISHING_ROD);
 
-        if (!isBow && !isCrossbow && !isPearl) return;
+        if (!isBow && !isCrossbow && !isPearl && !isRod) return;
 
         // Determine if active
         boolean active = false;
@@ -61,6 +62,15 @@ public class TrajectoriesModule {
             speed = 1.5f;
             gravity = 0.03f;
             active = true;
+        } else if (isRod) {
+            if (client.player.fishHook == null) {
+                speed = 1.5f;
+                gravity = 0.03f;
+                drag = 0.92f;
+                active = true;
+            } else {
+                handleRodPull(combinedMatrix);
+            }
         }
 
         if (!active || speed <= 0.1f) return;
@@ -123,6 +133,64 @@ public class TrajectoriesModule {
         }
 
         renderPath(path, color, combinedMatrix);
+    }
+
+    private void handleRodPull(Matrix4f combinedMatrix) {
+        net.minecraft.entity.projectile.FishingBobberEntity bobber = client.player.fishHook;
+        if (bobber == null) return;
+
+        Entity hooked = bobber.getHookedEntity();
+        if (hooked == null) return;
+
+        // Calculate pull velocity
+        // In FishingBobberEntity: (ownerPos - bobberPos) * 0.1
+        Vec3d ownerPos = new Vec3d(client.player.getX(), client.player.getY(), client.player.getZ());
+        Vec3d bobberPos = new Vec3d(bobber.getX(), bobber.getY(), bobber.getZ());
+        Vec3d pullVec = ownerPos.subtract(bobberPos).multiply(0.1);
+
+        Vec3d startPos = new Vec3d(hooked.getX(), hooked.getY(), hooked.getZ());
+        Vec3d startVel = hooked.getVelocity().add(pullVec);
+
+        float gravity = 0.08f;
+        float drag = 0.91f;
+
+        // Adjust physics based on entity type
+        if (hooked instanceof net.minecraft.entity.ItemEntity || hooked instanceof net.minecraft.entity.TntEntity) {
+            gravity = 0.04f;
+            drag = 0.98f;
+        }
+
+        simulateEntity(startPos, startVel, gravity, drag, combinedMatrix);
+    }
+
+    private void simulateEntity(Vec3d pos, Vec3d velocity, float gravity, float drag, Matrix4f combinedMatrix) {
+        List<Vec3d> path = new ArrayList<>();
+        path.add(pos);
+
+        Vec3d currentPos = pos;
+        Vec3d currentVel = velocity;
+
+        for (int i = 0; i < 100; i++) {
+            Vec3d nextPos = currentPos.add(currentVel);
+
+            BlockHitResult blockHit = client.world.raycast(new RaycastContext(
+                    currentPos, nextPos,
+                    RaycastContext.ShapeType.COLLIDER,
+                    RaycastContext.FluidHandling.NONE,
+                    (net.minecraft.entity.Entity) null // Don't ignore anyone for this simulation
+            ));
+
+            if (blockHit.getType() != HitResult.Type.MISS) {
+                path.add(blockHit.getPos());
+                break;
+            }
+
+            path.add(nextPos);
+            currentPos = nextPos;
+            currentVel = currentVel.multiply(drag).subtract(0, gravity, 0);
+        }
+
+        renderPath(path, 0x00FF00, combinedMatrix); // Green for pull prediction
     }
 
     private EntityHitResult getEntityHit(Vec3d start, Vec3d end) {

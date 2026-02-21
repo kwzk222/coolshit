@@ -168,6 +168,10 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
+    public void clearShieldCooldowns() {
+        shieldCooldowns.clear();
+    }
+
     private boolean isShieldCooldown(Entity entity) {
         if (MinecraftClient.getInstance().world == null) return false;
         Long expiry = shieldCooldowns.get(entity.getId());
@@ -281,6 +285,10 @@ public class TutorialModClient implements ClientModInitializer {
         // Handle keybinds first, as they might toggle features on/off.
         handleKeybinds(client);
         handleQuickCrossbow(client);
+
+        if (client.world != null && client.world.getTime() % 100 == 0) {
+            shieldCooldowns.entrySet().removeIf(entry -> client.world.getTime() > entry.getValue());
+        }
         handleChatMacros(client);
 
         // Handle TriggerBot separately, as it may have its own master toggle.

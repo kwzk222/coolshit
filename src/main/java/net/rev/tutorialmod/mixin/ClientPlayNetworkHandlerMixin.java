@@ -96,8 +96,11 @@ public class ClientPlayNetworkHandlerMixin {
 
     @Inject(method = "onGameJoin", at = @At("RETURN"))
     private void onGameJoin(GameJoinS2CPacket packet, CallbackInfo ci) {
-        if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
-            TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+        if (TutorialModClient.getInstance() != null) {
+            TutorialModClient.getInstance().clearShieldCooldowns();
+            if (TutorialModClient.getInstance().getESPModule() != null) {
+                TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+            }
         }
     }
 }
