@@ -71,6 +71,8 @@ public class ESPOverlayApp {
             panel.clearTrajectories();
         } else if (content.startsWith("TRAJECTORY ")) {
             panel.addTrajectory(content.substring(11));
+        } else if (content.startsWith("IMPACT_PLANE ")) {
+            panel.addImpactPlane(content.substring(13));
         } else if (content.startsWith("WINDOW_SYNC ")) {
             String[] parts = content.substring(12).split(",");
             if (parts.length == 4) {
@@ -145,6 +147,7 @@ public class ESPOverlayApp {
     private static class ESPPanel extends JPanel {
         private List<BoxData> boxes = new ArrayList<>();
         private List<TrajectoryData> trajectories = new ArrayList<>();
+        private List<ImpactPlaneData> impactPlanes = new ArrayList<>();
         private boolean debugMode = true;
         private String debugText = "";
         private float healthBarWidth = 0.1f;
@@ -226,6 +229,7 @@ public class ESPOverlayApp {
         public void clear() {
             this.boxes.clear();
             this.trajectories.clear();
+            this.impactPlanes.clear();
             repaint();
         }
 
@@ -250,6 +254,26 @@ public class ESPOverlayApp {
 
         public void clearTrajectories() {
             this.trajectories.clear();
+            this.impactPlanes.clear();
+        }
+
+        public void addImpactPlane(String data) {
+            try {
+                String[] parts = data.split("\\|");
+                if (parts.length == 2) {
+                    String[] pointsStr = parts[0].split(",");
+                    int color = Integer.parseInt(parts[1]);
+                    List<Point2D> points = new ArrayList<>();
+                    for (int i = 0; i < pointsStr.length; i += 2) {
+                        float x = Float.parseFloat(pointsStr[i]);
+                        float y = Float.parseFloat(pointsStr[i+1]);
+                        points.add(new Point2D(x, y));
+                    }
+                    if (points.size() >= 3) {
+                        impactPlanes.add(new ImpactPlaneData(points, color));
+                    }
+                }
+            } catch (Exception ignored) {}
         }
 
         @Override
@@ -274,6 +298,21 @@ public class ESPOverlayApp {
                     Point2D p2 = traj.points.get(i + 1);
                     g2d.drawLine((int)(p1.x * panelW), (int)(p1.y * panelH), (int)(p2.x * panelW), (int)(p2.y * panelH));
                 }
+            }
+
+            // Draw Impact Planes
+            for (ImpactPlaneData plane : impactPlanes) {
+                g2d.setColor(new Color(plane.color | 0x80000000, true)); // Semi-transparent
+                int[] xPoints = new int[plane.points.size()];
+                int[] yPoints = new int[plane.points.size()];
+                for (int i = 0; i < plane.points.size(); i++) {
+                    xPoints[i] = (int)(plane.points.get(i).x * panelW);
+                    yPoints[i] = (int)(plane.points.get(i).y * panelH);
+                }
+                g2d.fillPolygon(xPoints, yPoints, plane.points.size());
+                g2d.setColor(new Color(plane.color | 0xFF000000, true));
+                g2d.setStroke(new BasicStroke(1.0f));
+                g2d.drawPolygon(xPoints, yPoints, plane.points.size());
             }
 
             if (debugMode) {
@@ -442,6 +481,15 @@ public class ESPOverlayApp {
         float x, y;
         Point2D(float x, float y) {
             this.x = x; this.y = y;
+        }
+    }
+
+    private static class ImpactPlaneData {
+        List<Point2D> points;
+        int color;
+        ImpactPlaneData(List<Point2D> points, int color) {
+            this.points = points;
+            this.color = color;
         }
     }
 }
