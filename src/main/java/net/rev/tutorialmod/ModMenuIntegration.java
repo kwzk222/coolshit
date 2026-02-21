@@ -83,6 +83,13 @@ public class ModMenuIntegration implements ModMenuApi {
             maceSwapSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.maceSwapMinFallDistance * 10), 0, 100).setDefaultValue(30).setSaveConsumer(newValue -> TutorialMod.CONFIG.maceSwapMinFallDistance = newValue / 10.0).build());
             autoStun.addEntry(maceSwapSub.build());
 
+            SubCategoryBuilder sprintResetSub = entryBuilder.startSubCategory(Text.literal("Sprint Reset"));
+            sprintResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.sprintResetEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintResetEnabled = newValue).build());
+            sprintResetSub.add(entryBuilder.startStringDropdownMenu(Text.literal("Mode"), TutorialMod.CONFIG.sprintResetMode, s -> Text.literal(s)).setSelections(Arrays.asList("Stop", "S-Tap")).setDefaultValue("Stop").setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintResetMode = newValue).build());
+            sprintResetSub.add(entryBuilder.startIntSlider(Text.literal("Reset Delay (Ticks)"), TutorialMod.CONFIG.sprintResetDelay, 1, 10).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintResetDelay = newValue).build());
+            sprintResetSub.add(entryBuilder.startIntSlider(Text.literal("Cooldown (Ticks)"), TutorialMod.CONFIG.sprintResetCooldown, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintResetCooldown = newValue).build());
+            autoStun.addEntry(sprintResetSub.build());
+
             SubCategoryBuilder reachSwapSub = entryBuilder.startSubCategory(Text.literal("Spear Reach Swap"));
             reachSwapSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.spearReachSwapEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapEnabled = newValue).build());
             reachSwapSub.add(entryBuilder.startLongSlider(Text.literal("Scan Range"), (long)(TutorialMod.CONFIG.spearReachSwapRange * 10), 0, 60).setDefaultValue(41).setSaveConsumer(newValue -> TutorialMod.CONFIG.spearReachSwapRange = newValue / 10.0).build());
@@ -167,8 +174,7 @@ public class ModMenuIntegration implements ModMenuApi {
             // 1.6 Trigger Bot
             ConfigCategory triggerBot = builder.getOrCreateCategory(Text.literal("Trigger Bot"));
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Trigger Bot Enabled"), TutorialMod.CONFIG.triggerBotEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotEnabled = newValue).build());
-            triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.triggerBotToggleHotkey).setDefaultValue("key.keyboard.k").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotToggleHotkey = newValue).build());
-            triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Activation Hotkey"), TutorialMod.CONFIG.triggerBotHotkey).setDefaultValue("key.keyboard.0").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotHotkey = newValue).build());
+            triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Hold)"), TutorialMod.CONFIG.triggerBotHotkey).setDefaultValue("key.keyboard.k").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotHotkey = newValue).build());
 
             SubCategoryBuilder triggerBotFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.triggerBotIncludePlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludePlayers = newValue).build());
@@ -268,6 +274,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             int maxBlocks = net.minecraft.client.MinecraftClient.getInstance().options.getClampedViewDistance() * 16;
             SubCategoryBuilder espFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
+            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Frustum Culling"), TutorialMod.CONFIG.espFrustumCulling).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espFrustumCulling = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Players"), TutorialMod.CONFIG.espPlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espPlayers = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Villagers"), TutorialMod.CONFIG.espVillagers).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espVillagers = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Hostile Mobs"), TutorialMod.CONFIG.espHostiles).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHostiles = newValue).build());
@@ -279,6 +286,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             SubCategoryBuilder xraySub = entryBuilder.startSubCategory(Text.literal("X-Ray"));
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.xrayEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayEnabled = newValue).build());
+            xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Frustum Culling"), TutorialMod.CONFIG.xrayFrustumCulling).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayFrustumCulling = newValue).build());
             xraySub.add(entryBuilder.startStrList(Text.literal("Target Blocks"), TutorialMod.CONFIG.xrayBlocks).setDefaultValue(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore")).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayBlocks = newValue).build());
             xraySub.add(entryBuilder.startColorField(Text.literal("X-Ray Color"), TutorialMod.CONFIG.xrayColor).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayColor = newValue).build());
             xraySub.add(entryBuilder.startIntSlider(Text.literal("Scan Range (Blocks)"), TutorialMod.CONFIG.xrayRange, 8, 64).setDefaultValue(32).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayRange = newValue).build());

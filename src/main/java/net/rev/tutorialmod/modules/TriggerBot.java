@@ -38,24 +38,17 @@ public class TriggerBot {
             return;
         }
 
-        if (!TutorialMod.CONFIG.triggerBotToggledOn) {
-            reset();
-            return;
-        }
-
-        // Check hotkey
-        if (!TutorialMod.CONFIG.triggerBotHotkey.equals("key.keyboard.unknown") && !TutorialMod.CONFIG.triggerBotHotkey.equals("key.keyboard.0")) {
-            try {
-                if (InputUtil.isKeyPressed(mc.getWindow(), GLFW.GLFW_KEY_F3)) {
-                    reset();
-                    return;
-                }
-            } catch (Exception ignored) {}
-
-            if (!net.rev.tutorialmod.TutorialModClient.isKeyDown(TutorialMod.CONFIG.triggerBotHotkey)) {
+        // Check hotkey - TriggerBot is now "Active While Pressing"
+        try {
+            if (InputUtil.isKeyPressed(mc.getWindow(), GLFW.GLFW_KEY_F3)) {
                 reset();
                 return;
             }
+        } catch (Exception ignored) {}
+
+        if (!net.rev.tutorialmod.TutorialModClient.isKeyDown(TutorialMod.CONFIG.triggerBotHotkey)) {
+            reset();
+            return;
         }
 
         if (mc.currentScreen != null && !TutorialMod.CONFIG.triggerBotActiveInInventory) {
