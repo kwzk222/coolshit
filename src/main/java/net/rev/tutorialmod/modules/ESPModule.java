@@ -3,6 +3,7 @@ package net.rev.tutorialmod.modules;
 import net.minecraft.block.Block;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.Frustum;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.Monster;
@@ -31,6 +32,7 @@ public class ESPModule {
     private final MinecraftClient client = MinecraftClient.getInstance();
     private final Map<Integer, VanishedPlayerData> vanishedPlayers = new ConcurrentHashMap<>();
     private final List<XRayEntry> xrayEntries = new CopyOnWriteArrayList<>();
+    private final Frustum frustum = new Frustum(new Matrix4f(), new Matrix4f());
     private long lastRefreshTime = 0;
     private boolean isScanning = false;
 
@@ -111,6 +113,9 @@ public class ESPModule {
             Matrix4f viewMatrix = new Matrix4f().rotation(viewRot);
             combinedMatrix = new Matrix4f(projectionMatrix).mul(viewMatrix);
         }
+
+        frustum.setPosition(camera.getCameraPos().x, camera.getCameraPos().y, camera.getCameraPos().z);
+        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
 
         updateESP(tickCounter, camera, combinedMatrix);
     }
@@ -396,6 +401,8 @@ public class ESPModule {
             }
 
             if (color != -1) {
+                if (TutorialMod.CONFIG.espFrustumCulling && !frustum.isVisible(entity.getBoundingBox())) continue;
+
                 double x = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
                 double y = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
                 double z = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
@@ -418,6 +425,10 @@ public class ESPModule {
         if (TutorialMod.CONFIG.xrayEnabled) {
             int color = TutorialMod.CONFIG.xrayColor;
             for (XRayEntry entry : xrayEntries) {
+                if (TutorialMod.CONFIG.xrayFrustumCulling) {
+                    Box worldBox = new Box(entry.pos.x, entry.pos.y, entry.pos.z, entry.pos.x + 1.0, entry.pos.y + 1.0, entry.pos.z + 1.0);
+                    if (!frustum.isVisible(worldBox)) continue;
+                }
                 Vec3d relPos = entry.pos.subtract(cameraPos);
                 Box box = new Box(relPos.x, relPos.y, relPos.z, relPos.x + 1.0, relPos.y + 1.0, relPos.z + 1.0);
                 projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, entry.texture);

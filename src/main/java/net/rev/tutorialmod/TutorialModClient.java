@@ -113,6 +113,8 @@ public class TutorialModClient implements ClientModInitializer {
 
     // --- State: Combat Swap ---
     private boolean isExecutingCombo = false;
+    private int sprintResetTimer = -1;
+    private int sprintResetCooldownTimer = -1;
 
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
     private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_LAVA_PLACEMENT, AWAITING_FIRE_PLACEMENT, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
@@ -240,6 +242,16 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void onClientTick(MinecraftClient client) {
+        if (sprintResetTimer > 0) {
+            sprintResetTimer--;
+        } else if (sprintResetTimer == 0) {
+            sprintResetTimer = -1;
+        }
+
+        if (sprintResetCooldownTimer > 0) {
+            sprintResetCooldownTimer--;
+        }
+
         // Handle keybinds first, as they might toggle features on/off.
         handleKeybinds(client);
         handleQuickCrossbow(client);
@@ -365,12 +377,20 @@ public class TutorialModClient implements ClientModInitializer {
             return ActionResult.FAIL;
         }
 
+        if (player.isSprinting()) {
+            triggerSprintReset();
+        }
+
         return ActionResult.PASS;
     }
 
     private void executeCombatCombo(PlayerEntity player, PlayerEntity target) {
         if (isExecutingCombo || player == null || target == null) return;
         isExecutingCombo = true;
+
+        if (player.isSprinting()) {
+            triggerSprintReset();
+        }
         int originalSlot = ((PlayerInventoryMixin) player.getInventory()).getSelectedSlot();
         MinecraftClient client = MinecraftClient.getInstance();
 
@@ -1594,5 +1614,35 @@ public class TutorialModClient implements ClientModInitializer {
             }
         } catch (Exception ignored) {}
         return false;
+    }
+
+    public void triggerSprintReset() {
+        if (!TutorialMod.CONFIG.sprintResetEnabled || sprintResetCooldownTimer > 0) return;
+        sprintResetTimer = TutorialMod.CONFIG.sprintResetDelay;
+        sprintResetCooldownTimer = TutorialMod.CONFIG.sprintResetCooldown;
+    }
+
+    public void handleSprintResetInput(net.minecraft.client.input.Input input) {
+        if (sprintResetTimer > 0) {
+            net.minecraft.util.PlayerInput old = input.playerInput;
+            boolean forward = false;
+            boolean backward = old.backward();
+
+            if (TutorialMod.CONFIG.sprintResetMode.equals("S-Tap")) {
+                backward = true;
+            }
+
+            input.playerInput = new net.minecraft.util.PlayerInput(forward, backward, old.left(), old.right(), old.jump(), old.sneak(), old.sprint());
+
+            float forwardImpulse = 0.0f;
+            if (forward) forwardImpulse++;
+            if (backward) forwardImpulse--;
+
+            float leftImpulse = 0.0f;
+            if (old.left()) leftImpulse++;
+            if (old.right()) leftImpulse--;
+
+            ((net.rev.tutorialmod.mixin.InputAccessor) input).setMovementVector(new net.minecraft.util.math.Vec2f(leftImpulse, forwardImpulse));
+        }
     }
 }

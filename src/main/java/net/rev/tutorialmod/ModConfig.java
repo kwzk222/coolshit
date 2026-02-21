@@ -45,6 +45,12 @@ public class ModConfig {
     public int maceSwapFailChance = 0;
     public double maceSwapMinFallDistance = 3.0;
 
+    // Sprint Reset
+    public boolean sprintResetEnabled = true;
+    public String sprintResetMode = "Stop"; // "Stop" or "S-Tap"
+    public int sprintResetDelay = 1;
+    public int sprintResetCooldown = 0;
+
     // Reach Swap (Any -> Spear)
     public boolean spearReachSwapEnabled = true;
     public double spearReachSwapRange = 4.1;
@@ -246,6 +252,7 @@ public class ModConfig {
 
     // X-Ray
     public boolean xrayEnabled = true;
+    public boolean xrayFrustumCulling = true;
     public List<String> xrayBlocks = new ArrayList<>(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore"));
     public int xrayColor = 0x00FFFF;
     public int xrayRange = 32;
@@ -258,6 +265,7 @@ public class ModConfig {
 
     // --- Enemy Info ---
     public boolean showEnemyInfo = true;
+    public boolean espFrustumCulling = true;
     public boolean showHpDecimals = false;
     public boolean showLowestArmorPiece = false;
     public boolean doubleEnemyInfoRange = false;
