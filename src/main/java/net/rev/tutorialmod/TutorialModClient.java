@@ -304,7 +304,6 @@ public class TutorialModClient implements ClientModInitializer {
 
         // --- Feature Ticks ---
         // These are handled even if master is disabled to ensure state is cleaned up or updated.
-        handleCombatSwap(client);
         handlePlacementSequence(client);
         handleConfirmationCooldowns(client);
 
@@ -438,10 +437,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null) return;
         ((PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(slot);
         if (client.interactionManager != null) {
-            ((net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor) client.interactionManager).setSelectedSlot(slot);
-        }
-        if (client.getNetworkHandler() != null) {
-            client.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(slot));
+            ((net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor) client.interactionManager).invokeSyncSelectedSlot();
         }
     }
 
@@ -584,9 +580,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private void handleCombatSwap(MinecraftClient client) {
-        // No longer used for main combos, but kept for future delayed actions if needed.
-    }
 
     private void handlePlacementSequence(MinecraftClient client) {
         if (actionTimeout > 0) {
