@@ -67,7 +67,11 @@ public class ESPOverlayApp {
     }
 
     private static void handleMessage(String content) {
-        if (content.startsWith("WINDOW_SYNC ")) {
+        if (content.equals("CLEAR_TRAJECTORIES")) {
+            panel.clearTrajectories();
+        } else if (content.startsWith("TRAJECTORY ")) {
+            panel.addTrajectory(content.substring(11));
+        } else if (content.startsWith("WINDOW_SYNC ")) {
             String[] parts = content.substring(12).split(",");
             if (parts.length == 4) {
                 try {
@@ -140,6 +144,7 @@ public class ESPOverlayApp {
 
     private static class ESPPanel extends JPanel {
         private List<BoxData> boxes = new ArrayList<>();
+        private List<TrajectoryData> trajectories = new ArrayList<>();
         private boolean debugMode = true;
         private String debugText = "";
         private float healthBarWidth = 0.1f;
@@ -220,7 +225,31 @@ public class ESPOverlayApp {
 
         public void clear() {
             this.boxes.clear();
+            this.trajectories.clear();
             repaint();
+        }
+
+        public void addTrajectory(String data) {
+            try {
+                String[] parts = data.split("\\|");
+                if (parts.length == 2) {
+                    String[] pointsStr = parts[0].split(",");
+                    int color = Integer.parseInt(parts[1]);
+                    List<Point2D> points = new ArrayList<>();
+                    for (int i = 0; i < pointsStr.length; i += 2) {
+                        float x = Float.parseFloat(pointsStr[i]);
+                        float y = Float.parseFloat(pointsStr[i+1]);
+                        points.add(new Point2D(x, y));
+                    }
+                    if (points.size() >= 2) {
+                        trajectories.add(new TrajectoryData(points, color));
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        public void clearTrajectories() {
+            this.trajectories.clear();
         }
 
         @Override
@@ -235,6 +264,17 @@ public class ESPOverlayApp {
             // Apply global opacity
             Composite originalComposite = g2d.getComposite();
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
+
+            // Draw Trajectories
+            for (TrajectoryData traj : trajectories) {
+                g2d.setColor(new Color(traj.color | 0xFF000000, true));
+                g2d.setStroke(new BasicStroke(2.0f));
+                for (int i = 0; i < traj.points.size() - 1; i++) {
+                    Point2D p1 = traj.points.get(i);
+                    Point2D p2 = traj.points.get(i + 1);
+                    g2d.drawLine((int)(p1.x * panelW), (int)(p1.y * panelH), (int)(p2.x * panelW), (int)(p2.y * panelH));
+                }
+            }
 
             if (debugMode) {
                 g2d.setColor(new Color(255, 0, 0, 100));
@@ -386,6 +426,22 @@ public class ESPOverlayApp {
         BoxData(float xf, float yf, float wf, float hf, String label, int color, String distLabel, float health, String texture) {
             this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label; this.color = color; this.distLabel = distLabel;
             this.health = health; this.texture = texture;
+        }
+    }
+
+    private static class TrajectoryData {
+        List<Point2D> points;
+        int color;
+        TrajectoryData(List<Point2D> points, int color) {
+            this.points = points;
+            this.color = color;
+        }
+    }
+
+    private static class Point2D {
+        float x, y;
+        Point2D(float x, float y) {
+            this.x = x; this.y = y;
         }
     }
 }

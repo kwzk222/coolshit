@@ -63,6 +63,13 @@ public class ClientPlayNetworkHandlerMixin {
                 TutorialModClient.getInstance().getAutoTotem().handleTotemPop();
             }
         }
+
+        if (packet.getStatus() == 30) {
+            Entity entity = packet.getEntity(client.world);
+            if (entity != null && TutorialModClient.getInstance() != null) {
+                TutorialModClient.getInstance().onShieldBreak(entity.getId());
+            }
+        }
     }
 
     @Inject(method = "onEntityPosition", at = @At("HEAD"))

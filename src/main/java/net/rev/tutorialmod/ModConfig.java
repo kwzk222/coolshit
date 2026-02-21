@@ -193,6 +193,9 @@ public class ModConfig {
     public boolean showSprintModeOverlay = true;
     public boolean showSneakModeOverlay = true;
     public boolean showLatestToggleOverlay = false;
+    public boolean trajectoriesEnabled = true;
+    public int trajectoriesColor = 0xFFFFFF;
+    public int trajectoriesHitColor = 0xFF0000;
     public int overlayFontSize = 20;
     public int overlayBackgroundOpacity = 128;
     public String overlayAlignment = "Left";
