@@ -228,8 +228,12 @@ public class ESPOverlayApp {
 
         public void clear() {
             this.boxes.clear();
-            this.trajectories.clear();
-            this.impactPlanes.clear();
+            synchronized (trajectories) {
+                this.trajectories.clear();
+            }
+            synchronized (impactPlanes) {
+                this.impactPlanes.clear();
+            }
             repaint();
         }
 
@@ -246,15 +250,21 @@ public class ESPOverlayApp {
                         points.add(new Point2D(x, y));
                     }
                     if (points.size() >= 2) {
-                        trajectories.add(new TrajectoryData(points, color));
+                        synchronized (trajectories) {
+                            trajectories.add(new TrajectoryData(points, color));
+                        }
                     }
                 }
             } catch (Exception ignored) {}
         }
 
         public void clearTrajectories() {
-            this.trajectories.clear();
-            this.impactPlanes.clear();
+            synchronized (trajectories) {
+                this.trajectories.clear();
+            }
+            synchronized (impactPlanes) {
+                this.impactPlanes.clear();
+            }
         }
 
         public void addImpactPlane(String data) {
@@ -270,7 +280,9 @@ public class ESPOverlayApp {
                         points.add(new Point2D(x, y));
                     }
                     if (points.size() >= 3) {
-                        impactPlanes.add(new ImpactPlaneData(points, color));
+                        synchronized (impactPlanes) {
+                            impactPlanes.add(new ImpactPlaneData(points, color));
+                        }
                     }
                 }
             } catch (Exception ignored) {}
@@ -290,29 +302,33 @@ public class ESPOverlayApp {
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
 
             // Draw Trajectories
-            for (TrajectoryData traj : trajectories) {
-                g2d.setColor(new Color(traj.color | 0xFF000000, true));
-                g2d.setStroke(new BasicStroke(2.0f));
-                for (int i = 0; i < traj.points.size() - 1; i++) {
-                    Point2D p1 = traj.points.get(i);
-                    Point2D p2 = traj.points.get(i + 1);
-                    g2d.drawLine((int)(p1.x * panelW), (int)(p1.y * panelH), (int)(p2.x * panelW), (int)(p2.y * panelH));
+            synchronized (trajectories) {
+                for (TrajectoryData traj : trajectories) {
+                    g2d.setColor(new Color(traj.color | 0xFF000000, true));
+                    g2d.setStroke(new BasicStroke(2.0f));
+                    for (int i = 0; i < traj.points.size() - 1; i++) {
+                        Point2D p1 = traj.points.get(i);
+                        Point2D p2 = traj.points.get(i + 1);
+                        g2d.drawLine((int) (p1.x * panelW), (int) (p1.y * panelH), (int) (p2.x * panelW), (int) (p2.y * panelH));
+                    }
                 }
             }
 
             // Draw Impact Planes
-            for (ImpactPlaneData plane : impactPlanes) {
-                g2d.setColor(new Color(plane.color | 0x80000000, true)); // Semi-transparent
-                int[] xPoints = new int[plane.points.size()];
-                int[] yPoints = new int[plane.points.size()];
-                for (int i = 0; i < plane.points.size(); i++) {
-                    xPoints[i] = (int)(plane.points.get(i).x * panelW);
-                    yPoints[i] = (int)(plane.points.get(i).y * panelH);
+            synchronized (impactPlanes) {
+                for (ImpactPlaneData plane : impactPlanes) {
+                    g2d.setColor(new Color(plane.color | 0x80000000, true)); // Semi-transparent
+                    int[] xPoints = new int[plane.points.size()];
+                    int[] yPoints = new int[plane.points.size()];
+                    for (int i = 0; i < plane.points.size(); i++) {
+                        xPoints[i] = (int) (plane.points.get(i).x * panelW);
+                        yPoints[i] = (int) (plane.points.get(i).y * panelH);
+                    }
+                    g2d.fillPolygon(xPoints, yPoints, plane.points.size());
+                    g2d.setColor(new Color(plane.color | 0xFF000000, true));
+                    g2d.setStroke(new BasicStroke(1.0f));
+                    g2d.drawPolygon(xPoints, yPoints, plane.points.size());
                 }
-                g2d.fillPolygon(xPoints, yPoints, plane.points.size());
-                g2d.setColor(new Color(plane.color | 0xFF000000, true));
-                g2d.setStroke(new BasicStroke(1.0f));
-                g2d.drawPolygon(xPoints, yPoints, plane.points.size());
             }
 
             if (debugMode) {

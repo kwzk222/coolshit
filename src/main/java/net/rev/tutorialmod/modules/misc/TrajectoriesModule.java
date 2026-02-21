@@ -64,7 +64,7 @@ public class TrajectoriesModule {
             active = true;
         } else if (isRod) {
             if (client.player.fishHook == null) {
-                speed = 1.1f; // Approximated
+                speed = 1.5f;
                 gravity = 0.03f;
                 drag = 0.92f;
                 active = true;
@@ -189,7 +189,7 @@ public class TrajectoriesModule {
                     currentPos, nextPos,
                     RaycastContext.ShapeType.COLLIDER,
                     RaycastContext.FluidHandling.NONE,
-                    (net.minecraft.entity.Entity) null // Don't ignore anyone for this simulation
+                    client.player // Use player for context to avoid NPE in ShapeContext.of
             ));
 
             if (blockHit.getType() != HitResult.Type.MISS) {
