@@ -138,15 +138,13 @@ public class ModConfig {
     public double triggerBotMinRange = 0.0;
     public boolean quickCrossbowEnabled = true;
     public int quickCrossbowReloadThreshold = 4;
-    public transient boolean triggerBotToggledOn = true;
 
     // --- Hotkeys ---
     public String openSettingsHotkey = "key.keyboard.right.shift";
     public String lastCategory = "Attribute Swapping";
     public String masterToggleHotkey = "key.keyboard.m";
     public String teammateHotkey = "key.keyboard.g";
-    public String triggerBotToggleHotkey = "key.keyboard.k";
-    public String triggerBotHotkey = "key.keyboard.unknown";
+    public String triggerBotHotkey = "key.keyboard.k";
     public String toggleOverlayHotkey = "key.keyboard.h";
     public String toggleESPHotkey = "key.keyboard.y";
     public String parkourHotkey = "key.keyboard.p";

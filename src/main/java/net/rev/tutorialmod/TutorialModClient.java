@@ -102,7 +102,6 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean openSettingsWasPressed = false;
     private boolean masterToggleWasPressed = false;
     private boolean teammateWasPressed = false;
-    private boolean triggerBotToggleWasPressed = false;
     private boolean overlayToggleWasPressed = false;
     private boolean espToggleWasPressed = false;
     private boolean parkourToggleWasPressed = false;
@@ -113,11 +112,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean autoWaterDrainModeWasPressed = false;
 
     // --- State: Combat Swap ---
-    private enum SwapAction { NONE, SWITCH_BACK, SWITCH_TO_ORIGINAL_THEN_MACE, SWITCH_BACK_FROM_MACE }
-    private int swapCooldown = -1;
-    private int originalHotbarSlot = -1;
-    private SwapAction nextAction = SwapAction.NONE;
-    private Entity targetEntity = null;
+    private boolean isExecutingCombo = false;
 
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
     private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_LAVA_PLACEMENT, AWAITING_FIRE_PLACEMENT, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
@@ -338,110 +333,113 @@ public class TutorialModClient implements ClientModInitializer {
 
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled) return ActionResult.PASS;
-        if (target instanceof PlayerEntity attackedPlayer) {
-            ItemStack held = player.getMainHandStack();
-            boolean isSpear = held.isIn(ItemTags.SPEARS);
-            boolean isMace = held.getItem() == Items.MACE;
-            boolean isSword = held.isIn(ItemTags.SWORDS);
+        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo) return ActionResult.PASS;
+        if (!(target instanceof PlayerEntity attackedPlayer)) return ActionResult.PASS;
 
-            boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().getItem() == Items.SHIELD;
+        double dist = player.distanceTo(attackedPlayer);
+        boolean isShielding = attackedPlayer.isUsingItem() && attackedPlayer.getActiveItem().isOf(Items.SHIELD);
+        boolean hasArmor = isArmored(attackedPlayer);
 
+        // Check if any combo should be triggered
+        boolean needsSpear = dist > TutorialMod.CONFIG.reachSwapActivationRange && TutorialMod.CONFIG.spearReachSwapEnabled && findSpearInHotbar(player) != -1;
+
+        // Determine if stun is needed
+        boolean isFacing = true;
+        if (TutorialMod.CONFIG.autoStunFacingCheck) {
+            Vec3d targetLook = attackedPlayer.getRotationVector();
+            Vec3d selfPos = new Vec3d(player.getX(), player.getY(), player.getZ());
+            Vec3d targetPos = new Vec3d(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ());
+            Vec3d toSelf = selfPos.subtract(targetPos).normalize();
+            isFacing = toSelf.dotProduct(targetLook) > 0;
+        }
+        boolean needsStun = isShielding && isFacing && findAxeInHotbar(player) != -1;
+        // Check specific stun toggles based on held item
+        ItemStack held = player.getMainHandStack();
+        if (held.isIn(ItemTags.SPEARS)) needsStun &= TutorialMod.CONFIG.spearAutoStunEnabled;
+        else if (held.getItem() == Items.MACE) needsStun &= TutorialMod.CONFIG.maceAutoStunEnabled;
+        else needsStun &= TutorialMod.CONFIG.axeSwapEnabled;
+
+        boolean needsMace = hasArmor && player.fallDistance > TutorialMod.CONFIG.maceSwapMinFallDistance && TutorialMod.CONFIG.maceSwapEnabled && findMaceInHotbar(player) != -1;
+
+        if (needsSpear || needsStun || needsMace) {
+            executeCombatCombo(player, attackedPlayer);
+            return ActionResult.FAIL;
+        }
+
+        return ActionResult.PASS;
+    }
+
+    private void executeCombatCombo(PlayerEntity player, PlayerEntity target) {
+        if (isExecutingCombo || player == null || target == null) return;
+        isExecutingCombo = true;
+        int originalSlot = ((PlayerInventoryMixin) player.getInventory()).getSelectedSlot();
+        MinecraftClient client = MinecraftClient.getInstance();
+
+        try {
+            double dist = player.distanceTo(target);
+
+            // 1. Spear Hit (if range > 3)
+            if (dist > TutorialMod.CONFIG.reachSwapActivationRange && dist <= TutorialMod.CONFIG.spearReachSwapRange && TutorialMod.CONFIG.spearReachSwapEnabled) {
+                int spearSlot = findSpearInHotbar(player);
+                if (spearSlot != -1) {
+                    syncSlot(spearSlot);
+                    if (client.interactionManager != null) {
+                        client.interactionManager.attackEntity(player, target);
+                        player.swingHand(Hand.MAIN_HAND);
+                    }
+                }
+            }
+
+            // Re-check shielding after spear hit (unlikely to change in same tick but good for logic)
+            boolean isShielding = target.isUsingItem() && target.getActiveItem().isOf(Items.SHIELD);
             boolean isFacing = true;
             if (TutorialMod.CONFIG.autoStunFacingCheck) {
+                Vec3d targetLook = target.getRotationVector();
                 Vec3d selfPos = new Vec3d(player.getX(), player.getY(), player.getZ());
-                Vec3d targetPos = new Vec3d(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ());
-                Vec3d targetLookVec = attackedPlayer.getRotationVector();
-                Vec3d vecToSelf = selfPos.subtract(targetPos).normalize();
-                isFacing = vecToSelf.dotProduct(targetLookVec) > 0;
+                Vec3d targetPos = new Vec3d(target.getX(), target.getY(), target.getZ());
+                Vec3d toSelf = selfPos.subtract(targetPos).normalize();
+                isFacing = toSelf.dotProduct(targetLook) > 0;
             }
 
-            boolean hasArmor = isArmored(attackedPlayer);
-            PlayerInventoryMixin inventory = (PlayerInventoryMixin) player.getInventory();
-
-            boolean hasShield = attackedPlayer.getMainHandStack().getItem() == Items.SHIELD || attackedPlayer.getOffHandStack().getItem() == Items.SHIELD;
-
-            // AutoStun Trigger Determination
-            boolean attemptStun = false;
-            int stunFailChance = 0;
-            int stunPredictionChance = 0;
-            double stunRange = 3.1;
-            int stunDelay = 1;
-            boolean stunEnabled = false;
-
-            if (isSpear) {
-                stunEnabled = TutorialMod.CONFIG.spearAutoStunEnabled;
-                stunRange = TutorialMod.CONFIG.spearAutoStunRange;
-                stunFailChance = TutorialMod.CONFIG.spearAutoStunFailChance;
-                stunPredictionChance = TutorialMod.CONFIG.spearAutoStunFakePredictionChance;
-                stunDelay = TutorialMod.CONFIG.spearAutoStunDelay;
-            } else if (isMace) {
-                stunEnabled = TutorialMod.CONFIG.maceAutoStunEnabled;
-                stunRange = TutorialMod.CONFIG.maceAutoStunRange;
-                stunFailChance = TutorialMod.CONFIG.maceAutoStunFailChance;
-                stunPredictionChance = TutorialMod.CONFIG.maceAutoStunFakePredictionChance;
-                stunDelay = TutorialMod.CONFIG.maceAutoStunDelay;
-            } else if (isSword) {
-                stunEnabled = TutorialMod.CONFIG.axeSwapEnabled;
-                stunRange = TutorialMod.CONFIG.axeSwapRange;
-                stunFailChance = TutorialMod.CONFIG.axeSwapFailChance;
-                stunPredictionChance = TutorialMod.CONFIG.axeSwapFakePredictionChance;
-                stunDelay = TutorialMod.CONFIG.axeSwapDelay;
-            }
-
-            boolean fakePrediction = hasShield && !isShielding && (RANDOM.nextInt(100) < stunPredictionChance);
-            attemptStun = stunEnabled && ((isShielding && isFacing) || fakePrediction);
-
-            if (attemptStun) {
-                if (stunFailChance > 0 && RANDOM.nextInt(100) < stunFailChance) return ActionResult.PASS;
-
-                double dist = player.distanceTo(attackedPlayer);
-                if (dist > stunRange) return ActionResult.PASS;
-
+            // 2. Axe Stun (if shielding)
+            if (isShielding && isFacing) {
                 int axeSlot = findAxeInHotbar(player);
-                if (axeSlot != -1 && inventory.getSelectedSlot() != axeSlot) {
-                    if (swapCooldown == -1) {
-                        originalHotbarSlot = inventory.getSelectedSlot();
-                    }
+                if (axeSlot != -1) {
                     syncSlot(axeSlot);
-                    targetEntity = target;
-                    int maceSlot = findMaceInHotbar(player);
-                    if (hasArmor && maceSlot != -1 && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.maceSwapMinFallDistance) {
-                        swapCooldown = TutorialMod.CONFIG.axeToOriginalDelay;
-                        nextAction = SwapAction.SWITCH_TO_ORIGINAL_THEN_MACE;
-                    } else {
-                        swapCooldown = stunDelay;
-                        nextAction = SwapAction.SWITCH_BACK;
+                    if (client.interactionManager != null) {
+                        client.interactionManager.attackEntity(player, target);
+                        player.swingHand(Hand.MAIN_HAND);
                     }
-                    return ActionResult.PASS; // Return PASS so the attack continues with the new Axe item
                 }
             }
 
-            // Mace Attribute Swap (Damage)
-            if (hasArmor && TutorialMod.CONFIG.maceSwapEnabled && player.fallDistance > TutorialMod.CONFIG.maceSwapMinFallDistance) {
-                if (TutorialMod.CONFIG.maceSwapFailChance > 0 && RANDOM.nextInt(100) < TutorialMod.CONFIG.maceSwapFailChance) return ActionResult.PASS;
-                if (player.distanceTo(attackedPlayer) > TutorialMod.CONFIG.maceSwapRange) return ActionResult.PASS;
-
+            // 3. Mace Hit (if falling and armored)
+            if (isArmored(target) && player.fallDistance > TutorialMod.CONFIG.maceSwapMinFallDistance && TutorialMod.CONFIG.maceSwapEnabled) {
                 int maceSlot = findMaceInHotbar(player);
-                if (maceSlot != -1 && inventory.getSelectedSlot() != maceSlot) {
-                    if (swapCooldown == -1) {
-                        originalHotbarSlot = inventory.getSelectedSlot();
-                    }
+                if (maceSlot != -1) {
                     syncSlot(maceSlot);
-                    swapCooldown = TutorialMod.CONFIG.maceSwapDelay;
-                    nextAction = SwapAction.SWITCH_BACK;
+                    if (client.interactionManager != null) {
+                        client.interactionManager.attackEntity(player, target);
+                        player.swingHand(Hand.MAIN_HAND);
+                    }
                 }
             }
+
+            // Restore original slot in the same tick
+            syncSlot(originalSlot);
+        } finally {
+            isExecutingCombo = false;
         }
-        return ActionResult.PASS;
     }
 
 
     private void syncSlot(int slot) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
-        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-        inventory.setSelectedSlot(slot);
+        ((PlayerInventoryMixin) client.player.getInventory()).setSelectedSlot(slot);
+        if (client.interactionManager != null) {
+            ((net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor) client.interactionManager).setSelectedSlot(slot);
+        }
         if (client.getNetworkHandler() != null) {
             client.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(slot));
         }
@@ -501,14 +499,6 @@ public class TutorialModClient implements ClientModInitializer {
             handleTeammateKeybind(client);
         }
         teammateWasPressed = isTeammateKeyPressed;
-
-
-        boolean isTriggerBotTogglePressed = isKeyDown(TutorialMod.CONFIG.triggerBotToggleHotkey);
-        if (isTriggerBotTogglePressed && !triggerBotToggleWasPressed) {
-            TutorialMod.CONFIG.triggerBotToggledOn = !TutorialMod.CONFIG.triggerBotToggledOn;
-            TutorialMod.sendUpdateMessage("TriggerBot set to " + (TutorialMod.CONFIG.triggerBotToggledOn ? "ON" : "OFF"));
-        }
-        triggerBotToggleWasPressed = isTriggerBotTogglePressed;
 
         // --- Toggle Overlay Hotkey ---
         boolean isToggleOverlayPressed = isKeyDown(TutorialMod.CONFIG.toggleOverlayHotkey);
@@ -595,36 +585,7 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handleCombatSwap(MinecraftClient client) {
-        if (swapCooldown > 0) {
-            swapCooldown--;
-        } else if (swapCooldown == 0) {
-            SwapAction action = nextAction;
-            nextAction = SwapAction.NONE;
-            swapCooldown = -1;
-            if (client.player == null) return;
-            switch (action) {
-                case SWITCH_BACK:
-                    syncSlot(originalHotbarSlot);
-                    break;
-                case SWITCH_TO_ORIGINAL_THEN_MACE:
-                    syncSlot(originalHotbarSlot);
-                    if (client.interactionManager != null && targetEntity != null && targetEntity.isAlive()) {
-                        client.interactionManager.attackEntity(client.player, targetEntity);
-                    }
-                    int maceSlot = findMaceInHotbar(client.player);
-                    if (maceSlot != -1) {
-                        syncSlot(maceSlot);
-                        swapCooldown = TutorialMod.CONFIG.maceToOriginalDelay;
-                        nextAction = SwapAction.SWITCH_BACK_FROM_MACE;
-                    }
-                    break;
-                case SWITCH_BACK_FROM_MACE:
-                    syncSlot(originalHotbarSlot);
-                    break;
-                default: break;
-            }
-            targetEntity = null;
-        }
+        // No longer used for main combos, but kept for future delayed actions if needed.
     }
 
     private void handlePlacementSequence(MinecraftClient client) {
@@ -817,48 +778,26 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public void onReachSwap() {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled || swapCooldown != -1) return;
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled || isExecutingCombo) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null || client.interactionManager == null) return;
 
-        ItemStack held = client.player.getMainHandStack();
-        boolean holdingSpear = held.isIn(ItemTags.SPEARS);
-
-        // Check if there is a target within spear reach (4.0) but beyond current reach (3.0)
+        // Check if there is a target within spear reach (4.1) but beyond current reach (3.0)
         Entity target = getEntityLookingAt(client, TutorialMod.CONFIG.spearReachSwapRange, TutorialMod.CONFIG.reachSwapIgnoreCobwebs);
         if (target != null) {
             double dist = client.player.distanceTo(target);
             if (dist > TutorialMod.CONFIG.reachSwapActivationRange) {
-                if (holdingSpear) {
-                    // Already holding spear, just attack
-                    client.interactionManager.attackEntity(client.player, target);
-                    client.player.swingHand(Hand.MAIN_HAND);
+                if (target instanceof PlayerEntity tp) {
+                    executeCombatCombo(client.player, tp);
                 } else {
+                    // Non-player target, just do simple reach swap
+                    int originalSlot = ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot();
                     int spearSlot = findSpearInHotbar(client.player);
                     if (spearSlot != -1) {
-                        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-                        originalHotbarSlot = inventory.getSelectedSlot();
                         syncSlot(spearSlot);
-
-                        // IMPORTANT: Set cooldown and action BEFORE calling attackEntity to prevent slot corruption
-                        // if AutoStun/Mace triggers nestedly.
-                        swapCooldown = TutorialMod.CONFIG.reachSwapBackDelay;
-                        nextAction = SwapAction.SWITCH_BACK;
-
-                        // Save current nextAction to see if it changes
-                        SwapAction previousAction = nextAction;
-
-                        // Trigger manual attack in the same tick
                         client.interactionManager.attackEntity(client.player, target);
                         client.player.swingHand(Hand.MAIN_HAND);
-
-                        // If the nested attack started a complex sequence (e.g. Mace Swap), don't overwrite it
-                        if (nextAction != previousAction && nextAction != SwapAction.NONE) {
-                            // Complex sequence active, keep it.
-                        } else {
-                            // Ensure it's still set
-                            nextAction = SwapAction.SWITCH_BACK;
-                        }
+                        syncSlot(originalSlot);
                     }
                 }
             }

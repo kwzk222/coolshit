@@ -167,8 +167,7 @@ public class ModMenuIntegration implements ModMenuApi {
             // 1.6 Trigger Bot
             ConfigCategory triggerBot = builder.getOrCreateCategory(Text.literal("Trigger Bot"));
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Trigger Bot Enabled"), TutorialMod.CONFIG.triggerBotEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotEnabled = newValue).build());
-            triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.triggerBotToggleHotkey).setDefaultValue("key.keyboard.k").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotToggleHotkey = newValue).build());
-            triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Activation Hotkey"), TutorialMod.CONFIG.triggerBotHotkey).setDefaultValue("key.keyboard.0").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotHotkey = newValue).build());
+            triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Hold)"), TutorialMod.CONFIG.triggerBotHotkey).setDefaultValue("key.keyboard.k").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotHotkey = newValue).build());
 
             SubCategoryBuilder triggerBotFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.triggerBotIncludePlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludePlayers = newValue).build());
