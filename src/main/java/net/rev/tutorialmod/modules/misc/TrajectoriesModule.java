@@ -91,12 +91,10 @@ public class TrajectoriesModule {
         double startZ = client.player.getZ() - (double) cosYaw * 0.3D;
         Vec3d pos = new Vec3d(startX, startY, startZ);
 
+        // Fishing Bobber DOES NOT inherit player velocity in vanilla 1.21.1
         Vec3d velocity = new Vec3d(-sinYaw, net.minecraft.util.math.MathHelper.clamp(-(sinPitch / cosPitch), -5.0F, 5.0F), -cosYaw);
         double len = velocity.length();
         velocity = velocity.multiply(0.6D / len);
-
-        Vec3d playerVel = client.player.getVelocity();
-        velocity = velocity.add(playerVel.x, client.player.isOnGround() ? 0 : playerVel.y, playerVel.z);
 
         simulatePath(pos, velocity, 0.03f, 0.92f, combinedMatrix, TutorialMod.CONFIG.trajectoriesColor);
     }
@@ -213,31 +211,34 @@ public class TrajectoriesModule {
         if (hooked == null || !hooked.isAlive()) return;
 
         // Calculate pull velocity
-        // In FishingBobberEntity.use():
-        // double d = this.getOwner().getX() - this.getX();
-        // double e = this.getOwner().getY() - this.getY();
-        // double f = this.getOwner().getZ() - this.getZ();
-        // this.hookedEntity.setVelocity(this.hookedEntity.getVelocity().add(d * 0.1D, e * 0.1D + (double)MathHelper.sqrt((float)(d * d + e * e + f * f)) * 0.08D, f * 0.1D));
-
         Vec3d ownerPos = new Vec3d(client.player.getX(), client.player.getY(), client.player.getZ());
         Vec3d bobberPos = new Vec3d(bobber.getX(), bobber.getY(), bobber.getZ());
         Vec3d diff = ownerPos.subtract(bobberPos);
 
-        double pullX = diff.x * 0.1;
-        double pullY = diff.y * 0.1 + Math.sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) * 0.08;
-        double pullZ = diff.z * 0.1;
-
-        Vec3d startPos = new Vec3d(hooked.getX(), hooked.getY(), hooked.getZ());
-        Vec3d startVel = hooked.getVelocity().add(pullX, pullY, pullZ);
-
+        double pullX, pullY, pullZ;
         float gravity = 0.08f;
         float drag = 0.91f;
 
-        // Adjust physics based on entity type
-        if (hooked instanceof net.minecraft.entity.ItemEntity || hooked instanceof net.minecraft.entity.TntEntity) {
+        if (hooked instanceof net.minecraft.entity.ItemEntity) {
+            // ItemEntity has a special boost in FishingBobberEntity.use()
+            pullX = diff.x * 0.1;
+            pullY = diff.y * 0.1 + Math.sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) * 0.08;
+            pullZ = diff.z * 0.1;
             gravity = 0.04f;
             drag = 0.98f;
+        } else {
+            // Normal pullHookedEntity logic
+            pullX = diff.x * 0.1;
+            pullY = diff.y * 0.1;
+            pullZ = diff.z * 0.1;
+            if (hooked instanceof net.minecraft.entity.TntEntity) {
+                gravity = 0.04f;
+                drag = 0.98f;
+            }
         }
+
+        Vec3d startPos = new Vec3d(hooked.getX(), hooked.getY(), hooked.getZ());
+        Vec3d startVel = hooked.getVelocity().add(pullX, pullY, pullZ);
 
         simulateEntity(startPos, startVel, gravity, drag, combinedMatrix);
     }
@@ -300,10 +301,18 @@ public class TrajectoriesModule {
 
         StringBuilder sb = new StringBuilder();
         Vec3d camPos = client.gameRenderer.getCamera().getCameraPos();
+        Vec3d rotation = client.player.getRotationVec(1.0f);
+        Vec3d right = rotation.crossProduct(new Vec3d(0, 1, 0)).normalize();
 
         for (int i = 0; i < path.size(); i++) {
             Vec3d p = path.get(i);
-            Vec3d rel = p.subtract(camPos);
+
+            // 3D Offset to the right for readability
+            float progress = (path.size() > 1) ? (float) i / (path.size() - 1) : 1.0f;
+            double offsetAmount = 0.1 * (1.0 - progress);
+            Vec3d offsetPos = p.add(right.multiply(offsetAmount));
+
+            Vec3d rel = offsetPos.subtract(camPos);
             Vector4f v = new Vector4f((float)rel.x, (float)rel.y, (float)rel.z, 1.0f);
             combinedMatrix.transform(v);
 
@@ -313,11 +322,6 @@ public class TrajectoriesModule {
 
                 float x = ((v.x / v.w) * fovScale * aspectScale + 1.0f) * 0.5f;
                 float y = (1.0f - (v.y / v.w) * fovScale) * 0.5f;
-
-                // Visual offset to the right for the beginning of the line
-                float progress = (path.size() > 1) ? (float) i / (path.size() - 1) : 1.0f;
-                float offset = 0.05f * (1.0f - progress);
-                x += offset;
 
                 if (sb.length() > 0) sb.append(",");
                 sb.append(String.format(Locale.ROOT, "%.4f,%.4f", x, y));
