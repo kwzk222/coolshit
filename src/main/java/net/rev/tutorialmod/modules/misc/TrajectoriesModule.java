@@ -34,9 +34,8 @@ public class TrajectoriesModule {
         boolean isBow = stack.getItem() instanceof BowItem || offStack.getItem() instanceof BowItem;
         boolean isCrossbow = stack.getItem() instanceof CrossbowItem || offStack.getItem() instanceof CrossbowItem;
         boolean isPearl = stack.isOf(Items.ENDER_PEARL) || offStack.isOf(Items.ENDER_PEARL);
-        boolean isRod = stack.isOf(Items.FISHING_ROD) || offStack.isOf(Items.FISHING_ROD);
 
-        if (!isBow && !isCrossbow && !isPearl && !isRod) return;
+        if (!isBow && !isCrossbow && !isPearl) return;
 
         // Determine if active
         boolean active = false;
@@ -62,86 +61,11 @@ public class TrajectoriesModule {
             speed = 1.5f;
             gravity = 0.03f;
             active = true;
-        } else if (isRod) {
-            if (client.player.fishHook == null) {
-                simulateRodThrow(combinedMatrix);
-                return;
-            } else {
-                handleRodPull(combinedMatrix);
-                return;
-            }
         }
 
         if (!active || speed <= 0.1f) return;
 
         simulate(speed, gravity, drag, combinedMatrix);
-    }
-
-    private void simulateRodThrow(Matrix4f combinedMatrix) {
-        float pitch = client.player.getPitch();
-        float yaw = client.player.getYaw();
-
-        float cosYaw = (float) Math.cos(-yaw * 0.017453292F - (float)Math.PI);
-        float sinYaw = (float) Math.sin(-yaw * 0.017453292F - (float)Math.PI);
-        float cosPitch = -(float) Math.cos(-pitch * 0.017453292F);
-        float sinPitch = (float) Math.sin(-pitch * 0.017453292F);
-
-        double startX = client.player.getX() - (double) sinYaw * 0.3D;
-        double startY = client.player.getEyeY();
-        double startZ = client.player.getZ() - (double) cosYaw * 0.3D;
-        Vec3d pos = new Vec3d(startX, startY, startZ);
-
-        // Fishing Bobber DOES NOT inherit player velocity in vanilla 1.21.1
-        Vec3d velocity = new Vec3d(-sinYaw, net.minecraft.util.math.MathHelper.clamp(-(sinPitch / cosPitch), -5.0F, 5.0F), -cosYaw);
-        double len = velocity.length();
-        velocity = velocity.multiply(0.6D / len);
-
-        simulatePath(pos, velocity, 0.03f, 0.92f, combinedMatrix, TutorialMod.CONFIG.trajectoriesColor);
-    }
-
-    private void simulatePath(Vec3d pos, Vec3d velocity, float gravity, float drag, Matrix4f combinedMatrix, int color) {
-        List<Vec3d> path = new ArrayList<>();
-        path.add(pos);
-
-        Vec3d currentPos = pos;
-        Vec3d currentVel = velocity;
-        BlockHitResult finalBlockHit = null;
-        boolean hitEntity = false;
-
-        for (int i = 0; i < 100; i++) {
-            Vec3d nextPos = currentPos.add(currentVel);
-
-            BlockHitResult blockHit = client.world.raycast(new RaycastContext(
-                    currentPos, nextPos,
-                    RaycastContext.ShapeType.COLLIDER,
-                    RaycastContext.FluidHandling.NONE,
-                    client.player
-            ));
-
-            EntityHitResult entityHit = getEntityHit(currentPos, nextPos);
-
-            if (entityHit != null) {
-                path.add(entityHit.getPos());
-                hitEntity = true;
-                break;
-            }
-
-            if (blockHit.getType() != HitResult.Type.MISS) {
-                path.add(blockHit.getPos());
-                finalBlockHit = blockHit;
-                break;
-            }
-
-            path.add(nextPos);
-            currentPos = nextPos;
-            currentVel = currentVel.multiply(drag).subtract(0, gravity, 0);
-        }
-
-        if (hitEntity) {
-            color = TutorialMod.CONFIG.trajectoriesHitColor;
-        }
-
-        renderPath(path, color, combinedMatrix, finalBlockHit);
     }
 
     private void simulate(float speed, float gravity, float drag, Matrix4f combinedMatrix) {
@@ -163,7 +87,7 @@ public class TrajectoriesModule {
 
         Vec3d currentPos = pos;
         Vec3d currentVel = velocity;
-        BlockHitResult finalBlockHit = null;
+        BlockHitResult lastBlockHit = null;
 
         for (int i = 0; i < 100; i++) { // Max 100 ticks
             Vec3d nextPos = currentPos.add(currentVel);
@@ -175,6 +99,7 @@ public class TrajectoriesModule {
                     RaycastContext.FluidHandling.NONE,
                     client.player
             ));
+            lastBlockHit = blockHit;
 
             // Entity collision
             EntityHitResult entityHit = getEntityHit(currentPos, nextPos);
@@ -187,7 +112,6 @@ public class TrajectoriesModule {
 
             if (blockHit.getType() != HitResult.Type.MISS) {
                 path.add(blockHit.getPos());
-                finalBlockHit = blockHit;
                 break;
             }
 
@@ -200,79 +124,7 @@ public class TrajectoriesModule {
             color = TutorialMod.CONFIG.trajectoriesHitColor;
         }
 
-        renderPath(path, color, combinedMatrix, finalBlockHit);
-    }
-
-    private void handleRodPull(Matrix4f combinedMatrix) {
-        net.minecraft.entity.projectile.FishingBobberEntity bobber = client.player.fishHook;
-        if (bobber == null || bobber.isRemoved()) return;
-
-        Entity hooked = bobber.getHookedEntity();
-        if (hooked == null || !hooked.isAlive()) return;
-
-        // Calculate pull velocity
-        Vec3d ownerPos = new Vec3d(client.player.getX(), client.player.getY(), client.player.getZ());
-        Vec3d bobberPos = new Vec3d(bobber.getX(), bobber.getY(), bobber.getZ());
-        Vec3d diff = ownerPos.subtract(bobberPos);
-
-        double pullX, pullY, pullZ;
-        float gravity = 0.08f;
-        float drag = 0.91f;
-
-        if (hooked instanceof net.minecraft.entity.ItemEntity) {
-            // ItemEntity has a special boost in FishingBobberEntity.use()
-            pullX = diff.x * 0.1;
-            pullY = diff.y * 0.1 + Math.sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z) * 0.08;
-            pullZ = diff.z * 0.1;
-            gravity = 0.04f;
-            drag = 0.98f;
-        } else {
-            // Normal pullHookedEntity logic
-            pullX = diff.x * 0.1;
-            pullY = diff.y * 0.1;
-            pullZ = diff.z * 0.1;
-            if (hooked instanceof net.minecraft.entity.TntEntity) {
-                gravity = 0.04f;
-                drag = 0.98f;
-            }
-        }
-
-        Vec3d startPos = new Vec3d(hooked.getX(), hooked.getY(), hooked.getZ());
-        Vec3d startVel = hooked.getVelocity().add(pullX, pullY, pullZ);
-
-        simulateEntity(startPos, startVel, gravity, drag, combinedMatrix);
-    }
-
-    private void simulateEntity(Vec3d pos, Vec3d velocity, float gravity, float drag, Matrix4f combinedMatrix) {
-        List<Vec3d> path = new ArrayList<>();
-        path.add(pos);
-
-        Vec3d currentPos = pos;
-        Vec3d currentVel = velocity;
-        BlockHitResult finalHit = null;
-
-        for (int i = 0; i < 100; i++) {
-            Vec3d nextPos = currentPos.add(currentVel);
-
-            BlockHitResult blockHit = client.world.raycast(new RaycastContext(
-                    currentPos, nextPos,
-                    RaycastContext.ShapeType.COLLIDER,
-                    RaycastContext.FluidHandling.NONE,
-                    client.player // Use player for context to avoid NPE in ShapeContext.of
-            ));
-
-            if (blockHit.getType() != HitResult.Type.MISS) {
-                path.add(blockHit.getPos());
-                finalHit = blockHit;
-                break;
-            }
-
-            path.add(nextPos);
-            currentPos = nextPos;
-            currentVel = currentVel.multiply(drag).subtract(0, gravity, 0);
-        }
-
-        renderPath(path, 0x00FF00, combinedMatrix, finalHit); // Green for pull prediction
+        renderPath(path, color, combinedMatrix, lastBlockHit);
     }
 
     private EntityHitResult getEntityHit(Vec3d start, Vec3d end) {
@@ -301,18 +153,9 @@ public class TrajectoriesModule {
 
         StringBuilder sb = new StringBuilder();
         Vec3d camPos = client.gameRenderer.getCamera().getCameraPos();
-        Vec3d rotation = client.player.getRotationVec(1.0f);
-        Vec3d right = rotation.crossProduct(new Vec3d(0, 1, 0)).normalize();
 
-        for (int i = 0; i < path.size(); i++) {
-            Vec3d p = path.get(i);
-
-            // 3D Offset to the right for readability
-            float progress = (path.size() > 1) ? (float) i / (path.size() - 1) : 1.0f;
-            double offsetAmount = 0.1 * (1.0 - progress);
-            Vec3d offsetPos = p.add(right.multiply(offsetAmount));
-
-            Vec3d rel = offsetPos.subtract(camPos);
+        for (Vec3d p : path) {
+            Vec3d rel = p.subtract(camPos);
             Vector4f v = new Vector4f((float)rel.x, (float)rel.y, (float)rel.z, 1.0f);
             combinedMatrix.transform(v);
 
@@ -343,7 +186,6 @@ public class TrajectoriesModule {
         net.minecraft.util.math.Direction side = hit.getSide();
         Vec3d camPos = client.gameRenderer.getCamera().getCameraPos();
 
-        // Calculate 4 corners of a 0.4x0.4 square
         Vec3d v1, v2;
         if (side.getAxis() == net.minecraft.util.math.Direction.Axis.Y) {
             v1 = new Vec3d(1, 0, 0);

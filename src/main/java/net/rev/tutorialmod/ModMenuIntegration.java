@@ -152,6 +152,12 @@ public class ModMenuIntegration implements ModMenuApi {
             potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Speed Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionSpeedThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionSpeedThreshold = newValue / 10.0).build());
             potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Fire Res Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionFireResThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionFireResThreshold = newValue / 10.0).build());
 
+            SubCategoryBuilder turtleMasterSub = entryBuilder.startSubCategory(Text.literal("Turtle Master"));
+            turtleMasterSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.potionTurtleMasterEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionTurtleMasterEnabled = newValue).build());
+            turtleMasterSub.add(entryBuilder.startLongSlider(Text.literal("Health Threshold"), (long)TutorialMod.CONFIG.potionTurtleMasterHealthThreshold, 1, 20).setDefaultValue(6).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionTurtleMasterHealthThreshold = newValue.doubleValue()).build());
+            turtleMasterSub.add(entryBuilder.startBooleanToggle(Text.literal("Prioritize over Health"), TutorialMod.CONFIG.potionTurtleMasterPriority).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionTurtleMasterPriority = newValue).build());
+            potionModule.addEntry(turtleMasterSub.build());
+
             // 1.5 Tool Switch
             ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch Enabled"), TutorialMod.CONFIG.autoToolSwitchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchEnabled = newValue).build());
@@ -214,6 +220,11 @@ public class ModMenuIntegration implements ModMenuApi {
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Switch Back Delay"), TutorialMod.CONFIG.waterDrainSwitchBackDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchBackDelay = newValue).build());
             minecartTech.addEntry(waterDrainSub.build());
 
+            SubCategoryBuilder extinguishSub = entryBuilder.startSubCategory(Text.literal("Auto Extinguish"));
+            extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue).build());
+            extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
+            minecartTech.addEntry(extinguishSub.build());
+
 
             // --- 2. System Categories at the end ---
 
@@ -256,10 +267,6 @@ public class ModMenuIntegration implements ModMenuApi {
             misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue).build());
 
-            SubCategoryBuilder extinguishSub = entryBuilder.startSubCategory(Text.literal("Auto Extinguish"));
-            extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue).build());
-            extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
-            misc.addEntry(extinguishSub.build());
 
             // 2.3 O-ESP (Moved here, renamed)
             ConfigCategory espOverlay = builder.getOrCreateCategory(Text.literal("O-ESP"));

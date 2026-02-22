@@ -279,6 +279,9 @@ public class ModConfig {
     public String potionHotkey = "key.keyboard.left.alt";
     public double potionActivationPitch = 60.0;
     public double potionHealthThreshold = 10.0;
+    public boolean potionTurtleMasterEnabled = true;
+    public double potionTurtleMasterHealthThreshold = 6.0;
+    public boolean potionTurtleMasterPriority = true;
     public boolean potionThrow = true;
     public boolean potionRestoreSlot = true;
     public double potionStrengthThreshold = 30.0;

@@ -35,12 +35,38 @@ public class PotionModule {
             return;
         }
 
+        // 0. Turtle Master Priority Check
+        if (TutorialMod.CONFIG.potionTurtleMasterEnabled && TutorialMod.CONFIG.potionTurtleMasterPriority) {
+            if (client.player.getHealth() < TutorialMod.CONFIG.potionTurtleMasterHealthThreshold) {
+                if (checkEffect(client, StatusEffects.RESISTANCE, 40)) { // 2 seconds buffer
+                    int slot = findPotion(client, StatusEffects.RESISTANCE);
+                    if (slot != -1) {
+                        usePotion(client, slot, true);
+                        return;
+                    }
+                }
+            }
+        }
+
         // 1. Health Check
         if (client.player.getHealth() < TutorialMod.CONFIG.potionHealthThreshold) {
             int slot = findPotion(client, StatusEffects.INSTANT_HEALTH);
             if (slot != -1) {
                 usePotion(client, slot, true);
                 return;
+            }
+        }
+
+        // 1.5 Turtle Master Non-Priority Check
+        if (TutorialMod.CONFIG.potionTurtleMasterEnabled && !TutorialMod.CONFIG.potionTurtleMasterPriority) {
+            if (client.player.getHealth() < TutorialMod.CONFIG.potionTurtleMasterHealthThreshold) {
+                if (checkEffect(client, StatusEffects.RESISTANCE, 40)) {
+                    int slot = findPotion(client, StatusEffects.RESISTANCE);
+                    if (slot != -1) {
+                        usePotion(client, slot, true);
+                        return;
+                    }
+                }
             }
         }
 
