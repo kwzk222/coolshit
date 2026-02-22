@@ -16,6 +16,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.*;
 import net.minecraft.world.World;
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.TutorialModClient;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector4f;
@@ -116,6 +117,11 @@ public class ESPModule {
 
         frustum.setPosition(camera.getCameraPos().x, camera.getCameraPos().y, camera.getCameraPos().z);
         ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
+
+        TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
+        if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getTrajectoriesModule() != null) {
+            TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
+        }
 
         updateESP(tickCounter, camera, combinedMatrix);
     }

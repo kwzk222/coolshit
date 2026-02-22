@@ -63,6 +63,13 @@ public class ClientPlayNetworkHandlerMixin {
                 TutorialModClient.getInstance().getAutoTotem().handleTotemPop();
             }
         }
+
+        if (packet.getStatus() == 30) {
+            Entity entity = packet.getEntity(client.world);
+            if (entity != null && TutorialModClient.getInstance() != null) {
+                TutorialModClient.getInstance().onShieldBreak(entity.getId());
+            }
+        }
     }
 
     @Inject(method = "onEntityPosition", at = @At("HEAD"))
@@ -89,8 +96,11 @@ public class ClientPlayNetworkHandlerMixin {
 
     @Inject(method = "onGameJoin", at = @At("RETURN"))
     private void onGameJoin(GameJoinS2CPacket packet, CallbackInfo ci) {
-        if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
-            TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+        if (TutorialModClient.getInstance() != null) {
+            TutorialModClient.getInstance().clearShieldCooldowns();
+            if (TutorialModClient.getInstance().getESPModule() != null) {
+                TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+            }
         }
     }
 }

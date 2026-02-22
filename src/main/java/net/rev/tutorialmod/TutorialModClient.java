@@ -51,6 +51,7 @@ import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.PotionModule;
 import net.rev.tutorialmod.modules.TriggerBot;
 import net.rev.tutorialmod.modules.misc.ClickSpamModule;
+import net.rev.tutorialmod.modules.misc.TrajectoriesModule;
 import net.rev.tutorialmod.modules.movement.ClutchModule;
 import net.rev.tutorialmod.modules.movement.ParkourModule;
 
@@ -74,6 +75,7 @@ public class TutorialModClient implements ClientModInitializer {
     private ParkourModule parkourModule;
     private ClutchModule clutchModule;
     private ESPModule espModule;
+    private TrajectoriesModule trajectoriesModule;
     private static OverlayManager overlayManager;
     private static ESPOverlayManager espOverlayManager;
 
@@ -91,6 +93,10 @@ public class TutorialModClient implements ClientModInitializer {
 
     public ESPModule getESPModule() {
         return espModule;
+    }
+
+    public TrajectoriesModule getTrajectoriesModule() {
+        return trajectoriesModule;
     }
 
     public static ESPOverlayManager getESPOverlayManager() {
@@ -134,6 +140,8 @@ public class TutorialModClient implements ClientModInitializer {
     private int pointingTickCounter = 0;
     private String lastLongCoordsInfo = null;
 
+    private final Map<Integer, Long> shieldCooldowns = new HashMap<>();
+
     private int originalSlotBeforeDrain = -1;
     private int drainRestoreTicks = -1;
 
@@ -153,6 +161,27 @@ public class TutorialModClient implements ClientModInitializer {
 
     private String overlayStatusMessage = null;
     private long overlayStatusTime = 0;
+
+    public void onShieldBreak(int entityId) {
+        if (MinecraftClient.getInstance().world != null) {
+            shieldCooldowns.put(entityId, MinecraftClient.getInstance().world.getTime() + 100);
+        }
+    }
+
+    public void clearShieldCooldowns() {
+        shieldCooldowns.clear();
+    }
+
+    private boolean isShieldCooldown(Entity entity) {
+        if (MinecraftClient.getInstance().world == null) return false;
+        Long expiry = shieldCooldowns.get(entity.getId());
+        if (expiry == null) return false;
+        if (MinecraftClient.getInstance().world.getTime() > expiry) {
+            shieldCooldowns.remove(entity.getId());
+            return false;
+        }
+        return true;
+    }
 
     public void setOverlayStatus(String message) {
         if (message == null) return;
@@ -186,6 +215,7 @@ public class TutorialModClient implements ClientModInitializer {
         parkourModule = new ParkourModule();
         clutchModule = new ClutchModule();
         espModule = new ESPModule();
+        trajectoriesModule = new TrajectoriesModule();
         overlayManager = new OverlayManager();
         espOverlayManager = new ESPOverlayManager();
         autoTotem.init();
@@ -255,6 +285,10 @@ public class TutorialModClient implements ClientModInitializer {
         // Handle keybinds first, as they might toggle features on/off.
         handleKeybinds(client);
         handleQuickCrossbow(client);
+
+        if (client.world != null && client.world.getTime() % 100 == 0) {
+            shieldCooldowns.entrySet().removeIf(entry -> client.world.getTime() > entry.getValue());
+        }
         handleChatMacros(client);
 
         // Handle TriggerBot separately, as it may have its own master toggle.
@@ -363,9 +397,26 @@ public class TutorialModClient implements ClientModInitializer {
             Vec3d toSelf = selfPos.subtract(targetPos).normalize();
             isFacing = toSelf.dotProduct(targetLook) > 0;
         }
-        boolean needsStun = isShielding && isFacing && findAxeInHotbar(player) != -1;
-        // Check specific stun toggles based on held item
+
         ItemStack held = player.getMainHandStack();
+        boolean predictShield = false;
+        if (!isShielding && isFacing && (attackedPlayer.getMainHandStack().isOf(Items.SHIELD) || attackedPlayer.getOffHandStack().isOf(Items.SHIELD)) && !isShieldCooldown(attackedPlayer)) {
+            // Check if looking at us
+            Vec3d dirToMe = new Vec3d(player.getX(), player.getY(), player.getZ()).subtract(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ()).normalize();
+            if (attackedPlayer.getRotationVector().dotProduct(dirToMe) > 0.8) {
+                int chance;
+                if (held.isIn(ItemTags.SPEARS)) chance = TutorialMod.CONFIG.spearAutoStunFakePredictionChance;
+                else if (held.getItem() == Items.MACE) chance = TutorialMod.CONFIG.maceAutoStunFakePredictionChance;
+                else chance = TutorialMod.CONFIG.axeSwapFakePredictionChance;
+
+                if (chance > 0 && RANDOM.nextInt(100) < chance) {
+                    predictShield = true;
+                }
+            }
+        }
+
+        boolean needsStun = (isShielding || predictShield) && isFacing && findAxeInHotbar(player) != -1;
+        // Check specific stun toggles based on held item
         if (held.isIn(ItemTags.SPEARS)) needsStun &= TutorialMod.CONFIG.spearAutoStunEnabled;
         else if (held.getItem() == Items.MACE) needsStun &= TutorialMod.CONFIG.maceAutoStunEnabled;
         else needsStun &= TutorialMod.CONFIG.axeSwapEnabled;
@@ -420,8 +471,22 @@ public class TutorialModClient implements ClientModInitializer {
                 isFacing = toSelf.dotProduct(targetLook) > 0;
             }
 
-            // 2. Axe Stun (if shielding)
-            if (isShielding && isFacing) {
+            // 2. Axe Stun (if shielding or predicted)
+            boolean predictShield = false;
+            if (!isShielding && isFacing && (target.getMainHandStack().isOf(Items.SHIELD) || target.getOffHandStack().isOf(Items.SHIELD)) && !isShieldCooldown(target)) {
+                Vec3d dirToMe = new Vec3d(player.getX(), player.getY(), player.getZ()).subtract(target.getX(), target.getY(), target.getZ()).normalize();
+                if (target.getRotationVector().dotProduct(dirToMe) > 0.8) {
+                    int chance;
+                    ItemStack held = player.getMainHandStack();
+                    if (held.isIn(ItemTags.SPEARS)) chance = TutorialMod.CONFIG.spearAutoStunFakePredictionChance;
+                    else if (held.getItem() == Items.MACE) chance = TutorialMod.CONFIG.maceAutoStunFakePredictionChance;
+                    else chance = TutorialMod.CONFIG.axeSwapFakePredictionChance;
+
+                    if (chance > 0 && RANDOM.nextInt(100) < chance) predictShield = true;
+                }
+            }
+
+            if ((isShielding || predictShield) && isFacing) {
                 int axeSlot = findAxeInHotbar(player);
                 if (axeSlot != -1) {
                     syncSlot(axeSlot);

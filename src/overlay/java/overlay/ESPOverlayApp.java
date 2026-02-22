@@ -67,7 +67,13 @@ public class ESPOverlayApp {
     }
 
     private static void handleMessage(String content) {
-        if (content.startsWith("WINDOW_SYNC ")) {
+        if (content.equals("CLEAR_TRAJECTORIES")) {
+            panel.clearTrajectories();
+        } else if (content.startsWith("TRAJECTORY ")) {
+            panel.addTrajectory(content.substring(11));
+        } else if (content.startsWith("IMPACT_PLANE ")) {
+            panel.addImpactPlane(content.substring(13));
+        } else if (content.startsWith("WINDOW_SYNC ")) {
             String[] parts = content.substring(12).split(",");
             if (parts.length == 4) {
                 try {
@@ -140,6 +146,8 @@ public class ESPOverlayApp {
 
     private static class ESPPanel extends JPanel {
         private List<BoxData> boxes = new ArrayList<>();
+        private List<TrajectoryData> trajectories = new ArrayList<>();
+        private List<ImpactPlaneData> impactPlanes = new ArrayList<>();
         private boolean debugMode = true;
         private String debugText = "";
         private float healthBarWidth = 0.1f;
@@ -214,13 +222,74 @@ public class ESPOverlayApp {
                     }
                 }
             }
-            this.boxes = newBoxes;
+            synchronized (boxes) {
+                this.boxes = newBoxes;
+            }
             repaint();
         }
 
         public void clear() {
-            this.boxes.clear();
+            synchronized (boxes) {
+                this.boxes.clear();
+            }
+            synchronized (trajectories) {
+                this.trajectories.clear();
+            }
+            synchronized (impactPlanes) {
+                this.impactPlanes.clear();
+            }
             repaint();
+        }
+
+        public void addTrajectory(String data) {
+            try {
+                String[] parts = data.split("\\|");
+                if (parts.length == 2) {
+                    String[] pointsStr = parts[0].split(",");
+                    int color = Integer.parseInt(parts[1]);
+                    List<Point2D> points = new ArrayList<>();
+                    for (int i = 0; i < pointsStr.length; i += 2) {
+                        float x = Float.parseFloat(pointsStr[i]);
+                        float y = Float.parseFloat(pointsStr[i+1]);
+                        points.add(new Point2D(x, y));
+                    }
+                    if (points.size() >= 2) {
+                        synchronized (trajectories) {
+                            trajectories.add(new TrajectoryData(points, color));
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        public void clearTrajectories() {
+            synchronized (trajectories) {
+                this.trajectories.clear();
+            }
+            synchronized (impactPlanes) {
+                this.impactPlanes.clear();
+            }
+        }
+
+        public void addImpactPlane(String data) {
+            try {
+                String[] parts = data.split("\\|");
+                if (parts.length == 2) {
+                    String[] pointsStr = parts[0].split(",");
+                    int color = Integer.parseInt(parts[1]);
+                    List<Point2D> points = new ArrayList<>();
+                    for (int i = 0; i < pointsStr.length; i += 2) {
+                        float x = Float.parseFloat(pointsStr[i]);
+                        float y = Float.parseFloat(pointsStr[i+1]);
+                        points.add(new Point2D(x, y));
+                    }
+                    if (points.size() >= 3) {
+                        synchronized (impactPlanes) {
+                            impactPlanes.add(new ImpactPlaneData(points, color));
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
         }
 
         @Override
@@ -235,6 +304,36 @@ public class ESPOverlayApp {
             // Apply global opacity
             Composite originalComposite = g2d.getComposite();
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
+
+            // Draw Trajectories
+            synchronized (trajectories) {
+                for (TrajectoryData traj : trajectories) {
+                    g2d.setColor(new Color(traj.color | 0xFF000000, true));
+                    g2d.setStroke(new BasicStroke(2.0f));
+                    for (int i = 0; i < traj.points.size() - 1; i++) {
+                        Point2D p1 = traj.points.get(i);
+                        Point2D p2 = traj.points.get(i + 1);
+                        g2d.drawLine((int) (p1.x * panelW), (int) (p1.y * panelH), (int) (p2.x * panelW), (int) (p2.y * panelH));
+                    }
+                }
+            }
+
+            // Draw Impact Planes
+            synchronized (impactPlanes) {
+                for (ImpactPlaneData plane : impactPlanes) {
+                    g2d.setColor(new Color(plane.color | 0x80000000, true)); // Semi-transparent
+                    int[] xPoints = new int[plane.points.size()];
+                    int[] yPoints = new int[plane.points.size()];
+                    for (int i = 0; i < plane.points.size(); i++) {
+                        xPoints[i] = (int) (plane.points.get(i).x * panelW);
+                        yPoints[i] = (int) (plane.points.get(i).y * panelH);
+                    }
+                    g2d.fillPolygon(xPoints, yPoints, plane.points.size());
+                    g2d.setColor(new Color(plane.color | 0xFF000000, true));
+                    g2d.setStroke(new BasicStroke(1.0f));
+                    g2d.drawPolygon(xPoints, yPoints, plane.points.size());
+                }
+            }
 
             if (debugMode) {
                 g2d.setColor(new Color(255, 0, 0, 100));
@@ -251,64 +350,66 @@ public class ESPOverlayApp {
                 g2d.drawString(debugText, 10, 60);
             }
 
-            for (BoxData box : boxes) {
-                int bx = (int) (box.xf * panelW);
-                int by = (int) (box.yf * panelH);
-                int bw = (int) (box.wf * panelW);
-                int bh = (int) (box.hf * panelH);
+            synchronized (boxes) {
+                for (BoxData box : boxes) {
+                    int bx = (int) (box.xf * panelW);
+                    int by = (int) (box.yf * panelH);
+                    int bw = (int) (box.wf * panelW);
+                    int bh = (int) (box.hf * panelH);
 
-                if (bw <= 0 || bh <= 0) continue;
+                    if (bw <= 0 || bh <= 0) continue;
 
-                Color c = new Color(box.color | 0xFF000000, true);
+                    Color c = new Color(box.color | 0xFF000000, true);
 
-                if (!box.texture.isEmpty()) {
-                    BufferedImage img = getTexture(box.texture);
-                    if (img != null) {
-                        Composite old = g2d.getComposite();
-                        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
-                        g2d.drawImage(img, bx, by, bw, bh, null);
-                        g2d.setComposite(old);
+                    if (!box.texture.isEmpty()) {
+                        BufferedImage img = getTexture(box.texture);
+                        if (img != null) {
+                            Composite old = g2d.getComposite();
+                            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
+                            g2d.drawImage(img, bx, by, bw, bh, null);
+                            g2d.setComposite(old);
+                        } else {
+                            // Fallback to outline if texture missing
+                            g2d.setStroke(new BasicStroke(2.0f));
+                            g2d.setColor(Color.BLACK);
+                            g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
+                            g2d.setColor(c);
+                            g2d.drawRect(bx, by, bw, bh);
+                        }
                     } else {
-                        // Fallback to outline if texture missing
                         g2d.setStroke(new BasicStroke(2.0f));
                         g2d.setColor(Color.BLACK);
                         g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
                         g2d.setColor(c);
                         g2d.drawRect(bx, by, bw, bh);
                     }
-                } else {
-                    g2d.setStroke(new BasicStroke(2.0f));
-                    g2d.setColor(Color.BLACK);
-                    g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
-                    g2d.setColor(c);
-                    g2d.drawRect(bx, by, bw, bh);
-                }
 
-                // Health Bar
-                if (box.health >= 0) {
-                    drawHealthBar(g2d, bx, by, bw, bh, box.health);
-                }
-
-                int labelY = by - 4;
-                if (!box.label.isEmpty() || !box.distLabel.isEmpty()) {
-                    g2d.setFont(new Font("Consolas", Font.BOLD, 12));
-                    FontMetrics fm = g2d.getFontMetrics();
-
-                    if (!box.label.isEmpty()) {
-                        int labelWidth = fm.stringWidth(box.label);
-                        g2d.setColor(new Color(0, 0, 0, 150));
-                        g2d.fillRect(bx + (bw - labelWidth) / 2 - 2, labelY - 11, labelWidth + 4, 13);
-                        g2d.setColor(Color.WHITE);
-                        g2d.drawString(box.label, bx + (bw - labelWidth) / 2, labelY);
-                        labelY -= 15;
+                    // Health Bar
+                    if (box.health >= 0) {
+                        drawHealthBar(g2d, bx, by, bw, bh, box.health);
                     }
 
-                    if (!box.distLabel.isEmpty()) {
-                        int distWidth = fm.stringWidth(box.distLabel);
-                        g2d.setColor(new Color(0, 0, 0, 150));
-                        g2d.fillRect(bx + (bw - distWidth) / 2 - 2, labelY - 11, distWidth + 4, 13);
-                        g2d.setColor(Color.WHITE);
-                        g2d.drawString(box.distLabel, bx + (bw - distWidth) / 2, labelY);
+                    int labelY = by - 4;
+                    if (!box.label.isEmpty() || !box.distLabel.isEmpty()) {
+                        g2d.setFont(new Font("Consolas", Font.BOLD, 12));
+                        FontMetrics fm = g2d.getFontMetrics();
+
+                        if (!box.label.isEmpty()) {
+                            int labelWidth = fm.stringWidth(box.label);
+                            g2d.setColor(new Color(0, 0, 0, 150));
+                            g2d.fillRect(bx + (bw - labelWidth) / 2 - 2, labelY - 11, labelWidth + 4, 13);
+                            g2d.setColor(Color.WHITE);
+                            g2d.drawString(box.label, bx + (bw - labelWidth) / 2, labelY);
+                            labelY -= 15;
+                        }
+
+                        if (!box.distLabel.isEmpty()) {
+                            int distWidth = fm.stringWidth(box.distLabel);
+                            g2d.setColor(new Color(0, 0, 0, 150));
+                            g2d.fillRect(bx + (bw - distWidth) / 2 - 2, labelY - 11, distWidth + 4, 13);
+                            g2d.setColor(Color.WHITE);
+                            g2d.drawString(box.distLabel, bx + (bw - distWidth) / 2, labelY);
+                        }
                     }
                 }
             }
@@ -386,6 +487,31 @@ public class ESPOverlayApp {
         BoxData(float xf, float yf, float wf, float hf, String label, int color, String distLabel, float health, String texture) {
             this.xf = xf; this.yf = yf; this.wf = wf; this.hf = hf; this.label = label; this.color = color; this.distLabel = distLabel;
             this.health = health; this.texture = texture;
+        }
+    }
+
+    private static class TrajectoryData {
+        List<Point2D> points;
+        int color;
+        TrajectoryData(List<Point2D> points, int color) {
+            this.points = points;
+            this.color = color;
+        }
+    }
+
+    private static class Point2D {
+        float x, y;
+        Point2D(float x, float y) {
+            this.x = x; this.y = y;
+        }
+    }
+
+    private static class ImpactPlaneData {
+        List<Point2D> points;
+        int color;
+        ImpactPlaneData(List<Point2D> points, int color) {
+            this.points = points;
+            this.color = color;
         }
     }
 }

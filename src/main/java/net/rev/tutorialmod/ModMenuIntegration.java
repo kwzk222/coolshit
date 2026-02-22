@@ -266,15 +266,18 @@ public class ModMenuIntegration implements ModMenuApi {
 
             SubCategoryBuilder espGeneral = entryBuilder.startSubCategory(Text.literal("General"));
             espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.showESP).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showESP = newValue).build());
+            espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Frustum Culling"), TutorialMod.CONFIG.espFrustumCulling).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espFrustumCulling = newValue).build());
+            espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Trajectories"), TutorialMod.CONFIG.trajectoriesEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.trajectoriesEnabled = newValue).build());
             espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Anti-Vanish Mode"), TutorialMod.CONFIG.espAntiVanish).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espAntiVanish = newValue).build());
             espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Hide in Menus"), TutorialMod.CONFIG.espHideInMenus).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHideInMenus = newValue).build());
+            espGeneral.add(entryBuilder.startColorField(Text.literal("Trajectory Color"), TutorialMod.CONFIG.trajectoriesColor).setDefaultValue(0xFFFFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.trajectoriesColor = newValue).build());
+            espGeneral.add(entryBuilder.startColorField(Text.literal("Trajectory Hit Color"), TutorialMod.CONFIG.trajectoriesHitColor).setDefaultValue(0xFF0000).setSaveConsumer(newValue -> TutorialMod.CONFIG.trajectoriesHitColor = newValue).build());
             espGeneral.add(entryBuilder.startIntSlider(Text.literal("Refresh Rate"), TutorialMod.CONFIG.espRefreshRate, 1, 60).setTooltip(Text.literal("Units: FPS")).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRefreshRate = newValue).build());
             espGeneral.add(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.toggleESPHotkey).setDefaultValue("key.keyboard.y").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleESPHotkey = newValue).build());
             espOverlay.addEntry(espGeneral.build());
 
             int maxBlocks = net.minecraft.client.MinecraftClient.getInstance().options.getClampedViewDistance() * 16;
             SubCategoryBuilder espFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
-            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Frustum Culling"), TutorialMod.CONFIG.espFrustumCulling).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espFrustumCulling = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Players"), TutorialMod.CONFIG.espPlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espPlayers = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Villagers"), TutorialMod.CONFIG.espVillagers).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espVillagers = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Hostile Mobs"), TutorialMod.CONFIG.espHostiles).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHostiles = newValue).build());
