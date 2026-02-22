@@ -222,12 +222,16 @@ public class ESPOverlayApp {
                     }
                 }
             }
-            this.boxes = newBoxes;
+            synchronized (boxes) {
+                this.boxes = newBoxes;
+            }
             repaint();
         }
 
         public void clear() {
-            this.boxes.clear();
+            synchronized (boxes) {
+                this.boxes.clear();
+            }
             synchronized (trajectories) {
                 this.trajectories.clear();
             }
@@ -346,64 +350,66 @@ public class ESPOverlayApp {
                 g2d.drawString(debugText, 10, 60);
             }
 
-            for (BoxData box : boxes) {
-                int bx = (int) (box.xf * panelW);
-                int by = (int) (box.yf * panelH);
-                int bw = (int) (box.wf * panelW);
-                int bh = (int) (box.hf * panelH);
+            synchronized (boxes) {
+                for (BoxData box : boxes) {
+                    int bx = (int) (box.xf * panelW);
+                    int by = (int) (box.yf * panelH);
+                    int bw = (int) (box.wf * panelW);
+                    int bh = (int) (box.hf * panelH);
 
-                if (bw <= 0 || bh <= 0) continue;
+                    if (bw <= 0 || bh <= 0) continue;
 
-                Color c = new Color(box.color | 0xFF000000, true);
+                    Color c = new Color(box.color | 0xFF000000, true);
 
-                if (!box.texture.isEmpty()) {
-                    BufferedImage img = getTexture(box.texture);
-                    if (img != null) {
-                        Composite old = g2d.getComposite();
-                        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
-                        g2d.drawImage(img, bx, by, bw, bh, null);
-                        g2d.setComposite(old);
+                    if (!box.texture.isEmpty()) {
+                        BufferedImage img = getTexture(box.texture);
+                        if (img != null) {
+                            Composite old = g2d.getComposite();
+                            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
+                            g2d.drawImage(img, bx, by, bw, bh, null);
+                            g2d.setComposite(old);
+                        } else {
+                            // Fallback to outline if texture missing
+                            g2d.setStroke(new BasicStroke(2.0f));
+                            g2d.setColor(Color.BLACK);
+                            g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
+                            g2d.setColor(c);
+                            g2d.drawRect(bx, by, bw, bh);
+                        }
                     } else {
-                        // Fallback to outline if texture missing
                         g2d.setStroke(new BasicStroke(2.0f));
                         g2d.setColor(Color.BLACK);
                         g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
                         g2d.setColor(c);
                         g2d.drawRect(bx, by, bw, bh);
                     }
-                } else {
-                    g2d.setStroke(new BasicStroke(2.0f));
-                    g2d.setColor(Color.BLACK);
-                    g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
-                    g2d.setColor(c);
-                    g2d.drawRect(bx, by, bw, bh);
-                }
 
-                // Health Bar
-                if (box.health >= 0) {
-                    drawHealthBar(g2d, bx, by, bw, bh, box.health);
-                }
-
-                int labelY = by - 4;
-                if (!box.label.isEmpty() || !box.distLabel.isEmpty()) {
-                    g2d.setFont(new Font("Consolas", Font.BOLD, 12));
-                    FontMetrics fm = g2d.getFontMetrics();
-
-                    if (!box.label.isEmpty()) {
-                        int labelWidth = fm.stringWidth(box.label);
-                        g2d.setColor(new Color(0, 0, 0, 150));
-                        g2d.fillRect(bx + (bw - labelWidth) / 2 - 2, labelY - 11, labelWidth + 4, 13);
-                        g2d.setColor(Color.WHITE);
-                        g2d.drawString(box.label, bx + (bw - labelWidth) / 2, labelY);
-                        labelY -= 15;
+                    // Health Bar
+                    if (box.health >= 0) {
+                        drawHealthBar(g2d, bx, by, bw, bh, box.health);
                     }
 
-                    if (!box.distLabel.isEmpty()) {
-                        int distWidth = fm.stringWidth(box.distLabel);
-                        g2d.setColor(new Color(0, 0, 0, 150));
-                        g2d.fillRect(bx + (bw - distWidth) / 2 - 2, labelY - 11, distWidth + 4, 13);
-                        g2d.setColor(Color.WHITE);
-                        g2d.drawString(box.distLabel, bx + (bw - distWidth) / 2, labelY);
+                    int labelY = by - 4;
+                    if (!box.label.isEmpty() || !box.distLabel.isEmpty()) {
+                        g2d.setFont(new Font("Consolas", Font.BOLD, 12));
+                        FontMetrics fm = g2d.getFontMetrics();
+
+                        if (!box.label.isEmpty()) {
+                            int labelWidth = fm.stringWidth(box.label);
+                            g2d.setColor(new Color(0, 0, 0, 150));
+                            g2d.fillRect(bx + (bw - labelWidth) / 2 - 2, labelY - 11, labelWidth + 4, 13);
+                            g2d.setColor(Color.WHITE);
+                            g2d.drawString(box.label, bx + (bw - labelWidth) / 2, labelY);
+                            labelY -= 15;
+                        }
+
+                        if (!box.distLabel.isEmpty()) {
+                            int distWidth = fm.stringWidth(box.distLabel);
+                            g2d.setColor(new Color(0, 0, 0, 150));
+                            g2d.fillRect(bx + (bw - distWidth) / 2 - 2, labelY - 11, distWidth + 4, 13);
+                            g2d.setColor(Color.WHITE);
+                            g2d.drawString(box.distLabel, bx + (bw - distWidth) / 2, labelY);
+                        }
                     }
                 }
             }

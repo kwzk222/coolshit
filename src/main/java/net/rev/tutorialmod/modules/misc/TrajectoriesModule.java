@@ -64,18 +64,86 @@ public class TrajectoriesModule {
             active = true;
         } else if (isRod) {
             if (client.player.fishHook == null) {
-                speed = 1.5f;
-                gravity = 0.03f;
-                drag = 0.92f;
-                active = true;
+                simulateRodThrow(combinedMatrix);
+                return;
             } else {
                 handleRodPull(combinedMatrix);
+                return;
             }
         }
 
         if (!active || speed <= 0.1f) return;
 
         simulate(speed, gravity, drag, combinedMatrix);
+    }
+
+    private void simulateRodThrow(Matrix4f combinedMatrix) {
+        float pitch = client.player.getPitch();
+        float yaw = client.player.getYaw();
+
+        float cosYaw = (float) Math.cos(-yaw * 0.017453292F - (float)Math.PI);
+        float sinYaw = (float) Math.sin(-yaw * 0.017453292F - (float)Math.PI);
+        float cosPitch = -(float) Math.cos(-pitch * 0.017453292F);
+        float sinPitch = (float) Math.sin(-pitch * 0.017453292F);
+
+        double startX = client.player.getX() - (double) sinYaw * 0.3D;
+        double startY = client.player.getEyeY();
+        double startZ = client.player.getZ() - (double) cosYaw * 0.3D;
+        Vec3d pos = new Vec3d(startX, startY, startZ);
+
+        Vec3d velocity = new Vec3d(-sinYaw, net.minecraft.util.math.MathHelper.clamp(-(sinPitch / cosPitch), -5.0F, 5.0F), -cosYaw);
+        double len = velocity.length();
+        velocity = velocity.multiply(0.6D / len);
+
+        Vec3d playerVel = client.player.getVelocity();
+        velocity = velocity.add(playerVel.x, client.player.isOnGround() ? 0 : playerVel.y, playerVel.z);
+
+        simulatePath(pos, velocity, 0.03f, 0.92f, combinedMatrix, TutorialMod.CONFIG.trajectoriesColor);
+    }
+
+    private void simulatePath(Vec3d pos, Vec3d velocity, float gravity, float drag, Matrix4f combinedMatrix, int color) {
+        List<Vec3d> path = new ArrayList<>();
+        path.add(pos);
+
+        Vec3d currentPos = pos;
+        Vec3d currentVel = velocity;
+        BlockHitResult finalBlockHit = null;
+        boolean hitEntity = false;
+
+        for (int i = 0; i < 100; i++) {
+            Vec3d nextPos = currentPos.add(currentVel);
+
+            BlockHitResult blockHit = client.world.raycast(new RaycastContext(
+                    currentPos, nextPos,
+                    RaycastContext.ShapeType.COLLIDER,
+                    RaycastContext.FluidHandling.NONE,
+                    client.player
+            ));
+
+            EntityHitResult entityHit = getEntityHit(currentPos, nextPos);
+
+            if (entityHit != null) {
+                path.add(entityHit.getPos());
+                hitEntity = true;
+                break;
+            }
+
+            if (blockHit.getType() != HitResult.Type.MISS) {
+                path.add(blockHit.getPos());
+                finalBlockHit = blockHit;
+                break;
+            }
+
+            path.add(nextPos);
+            currentPos = nextPos;
+            currentVel = currentVel.multiply(drag).subtract(0, gravity, 0);
+        }
+
+        if (hitEntity) {
+            color = TutorialMod.CONFIG.trajectoriesHitColor;
+        }
+
+        renderPath(path, color, combinedMatrix, finalBlockHit);
     }
 
     private void simulate(float speed, float gravity, float drag, Matrix4f combinedMatrix) {
@@ -247,7 +315,7 @@ public class TrajectoriesModule {
                 float y = (1.0f - (v.y / v.w) * fovScale) * 0.5f;
 
                 // Visual offset to the right for the beginning of the line
-                float progress = (float) i / (path.size() - 1);
+                float progress = (path.size() > 1) ? (float) i / (path.size() - 1) : 1.0f;
                 float offset = 0.05f * (1.0f - progress);
                 x += offset;
 
@@ -266,6 +334,7 @@ public class TrajectoriesModule {
     }
 
     private void renderImpactPlane(BlockHitResult hit, int color, Matrix4f combinedMatrix) {
+        if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
         Vec3d pos = hit.getPos();
         net.minecraft.util.math.Direction side = hit.getSide();
         Vec3d camPos = client.gameRenderer.getCamera().getCameraPos();
