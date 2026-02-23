@@ -130,6 +130,18 @@ public class ModConfig {
     // --- TriggerBot ---
     public int triggerBotReactionMinDelay = 0;
     public int triggerBotReactionMaxDelay = 0;
+
+    // --- Aim Assist ---
+    public boolean aimAssistEnabled = false;
+    public String aimAssistHotkey = "key.keyboard.v";
+    public double aimAssistStrength = 1.0;
+    public boolean aimAssistHorizontalOnly = false;
+    public double aimAssistMaxRange = 4.0;
+    public double aimAssistMinRange = 0.0;
+    public boolean aimAssistWeaponOnly = true;
+    public double aimAssistChargeThreshold = 0.9;
+    public double aimAssistTriggerMargin = 0.0;
+    public double aimAssistCenterMargin = 0.2;
     public boolean triggerBotWeaponOnly = true;
     public boolean attackOnCrit = false;
     public boolean triggerBotEnabled = true;

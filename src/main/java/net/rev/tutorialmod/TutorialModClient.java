@@ -43,6 +43,7 @@ import net.rev.tutorialmod.event.AttackEntityCallback;
 import net.rev.tutorialmod.mixin.GameOptionsAccessor;
 import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
 import net.rev.tutorialmod.mixin.PlayerInventoryMixin;
+import net.rev.tutorialmod.modules.AimAssist;
 import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.ESPModule;
 import net.rev.tutorialmod.modules.ESPOverlayManager;
@@ -69,6 +70,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     // --- Modules & Features ---
     private TriggerBot triggerBot;
+    private AimAssist aimAssist;
     private AutoTotem autoTotem;
     private EnemyInfo enemyInfo;
     private PotionModule potionModule;
@@ -116,6 +118,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean sprintModeWasPressed = false;
     private boolean sneakModeWasPressed = false;
     private boolean autoWaterDrainModeWasPressed = false;
+    private boolean aimAssistToggleWasPressed = false;
 
     // --- State: Combat Swap ---
     private boolean isExecutingCombo = false;
@@ -209,6 +212,7 @@ public class TutorialModClient implements ClientModInitializer {
     public void onInitializeClient() {
         instance = this;
         triggerBot = new TriggerBot();
+        aimAssist = new AimAssist();
         autoTotem = new AutoTotem();
         enemyInfo = new EnemyInfo();
         potionModule = new PotionModule();
@@ -294,6 +298,10 @@ public class TutorialModClient implements ClientModInitializer {
         // Handle TriggerBot separately, as it may have its own master toggle.
         if (triggerBot != null) {
             triggerBot.onTick();
+        }
+
+        if (aimAssist != null) {
+            aimAssist.onTick();
         }
 
         // Handle Enemy Info Ticks
@@ -565,6 +573,15 @@ public class TutorialModClient implements ClientModInitializer {
             TutorialMod.sendUpdateMessage("Clutch set to " + (TutorialMod.CONFIG.clutchEnabled ? "ON" : "OFF"));
         }
         clutchToggleWasPressed = isClutchTogglePressed;
+
+        // --- Toggle Aim Assist Hotkey ---
+        boolean isAimAssistTogglePressed = isKeyDown(TutorialMod.CONFIG.aimAssistHotkey);
+        if (isAimAssistTogglePressed && !aimAssistToggleWasPressed) {
+            TutorialMod.CONFIG.aimAssistEnabled = !TutorialMod.CONFIG.aimAssistEnabled;
+            TutorialMod.CONFIG.save();
+            TutorialMod.sendUpdateMessage("Aim Assist set to " + (TutorialMod.CONFIG.aimAssistEnabled ? "ON" : "OFF"));
+        }
+        aimAssistToggleWasPressed = isAimAssistTogglePressed;
 
         boolean isMasterTogglePressed = isKeyDown(TutorialMod.CONFIG.masterToggleHotkey);
         if (isMasterTogglePressed && !masterToggleWasPressed) {

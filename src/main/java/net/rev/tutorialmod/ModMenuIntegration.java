@@ -204,7 +204,20 @@ public class ModMenuIntegration implements ModMenuApi {
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.triggerBotWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotWeaponOnly = newValue).build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit Only"), TutorialMod.CONFIG.attackOnCrit).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue).build());
 
-            // 1.7 UHC/Cart (Minecart Tech)
+            // 1.7 Aim Assist
+            ConfigCategory aimAssist = builder.getOrCreateCategory(Text.literal("Aim Assist"));
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Aim Assist Enabled"), TutorialMod.CONFIG.aimAssistEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEnabled = newValue).build());
+            aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Toggle)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.v").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 10), 1, 100).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Horizontal Only"), TutorialMod.CONFIG.aimAssistHorizontalOnly).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHorizontalOnly = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range"), (long)(TutorialMod.CONFIG.aimAssistMaxRange * 10), 0, 100).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMaxRange = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.aimAssistMinRange * 10), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMinRange = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.aimAssistWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistWeaponOnly = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Trigger Margin"), (long)(TutorialMod.CONFIG.aimAssistTriggerMargin * 100), 0, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistTriggerMargin = newValue / 100.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Center Randomization"), (long)(TutorialMod.CONFIG.aimAssistCenterMargin * 100), 0, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistCenterMargin = newValue / 100.0).build());
+
+            // 1.8 UHC/Cart (Minecart Tech)
             ConfigCategory minecartTech = builder.getOrCreateCategory(Text.literal("UHC/Cart"));
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement Enabled"), TutorialMod.CONFIG.tntMinecartPlacementEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue).build());
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence Enabled"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
