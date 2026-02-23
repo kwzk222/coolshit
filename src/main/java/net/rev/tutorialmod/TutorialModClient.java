@@ -93,6 +93,10 @@ public class TutorialModClient implements ClientModInitializer {
         return enemyInfo;
     }
 
+    public AimAssist getAimAssist() {
+        return aimAssist;
+    }
+
     public ESPModule getESPModule() {
         return espModule;
     }
