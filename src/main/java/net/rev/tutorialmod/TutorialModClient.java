@@ -309,12 +309,12 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         // Handle Enemy Info Ticks
-        if (TutorialMod.CONFIG.showEnemyInfo) {
+        if (TutorialMod.CONFIG.showEnemyInfo && TutorialMod.CONFIG.showCoordsOverlay) {
             enemyInfo.onTick(client);
         }
 
         // --- Centralized Overlay Logic ---
-        boolean shouldOverlayBeRunning = TutorialMod.CONFIG.showCoordsOverlay || TutorialMod.CONFIG.showEnemyInfo;
+        boolean shouldOverlayBeRunning = TutorialMod.CONFIG.showCoordsOverlay;
         if (shouldOverlayBeRunning && !overlayManager.isRunning() && client.player != null) {
             overlayManager.start();
         } else if ((!shouldOverlayBeRunning || client.player == null) && overlayManager.isRunning()) {

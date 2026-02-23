@@ -114,7 +114,7 @@ public class AimAssist {
         Vec3d direction = mc.player.getRotationVec(1.0f);
         Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
 
-        Box box = target.getBoundingBox().expand(target.getTargetingMargin() + TutorialMod.CONFIG.aimAssistTriggerMargin);
+        Box box = target.getBoundingBox().expand(target.getTargetingMargin() - TutorialMod.CONFIG.aimAssistTriggerMargin);
         return box.raycast(start, end).isPresent();
     }
 
