@@ -23,9 +23,7 @@ public class AimAssist {
     private long lastFrameTime = 0;
     private boolean isAssisting = false;
 
-    // We don't use onTick for rotation anymore to ensure smoothness
     public void onTick() {
-        // We can use onTick to reset state if needed
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.aimAssistEnabled) {
             isAssisting = false;
         }
@@ -63,25 +61,30 @@ public class AimAssist {
             return;
         }
 
-        boolean onTarget = isCrosshairOnTarget(target);
+        Vec3d targetPos = getTargetPos(target);
 
+        // --- Smart Triggering Logic ---
+
+        // 1. If not assisting, we ONLY start if we are completely off the target's REAL hitbox.
+        // This avoids "microtracking" jitter while already tracking.
         if (!isAssisting) {
-            if (onTarget) {
-                // Already tracking, do nothing as requested
+            if (isCrosshairOnTarget(target)) {
                 lastFrameTime = 0;
                 return;
-            } else {
-                // Off target, start assisting
-                isAssisting = true;
             }
+            isAssisting = true;
         }
 
-        // If we are assisting, we continue until "center-ish"
-        rotateToward(target);
-
-        if (isCloseToCenter(target)) {
+        // 2. If assisting, we continue until we hit the "center-ish" zone.
+        // The trigger margin defines the size of this stop zone.
+        if (isCrosshairOnPoint(targetPos, TutorialMod.CONFIG.aimAssistTriggerMargin)) {
             isAssisting = false;
+            lastFrameTime = 0;
+            return;
         }
+
+        // 3. Move toward target
+        rotateToward(targetPos);
     }
 
     private boolean isHoldingMeleeWeapon() {
@@ -108,17 +111,42 @@ public class AimAssist {
         return closest;
     }
 
+    private Vec3d getTargetPos(Entity target) {
+        long now = System.currentTimeMillis();
+        if (now - lastRandomTime > 500) {
+            double m = TutorialMod.CONFIG.aimAssistCenterMargin;
+            lastRandomOffset = new Vec3d(
+                (random.nextDouble() - 0.5) * target.getWidth() * m,
+                (random.nextDouble() - 0.5) * target.getHeight() * m,
+                (random.nextDouble() - 0.5) * target.getWidth() * m
+            );
+            lastRandomTime = now;
+        }
+        return target.getBoundingBox().getCenter().add(lastRandomOffset);
+    }
+
     private boolean isCrosshairOnTarget(Entity target) {
         if (mc.player == null) return false;
         Vec3d start = mc.player.getCameraPosVec(1.0f);
         Vec3d direction = mc.player.getRotationVec(1.0f);
         Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
 
-        Box box = target.getBoundingBox().expand(target.getTargetingMargin() - TutorialMod.CONFIG.aimAssistTriggerMargin);
+        Box box = target.getBoundingBox().expand(target.getTargetingMargin());
         return box.raycast(start, end).isPresent();
     }
 
-    private void rotateToward(Entity target) {
+    private boolean isCrosshairOnPoint(Vec3d point, double radius) {
+        if (mc.player == null) return false;
+        Vec3d start = mc.player.getCameraPosVec(1.0f);
+        Vec3d direction = mc.player.getRotationVec(1.0f);
+        Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
+
+        double r = Math.max(0.005, radius);
+        Box box = new Box(point.x - r, point.y - r, point.z - r, point.x + r, point.y + r, point.z + r);
+        return box.raycast(start, end).isPresent();
+    }
+
+    private void rotateToward(Vec3d targetPos) {
         if (mc.player == null) return;
 
         long now = System.currentTimeMillis();
@@ -129,22 +157,7 @@ public class AimAssist {
         float deltaTime = (now - lastFrameTime) / 1000f;
         lastFrameTime = now;
 
-        // Limit deltaTime to avoid huge jumps after lag spikes
         if (deltaTime > 0.1f) deltaTime = 0.1f;
-
-        Vec3d targetPos = target.getBoundingBox().getCenter();
-
-        // Randomization logic
-        if (now - lastRandomTime > 500) {
-            double m = TutorialMod.CONFIG.aimAssistCenterMargin;
-            lastRandomOffset = new Vec3d(
-                (random.nextDouble() - 0.5) * target.getWidth() * m,
-                (random.nextDouble() - 0.5) * target.getHeight() * m,
-                (random.nextDouble() - 0.5) * target.getWidth() * m
-            );
-            lastRandomTime = now;
-        }
-        targetPos = targetPos.add(lastRandomOffset);
 
         Vec3d diff = targetPos.subtract(mc.player.getCameraPosVec(1.0f));
 
@@ -162,9 +175,6 @@ public class AimAssist {
         float yawDiff = MathHelper.wrapDegrees(targetYaw - currentYaw);
         float pitchDiff = MathHelper.wrapDegrees(targetPitch - currentPitch);
 
-        // Frame-rate independent smoothing
-        // Strength * factor * deltaTime
-        // At 1.0 strength, we want it to be reasonably fast but smooth.
         double step = TutorialMod.CONFIG.aimAssistStrength * 8.0 * deltaTime;
         if (step > 1.0) step = 1.0;
 
@@ -174,31 +184,6 @@ public class AimAssist {
         mc.player.setYaw(newYaw);
         if (!TutorialMod.CONFIG.aimAssistHorizontalOnly) {
             mc.player.setPitch(newPitch);
-        }
-    }
-
-    private boolean isCloseToCenter(Entity target) {
-        if (mc.player == null) return false;
-
-        Vec3d targetPos = target.getBoundingBox().getCenter().add(lastRandomOffset);
-        Vec3d diff = targetPos.subtract(mc.player.getCameraPosVec(1.0f));
-
-        double diffX = diff.x;
-        double diffY = diff.y;
-        double diffZ = diff.z;
-        double diffXZ = Math.sqrt(diffX * diffX + diffZ * diffZ);
-
-        float targetYaw = (float) MathHelper.wrapDegrees(Math.toDegrees(Math.atan2(diffZ, diffX)) - 90.0);
-        float targetPitch = (float) MathHelper.wrapDegrees(-Math.toDegrees(Math.atan2(diffY, diffXZ)));
-
-        float yawDiff = Math.abs(MathHelper.wrapDegrees(targetYaw - mc.player.getYaw()));
-        float pitchDiff = Math.abs(MathHelper.wrapDegrees(targetPitch - mc.player.getPitch()));
-
-        // Consider "center-ish" as within 1 degree
-        if (TutorialMod.CONFIG.aimAssistHorizontalOnly) {
-            return yawDiff < 1.0f;
-        } else {
-            return yawDiff < 1.0f && pitchDiff < 1.0f;
         }
     }
 }
