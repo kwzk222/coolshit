@@ -17,9 +17,6 @@ import java.util.Random;
 
 public class AimAssist {
     private final MinecraftClient mc = MinecraftClient.getInstance();
-    private final Random random = new Random();
-    private Vec3d lastRandomOffset = Vec3d.ZERO;
-    private long lastRandomTime = 0;
     private long lastFrameTime = 0;
     private boolean isAssisting = false;
 
@@ -61,12 +58,11 @@ public class AimAssist {
             return;
         }
 
-        Vec3d targetPos = getTargetPos(target);
+        Vec3d targetPos = target.getBoundingBox().getCenter();
 
         // --- Smart Triggering Logic ---
 
         // 1. If not assisting, we ONLY start if we are completely off the target's REAL hitbox.
-        // This avoids "microtracking" jitter while already tracking.
         if (!isAssisting) {
             if (isCrosshairOnTarget(target)) {
                 lastFrameTime = 0;
@@ -76,7 +72,7 @@ public class AimAssist {
         }
 
         // 2. If assisting, we continue until we hit the "center-ish" zone.
-        // The trigger margin defines the size of this stop zone.
+        // The trigger margin defines the size of this stop zone (radius).
         if (isCrosshairOnPoint(targetPos, TutorialMod.CONFIG.aimAssistTriggerMargin)) {
             isAssisting = false;
             lastFrameTime = 0;
@@ -84,7 +80,7 @@ public class AimAssist {
         }
 
         // 3. Move toward target
-        rotateToward(targetPos);
+        rotateToward(target, targetPos);
     }
 
     private boolean isHoldingMeleeWeapon() {
@@ -103,26 +99,26 @@ public class AimAssist {
             if (!TargetFilters.isValidTarget(entity)) continue;
 
             double dist = mc.player.distanceTo(entity);
-            if (dist >= TutorialMod.CONFIG.aimAssistMinRange && dist <= minDist) {
-                minDist = dist;
-                closest = entity;
-            }
+            if (dist < TutorialMod.CONFIG.aimAssistMinRange || dist > minDist) continue;
+
+            if (!isInFov(entity, (float) TutorialMod.CONFIG.aimAssistFov)) continue;
+
+            minDist = dist;
+            closest = entity;
         }
         return closest;
     }
 
-    private Vec3d getTargetPos(Entity target) {
-        long now = System.currentTimeMillis();
-        if (now - lastRandomTime > 500) {
-            double m = TutorialMod.CONFIG.aimAssistCenterMargin;
-            lastRandomOffset = new Vec3d(
-                (random.nextDouble() - 0.5) * target.getWidth() * m,
-                (random.nextDouble() - 0.5) * target.getHeight() * m,
-                (random.nextDouble() - 0.5) * target.getWidth() * m
-            );
-            lastRandomTime = now;
-        }
-        return target.getBoundingBox().getCenter().add(lastRandomOffset);
+    private boolean isInFov(Entity entity, float fov) {
+        if (mc.player == null) return false;
+        Vec3d diff = entity.getBoundingBox().getCenter().subtract(mc.player.getCameraPosVec(1.0f));
+        double yaw = Math.toDegrees(Math.atan2(diff.z, diff.x)) - 90.0;
+        double pitch = -Math.toDegrees(Math.atan2(diff.y, Math.sqrt(diff.x * diff.x + diff.z * diff.z)));
+
+        double yawDiff = Math.abs(MathHelper.wrapDegrees(yaw - mc.player.getYaw()));
+        double pitchDiff = Math.abs(MathHelper.wrapDegrees(pitch - mc.player.getPitch()));
+
+        return yawDiff <= fov / 2.0 && pitchDiff <= fov / 2.0;
     }
 
     private boolean isCrosshairOnTarget(Entity target) {
@@ -146,7 +142,7 @@ public class AimAssist {
         return box.raycast(start, end).isPresent();
     }
 
-    private void rotateToward(Vec3d targetPos) {
+    private void rotateToward(Entity target, Vec3d targetPos) {
         if (mc.player == null) return;
 
         long now = System.currentTimeMillis();
@@ -175,7 +171,20 @@ public class AimAssist {
         float yawDiff = MathHelper.wrapDegrees(targetYaw - currentYaw);
         float pitchDiff = MathHelper.wrapDegrees(targetPitch - currentPitch);
 
-        double step = TutorialMod.CONFIG.aimAssistStrength * 8.0 * deltaTime;
+        double strength = TutorialMod.CONFIG.aimAssistStrength;
+
+        if (TutorialMod.CONFIG.aimAssistVariableStrength) {
+            double dist = mc.player.distanceTo(target);
+            // Example scaling: stronger when far, or weaker when far?
+            // "track more if that slider is lower sensitivity and flick more if its higher"
+            // If dist is large, we might want higher strength to cover the angle?
+            // Actually, distance-based strength usually means it's adjusted so it feels consistent.
+            // A simple linear scale:
+            double distFactor = (dist / 4.0) * TutorialMod.CONFIG.aimAssistVariableStrengthFactor;
+            strength *= Math.max(0.5, distFactor);
+        }
+
+        double step = strength * 8.0 * deltaTime;
         if (step > 1.0) step = 1.0;
 
         float newYaw = currentYaw + (float)(yawDiff * step);

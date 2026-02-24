@@ -94,6 +94,14 @@ public class PotionModule {
                 return;
             }
         }
+
+        if (checkEffect(client, StatusEffects.REGENERATION, (int)(TutorialMod.CONFIG.potionRegenThreshold * 20))) {
+            int slot = findPotion(client, StatusEffects.REGENERATION);
+            if (slot != -1) {
+                usePotion(client, slot, false);
+                return;
+            }
+        }
     }
 
     private boolean isHotkeyHeld(MinecraftClient client) {

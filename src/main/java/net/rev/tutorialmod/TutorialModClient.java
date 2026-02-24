@@ -47,7 +47,6 @@ import net.rev.tutorialmod.modules.AimAssist;
 import net.rev.tutorialmod.modules.AutoTotem;
 import net.rev.tutorialmod.modules.ESPModule;
 import net.rev.tutorialmod.modules.ESPOverlayManager;
-import net.rev.tutorialmod.modules.EnemyInfo;
 import net.rev.tutorialmod.modules.OverlayManager;
 import net.rev.tutorialmod.modules.PotionModule;
 import net.rev.tutorialmod.modules.TriggerBot;
@@ -72,7 +71,6 @@ public class TutorialModClient implements ClientModInitializer {
     private TriggerBot triggerBot;
     private AimAssist aimAssist;
     private AutoTotem autoTotem;
-    private EnemyInfo enemyInfo;
     private PotionModule potionModule;
     private ParkourModule parkourModule;
     private ClutchModule clutchModule;
@@ -87,10 +85,6 @@ public class TutorialModClient implements ClientModInitializer {
 
     public static OverlayManager getOverlayManager() {
         return overlayManager;
-    }
-
-    public EnemyInfo getEnemyInfo() {
-        return enemyInfo;
     }
 
     public AimAssist getAimAssist() {
@@ -128,6 +122,8 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean isExecutingCombo = false;
     private int sprintResetTimer = -1;
     private int sprintResetCooldownTimer = -1;
+    private int comboRestoreTicks = -1;
+    private int comboRestoreSlot = -1;
 
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
     private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_LAVA_PLACEMENT, AWAITING_FIRE_PLACEMENT, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
@@ -218,7 +214,6 @@ public class TutorialModClient implements ClientModInitializer {
         triggerBot = new TriggerBot();
         aimAssist = new AimAssist();
         autoTotem = new AutoTotem();
-        enemyInfo = new EnemyInfo();
         potionModule = new PotionModule();
         parkourModule = new ParkourModule();
         clutchModule = new ClutchModule();
@@ -308,10 +303,7 @@ public class TutorialModClient implements ClientModInitializer {
             aimAssist.onTick();
         }
 
-        // Handle Enemy Info Ticks
-        if (TutorialMod.CONFIG.showEnemyInfo && TutorialMod.CONFIG.showCoordsOverlay) {
-            enemyInfo.onTick(client);
-        }
+        handleComboRestore(client);
 
         // --- Centralized Overlay Logic ---
         boolean shouldOverlayBeRunning = TutorialMod.CONFIG.showCoordsOverlay;
@@ -346,10 +338,7 @@ public class TutorialModClient implements ClientModInitializer {
 
 
         if (overlayManager.isRunning() && client.player != null) {
-            String enemyInfoString = TutorialMod.CONFIG.showEnemyInfo ? enemyInfo.getFormattedEnemyInfo() : null;
-            if (enemyInfoString != null) {
-                overlayManager.update(enemyInfoString);
-            } else if (TutorialMod.CONFIG.showCoordsOverlay) {
+            if (TutorialMod.CONFIG.showCoordsOverlay) {
                 overlayManager.update(formatCoordsForOverlay(client));
             } else {
                 overlayManager.update(""); // Clear/Hide overlay
@@ -457,6 +446,8 @@ public class TutorialModClient implements ClientModInitializer {
         int originalSlot = ((PlayerInventoryMixin) player.getInventory()).getSelectedSlot();
         MinecraftClient client = MinecraftClient.getInstance();
 
+        int delay = 0;
+
         try {
             double dist = player.distanceTo(target);
 
@@ -521,10 +512,28 @@ public class TutorialModClient implements ClientModInitializer {
                 }
             }
 
-            // Restore original slot in the same tick
-            syncSlot(originalSlot);
+            // Restore original slot with delay to ensure visual animation
+            delay = Math.max(TutorialMod.CONFIG.axeToOriginalDelay, TutorialMod.CONFIG.maceToOriginalDelay);
+            if (delay <= 0) {
+                syncSlot(originalSlot);
+            } else {
+                this.comboRestoreSlot = originalSlot;
+                this.comboRestoreTicks = delay;
+            }
         } finally {
             isExecutingCombo = false;
+        }
+    }
+
+    private void handleComboRestore(MinecraftClient client) {
+        if (comboRestoreTicks > 0) {
+            comboRestoreTicks--;
+        } else if (comboRestoreTicks == 0) {
+            if (comboRestoreSlot != -1) {
+                syncSlot(comboRestoreSlot);
+            }
+            comboRestoreTicks = -1;
+            comboRestoreSlot = -1;
         }
     }
 
@@ -557,7 +566,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (isAutoWaterDrainModePressed && !autoWaterDrainModeWasPressed) {
             TutorialMod.CONFIG.autoWaterDrainMode = !TutorialMod.CONFIG.autoWaterDrainMode;
             TutorialMod.CONFIG.save();
-            TutorialMod.sendUpdateMessage("Auto Water Drain Mode set to " + (TutorialMod.CONFIG.autoWaterDrainMode ? "ON" : "OFF"));
+            TutorialMod.sendUpdateMessage("Auto Bucket Drain Mode set to " + (TutorialMod.CONFIG.autoWaterDrainMode ? "ON" : "OFF"));
         }
         autoWaterDrainModeWasPressed = isAutoWaterDrainModePressed;
 

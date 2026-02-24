@@ -45,6 +45,21 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // --- 1. Alphabetical Feature Categories ---
 
+            // 1.0 Aim Assist
+            ConfigCategory aimAssist = builder.getOrCreateCategory(Text.literal("Aim Assist"));
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Aim Assist Enabled"), TutorialMod.CONFIG.aimAssistEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEnabled = newValue).build());
+            aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Toggle)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.v").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 10), 1, 100).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistFov, 1, 180).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistFov = newValue.doubleValue()).build());
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Variable Strength (Distance)"), TutorialMod.CONFIG.aimAssistVariableStrength).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistVariableStrength = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Variable Strength Factor"), (long)(TutorialMod.CONFIG.aimAssistVariableStrengthFactor * 10), 1, 50).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistVariableStrengthFactor = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Horizontal Only"), TutorialMod.CONFIG.aimAssistHorizontalOnly).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHorizontalOnly = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range"), (long)(TutorialMod.CONFIG.aimAssistMaxRange * 10), 0, 100).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMaxRange = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.aimAssistMinRange * 10), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMinRange = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.aimAssistWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistWeaponOnly = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Center Deadzone (Margin)"), (long)(TutorialMod.CONFIG.aimAssistTriggerMargin * 100), 0, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistTriggerMargin = newValue / 100.0).build());
+
             // 1.1 Attribute Swapping
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue).build());
@@ -152,6 +167,8 @@ public class ModMenuIntegration implements ModMenuApi {
             potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Speed Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionSpeedThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionSpeedThreshold = newValue / 10.0).build());
             potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Fire Res Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionFireResThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionFireResThreshold = newValue / 10.0).build());
 
+            potionModule.addEntry(entryBuilder.startLongSlider(Text.literal("Regen Threshold (Seconds)"), (long)(TutorialMod.CONFIG.potionRegenThreshold * 10), 0, 4800).setDefaultValue(300).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionRegenThreshold = newValue / 10.0).build());
+
             SubCategoryBuilder turtleMasterSub = entryBuilder.startSubCategory(Text.literal("Turtle Master"));
             turtleMasterSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.potionTurtleMasterEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionTurtleMasterEnabled = newValue).build());
             turtleMasterSub.add(entryBuilder.startLongSlider(Text.literal("Health Threshold"), (long)TutorialMod.CONFIG.potionTurtleMasterHealthThreshold, 1, 20).setDefaultValue(6).setSaveConsumer(newValue -> TutorialMod.CONFIG.potionTurtleMasterHealthThreshold = newValue.doubleValue()).build());
@@ -204,19 +221,6 @@ public class ModMenuIntegration implements ModMenuApi {
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.triggerBotWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotWeaponOnly = newValue).build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit Only"), TutorialMod.CONFIG.attackOnCrit).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue).build());
 
-            // 1.7 Aim Assist
-            ConfigCategory aimAssist = builder.getOrCreateCategory(Text.literal("Aim Assist"));
-            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Aim Assist Enabled"), TutorialMod.CONFIG.aimAssistEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEnabled = newValue).build());
-            aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Toggle)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.v").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 10), 1, 100).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 10.0).build());
-            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Horizontal Only"), TutorialMod.CONFIG.aimAssistHorizontalOnly).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHorizontalOnly = newValue).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range"), (long)(TutorialMod.CONFIG.aimAssistMaxRange * 10), 0, 100).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMaxRange = newValue / 10.0).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.aimAssistMinRange * 10), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMinRange = newValue / 10.0).build());
-            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.aimAssistWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistWeaponOnly = newValue).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Trigger Margin"), (long)(TutorialMod.CONFIG.aimAssistTriggerMargin * 100), 0, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistTriggerMargin = newValue / 100.0).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Center Randomization"), (long)(TutorialMod.CONFIG.aimAssistCenterMargin * 100), 0, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistCenterMargin = newValue / 100.0).build());
-
             // 1.8 UHC/Cart (Minecart Tech)
             ConfigCategory minecartTech = builder.getOrCreateCategory(Text.literal("UHC/Cart"));
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement Enabled"), TutorialMod.CONFIG.tntMinecartPlacementEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue).build());
@@ -224,8 +228,8 @@ public class ModMenuIntegration implements ModMenuApi {
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence Enabled"), TutorialMod.CONFIG.bowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue).build());
             minecartTech.addEntry(entryBuilder.startIntSlider(Text.literal("Bow Sequence Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());
 
-            SubCategoryBuilder waterDrainSub = entryBuilder.startSubCategory(Text.literal("Water Drain"));
-            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.waterDrainEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue).build());
+            SubCategoryBuilder waterDrainSub = entryBuilder.startSubCategory(Text.literal("Bucket Drain"));
+            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Water Drain"), TutorialMod.CONFIG.waterDrainEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue).build());
             waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Lava Drain"), TutorialMod.CONFIG.waterDrainLavaEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainLavaEnabled = newValue).build());
             waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Mode"), TutorialMod.CONFIG.autoWaterDrainMode).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoWaterDrainMode = newValue).build());
             waterDrainSub.add(entryBuilder.startStrField(Text.literal("Auto Mode Hotkey"), TutorialMod.CONFIG.autoWaterDrainHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.autoWaterDrainHotkey = newValue).build());
@@ -439,13 +443,6 @@ public class ModMenuIntegration implements ModMenuApi {
             overlay.addEntry(entryBuilder.startStrField(Text.literal("Overlay Font Name"), TutorialMod.CONFIG.overlayFontName).setDefaultValue("Consolas").setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayFontName = newValue).build());
             overlay.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lock Overlay"), TutorialMod.CONFIG.overlayLocked).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.overlayLocked = newValue).build());
 
-            SubCategoryBuilder enemyInfoSubCategory = entryBuilder.startSubCategory(Text.literal("Enemy Info"));
-            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Enemy Info Enabled"), TutorialMod.CONFIG.showEnemyInfo).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.showEnemyInfo = newValue).build());
-            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show HP Decimals"), TutorialMod.CONFIG.showHpDecimals).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showHpDecimals = newValue).build());
-            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show Weakest Armor Piece"), TutorialMod.CONFIG.showLowestArmorPiece).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showLowestArmorPiece = newValue).build());
-            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Show Blast Protection Count"), TutorialMod.CONFIG.showBlastProtectionCount).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.showBlastProtectionCount = newValue).build());
-            enemyInfoSubCategory.add(entryBuilder.startBooleanToggle(Text.literal("Extended Detection Range"), TutorialMod.CONFIG.doubleEnemyInfoRange).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.doubleEnemyInfoRange = newValue).build());
-            overlay.addEntry(enemyInfoSubCategory.build());
 
             return builder.build();
         };

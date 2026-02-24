@@ -135,13 +135,15 @@ public class ModConfig {
     public boolean aimAssistEnabled = false;
     public String aimAssistHotkey = "key.keyboard.v";
     public double aimAssistStrength = 1.0;
+    public double aimAssistFov = 40.0;
+    public boolean aimAssistVariableStrength = true;
+    public double aimAssistVariableStrengthFactor = 1.0;
     public boolean aimAssistHorizontalOnly = false;
     public double aimAssistMaxRange = 4.0;
     public double aimAssistMinRange = 0.0;
     public boolean aimAssistWeaponOnly = true;
     public double aimAssistChargeThreshold = 0.9;
     public double aimAssistTriggerMargin = 0.0;
-    public double aimAssistCenterMargin = 0.2;
     public boolean triggerBotWeaponOnly = true;
     public boolean attackOnCrit = false;
     public boolean triggerBotEnabled = true;
@@ -278,13 +280,8 @@ public class ModConfig {
     public boolean xrayClumpingEnabled = true;
     public boolean xray26Adjacent = true;
 
-    // --- Enemy Info ---
-    public boolean showEnemyInfo = true;
+    // --- O-ESP ---
     public boolean espFrustumCulling = true;
-    public boolean showHpDecimals = false;
-    public boolean showLowestArmorPiece = false;
-    public boolean doubleEnemyInfoRange = false;
-    public boolean showBlastProtectionCount = false;
 
     // --- Potion Module ---
     public boolean potionModuleEnabled = false;
@@ -299,6 +296,7 @@ public class ModConfig {
     public double potionStrengthThreshold = 30.0;
     public double potionSpeedThreshold = 30.0;
     public double potionFireResThreshold = 30.0;
+    public double potionRegenThreshold = 30.0;
 
 
     public List<String> teammates = new ArrayList<>();
