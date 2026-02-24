@@ -13,8 +13,6 @@ import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.modules.filters.TargetFilters;
 
-import java.util.Random;
-
 public class AimAssist {
     private final MinecraftClient mc = MinecraftClient.getInstance();
     private long lastFrameTime = 0;
@@ -58,28 +56,20 @@ public class AimAssist {
             return;
         }
 
-        Vec3d targetPos = target.getBoundingBox().getCenter();
-
-        // --- Smart Triggering Logic ---
-
-        // 1. If not assisting, we ONLY start if we are completely off the target's REAL hitbox.
-        if (!isAssisting) {
-            if (isCrosshairOnTarget(target)) {
-                lastFrameTime = 0;
-                return;
-            }
-            isAssisting = true;
-        }
-
-        // 2. If assisting, we continue until we hit the "center-ish" zone.
-        // The trigger margin defines the size of this stop zone (radius).
-        if (isCrosshairOnPoint(targetPos, TutorialMod.CONFIG.aimAssistTriggerMargin)) {
+        // --- THE STRICTEST CHECK ---
+        // If crosshair is ANYWHERE on the target's hitbox, we do nothing.
+        // This completely prevents micro-tracking.
+        if (isCrosshairOnTarget(target)) {
             isAssisting = false;
             lastFrameTime = 0;
             return;
         }
 
-        // 3. Move toward target
+        // If we are here, we are NOT on the target.
+        // Start or continue assisting.
+        isAssisting = true;
+
+        Vec3d targetPos = target.getBoundingBox().getCenter();
         rotateToward(target, targetPos);
     }
 
@@ -118,6 +108,7 @@ public class AimAssist {
         double yawDiff = Math.abs(MathHelper.wrapDegrees(yaw - mc.player.getYaw()));
         double pitchDiff = Math.abs(MathHelper.wrapDegrees(pitch - mc.player.getPitch()));
 
+        // FOV is usually total width, so we check against fov/2
         return yawDiff <= fov / 2.0 && pitchDiff <= fov / 2.0;
     }
 
@@ -128,17 +119,6 @@ public class AimAssist {
         Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
 
         Box box = target.getBoundingBox().expand(target.getTargetingMargin());
-        return box.raycast(start, end).isPresent();
-    }
-
-    private boolean isCrosshairOnPoint(Vec3d point, double radius) {
-        if (mc.player == null) return false;
-        Vec3d start = mc.player.getCameraPosVec(1.0f);
-        Vec3d direction = mc.player.getRotationVec(1.0f);
-        Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
-
-        double r = Math.max(0.005, radius);
-        Box box = new Box(point.x - r, point.y - r, point.z - r, point.x + r, point.y + r, point.z + r);
         return box.raycast(start, end).isPresent();
     }
 
@@ -175,13 +155,12 @@ public class AimAssist {
 
         if (TutorialMod.CONFIG.aimAssistVariableStrength) {
             double dist = mc.player.distanceTo(target);
-            // Example scaling: stronger when far, or weaker when far?
+            // Stronger when close, weaker when far? Or vice versa?
             // "track more if that slider is lower sensitivity and flick more if its higher"
-            // If dist is large, we might want higher strength to cover the angle?
-            // Actually, distance-based strength usually means it's adjusted so it feels consistent.
-            // A simple linear scale:
-            double distFactor = (dist / 4.0) * TutorialMod.CONFIG.aimAssistVariableStrengthFactor;
-            strength *= Math.max(0.5, distFactor);
+            // Usually, we want the angular speed to feel consistent.
+            // A simple distance scaling:
+            double distFactor = 4.0 / Math.max(1.0, dist); // Higher factor when closer
+            strength *= distFactor * TutorialMod.CONFIG.aimAssistVariableStrengthFactor;
         }
 
         double step = strength * 8.0 * deltaTime;

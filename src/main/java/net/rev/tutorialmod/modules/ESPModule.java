@@ -109,10 +109,8 @@ public class ESPModule {
 
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            Quaternionf viewRot = new Quaternionf(camera.getRotation());
-            viewRot.conjugate();
-            Matrix4f viewMatrix = new Matrix4f().rotation(viewRot);
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(viewMatrix);
+            // Use the game's matrices directly to include view bobbing and proper camera sync
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
         }
 
         frustum.setPosition(camera.getCameraPos().x, camera.getCameraPos().y, camera.getCameraPos().z);
