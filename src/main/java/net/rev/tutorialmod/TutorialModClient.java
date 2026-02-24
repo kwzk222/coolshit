@@ -155,6 +155,9 @@ public class TutorialModClient implements ClientModInitializer {
     private int drainSwitchBackTimer = -1;
 
     private int autoCritTimer = -1;
+    private Entity autoCritTarget = null;
+    private int autoCritDelay = -1;
+    private boolean isAutoCritAttacking = false;
 
     private enum WebWaterState { NONE, SWITCH_TO_BUCKET, PLACING, PICKING_UP, RESTORING }
     private WebWaterState currentWebWaterState = WebWaterState.NONE;
@@ -393,19 +396,39 @@ public class TutorialModClient implements ClientModInitializer {
         handleSelfWaterWeb(client);
         handleCounterLavaDrain(client);
         handleAntiLavaFlow(client);
+        handleAutoCrit(client);
 
         ClickSpamModule.onTick();
     }
 
+    private void handleAutoCrit(MinecraftClient client) {
+        if (autoCritDelay > 0) {
+            autoCritDelay--;
+        } else if (autoCritDelay == 0) {
+            if (autoCritTarget != null && client.interactionManager != null && client.player != null) {
+                isAutoCritAttacking = true;
+                client.interactionManager.attackEntity(client.player, autoCritTarget);
+                client.player.swingHand(Hand.MAIN_HAND);
+                isAutoCritAttacking = false;
+            }
+            autoCritDelay = -1;
+            autoCritTarget = null;
+        }
+    }
+
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo) return ActionResult.PASS;
+        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo || isAutoCritAttacking) return ActionResult.PASS;
 
         MinecraftClient mc = MinecraftClient.getInstance();
         if (TutorialMod.CONFIG.autoCritEnabled && player.fallDistance > 0 && player.isSprinting() &&
             isKeyDown(mc.options.forwardKey.getBoundKeyTranslationKey()) &&
             isKeyDown(mc.options.jumpKey.getBoundKeyTranslationKey())) {
-            autoCritTimer = 1;
+
+            autoCritTarget = target;
+            autoCritDelay = 1;
+            autoCritTimer = 2;
+            return ActionResult.FAIL;
         }
 
         if (!(target instanceof PlayerEntity attackedPlayer)) return ActionResult.PASS;
@@ -1470,7 +1493,8 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null) return;
 
         if (currentWebWaterState == WebWaterState.NONE) {
-            if (client.player.getPitch() > 85.0f && (client.world.getBlockState(client.player.getBlockPos()).isOf(Blocks.COBWEB) || client.world.getBlockState(client.player.getBlockPos().up()).isOf(Blocks.COBWEB))) {
+            boolean isNether = client.world.getRegistryKey() == World.NETHER;
+            if (!client.player.isSneaking() && !isNether && client.player.getPitch() > 85.0f && (client.world.getBlockState(client.player.getBlockPos()).isOf(Blocks.COBWEB) || client.world.getBlockState(client.player.getBlockPos().up()).isOf(Blocks.COBWEB))) {
                 int waterSlot = findWaterBucketInHotbar(client.player);
                 if (waterSlot != -1) {
                     originalSlotBeforeWebWater = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
@@ -1631,6 +1655,31 @@ public class TutorialModClient implements ClientModInitializer {
             return;
         }
         if (client.player == null || client.world == null) return;
+
+        // Requirement: Hold bucket (empty) to trigger sequence
+        if (currentAntiLavaFlowState == AntiLavaFlowState.NONE && !client.player.getMainHandStack().isOf(Items.BUCKET)) {
+            return;
+        }
+
+        // Requirement: Stop on attack
+        if (client.options.attackKey.isPressed()) {
+            if (currentAntiLavaFlowState != AntiLavaFlowState.NONE) {
+                // If we were in a state where lava is in the world (PLACING or RESTORING), try to pick it up one last time
+                if (currentAntiLavaFlowState == AntiLavaFlowState.PLACING || currentAntiLavaFlowState == AntiLavaFlowState.RESTORING) {
+                    int bucketSlot = findEmptyBucketInHotbar(client.player);
+                    if (bucketSlot != -1) {
+                        syncSlot(bucketSlot);
+                        if (client.interactionManager != null) {
+                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                            client.player.swingHand(Hand.MAIN_HAND);
+                        }
+                    }
+                }
+                currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+                originalSlotBeforeAntiLava = -1;
+                return;
+            }
+        }
 
         if (currentAntiLavaFlowState == AntiLavaFlowState.NONE) {
             double range = client.player.getBlockInteractionRange();

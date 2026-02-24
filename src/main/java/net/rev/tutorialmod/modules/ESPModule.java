@@ -411,7 +411,14 @@ public class ESPModule {
                 double y = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
                 double z = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
 
-                Box box = entity.getBoundingBox().offset(x - entity.getX(), y - entity.getY(), z - entity.getZ()).offset(cameraPos.negate());
+                Box box = entity.getBoundingBox().offset(x - entity.getX(), y - entity.getY(), z - entity.getZ());
+
+                // If using game matrices, they already include camera translation.
+                // If using manual projection, we must subtract camera position.
+                if (TutorialMod.CONFIG.espManualProjection) {
+                    box = box.offset(cameraPos.negate());
+                }
+
                 projectAndAppend(boxesData, box, combinedMatrix, label, color, distLabel, true, health, "");
             }
         }
@@ -419,8 +426,11 @@ public class ESPModule {
         // 2. Vanished Players
         if (TutorialMod.CONFIG.espAntiVanish) {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
-                Vec3d relPos = entry.getValue().pos.subtract(cameraPos);
-                Box box = new Box(relPos.x - 0.3, relPos.y, relPos.z - 0.3, relPos.x + 0.3, relPos.y + 1.8, relPos.z + 0.3);
+                Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
+                                  entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
+                if (TutorialMod.CONFIG.espManualProjection) {
+                    box = box.offset(cameraPos.negate());
+                }
                 projectAndAppend(boxesData, box, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "");
             }
         }
@@ -429,12 +439,13 @@ public class ESPModule {
         if (TutorialMod.CONFIG.xrayEnabled) {
             int color = TutorialMod.CONFIG.xrayColor;
             for (XRayEntry entry : xrayEntries) {
-                if (TutorialMod.CONFIG.xrayFrustumCulling) {
-                    Box worldBox = new Box(entry.pos.x, entry.pos.y, entry.pos.z, entry.pos.x + 1.0, entry.pos.y + 1.0, entry.pos.z + 1.0);
-                    if (!frustum.isVisible(worldBox)) continue;
+                Box worldBox = new Box(entry.pos.x, entry.pos.y, entry.pos.z, entry.pos.x + 1.0, entry.pos.y + 1.0, entry.pos.z + 1.0);
+                if (TutorialMod.CONFIG.xrayFrustumCulling && !frustum.isVisible(worldBox)) continue;
+
+                Box box = worldBox;
+                if (TutorialMod.CONFIG.espManualProjection) {
+                    box = box.offset(cameraPos.negate());
                 }
-                Vec3d relPos = entry.pos.subtract(cameraPos);
-                Box box = new Box(relPos.x, relPos.y, relPos.z, relPos.x + 1.0, relPos.y + 1.0, relPos.z + 1.0);
                 projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, entry.texture);
             }
         }
