@@ -154,8 +154,22 @@ public class TutorialModClient implements ClientModInitializer {
     private int drainSwitchToTicks = -1;
     private int drainSwitchBackTimer = -1;
 
-    private int webWaterTimer = -1;
-    private int originalSlotBeforeWeb = -1;
+    private int autoCritTimer = -1;
+
+    private enum WebWaterState { NONE, SWITCH_TO_BUCKET, PLACING, PICKING_UP, RESTORING }
+    private WebWaterState currentWebWaterState = WebWaterState.NONE;
+    private int webWaterStateTimer = -1;
+    private int originalSlotBeforeWebWater = -1;
+
+    private enum AntiLavaFlowState { NONE, SWITCH_TO_EMPTY, PICKING_UP, HOLDING, PLACING, RESTORING }
+    private AntiLavaFlowState currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+    private int antiLavaFlowTimer = -1;
+    private int originalSlotBeforeAntiLava = -1;
+
+    private enum CounterLavaState { NONE, SWITCH_TO_EMPTY, PICKING_UP, RESTORING }
+    private CounterLavaState currentCounterLavaState = CounterLavaState.NONE;
+    private int counterLavaTimer = -1;
+    private int originalSlotBeforeCounterLava = -1;
 
     private enum ExtinguishState { NONE, PUNCHING, SWITCH_TO_BUCKET, PLACING, PICKING_UP, SWITCHING_BACK }
     private ExtinguishState currentExtinguishState = ExtinguishState.NONE;
@@ -376,8 +390,9 @@ public class TutorialModClient implements ClientModInitializer {
         handleAutoExtinguish(client);
         handleWaterDrainSwitchTo(client);
         handleWaterDrainRestore(client);
-        handleWebWaterPicker(client);
-        handleLavaAntiBucket(client);
+        handleSelfWaterWeb(client);
+        handleCounterLavaDrain(client);
+        handleAntiLavaFlow(client);
 
         ClickSpamModule.onTick();
     }
@@ -385,6 +400,14 @@ public class TutorialModClient implements ClientModInitializer {
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
         if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo) return ActionResult.PASS;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (TutorialMod.CONFIG.autoCritEnabled && player.fallDistance > 0 && player.isSprinting() &&
+            isKeyDown(mc.options.forwardKey.getBoundKeyTranslationKey()) &&
+            isKeyDown(mc.options.jumpKey.getBoundKeyTranslationKey())) {
+            autoCritTimer = 1;
+        }
+
         if (!(target instanceof PlayerEntity attackedPlayer)) return ActionResult.PASS;
 
         double dist = player.distanceTo(attackedPlayer);
@@ -1316,21 +1339,6 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
 
-        // --- Web Water Picker ---
-        if (TutorialMod.CONFIG.webWaterPickerEnabled && stack.isOf(Items.WATER_BUCKET)) {
-            BlockPos playerPos = BlockPos.ofFloored(client.player.getX(), client.player.getY(), client.player.getZ());
-            if (client.world.getBlockState(playerPos).isOf(Blocks.COBWEB) || client.world.getBlockState(playerPos.up()).isOf(Blocks.COBWEB)) {
-                if (client.crosshairTarget instanceof BlockHitResult bhr) {
-                    Direction side = bhr.getSide();
-                    if (side == Direction.UP) {
-                        webWaterTimer = TutorialMod.CONFIG.webWaterPickerDelayTop;
-                    } else {
-                        webWaterTimer = TutorialMod.CONFIG.webWaterPickerDelaySide;
-                    }
-                    originalSlotBeforeWeb = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
-                }
-            }
-        }
 
         if (!TutorialMod.CONFIG.waterDrainEnabled) return false;
 
@@ -1454,72 +1462,266 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    private void handleWebWaterPicker(MinecraftClient client) {
-        if (webWaterTimer > 0) {
-            webWaterTimer--;
-            if (webWaterTimer == 0) {
-                if (client.player != null && client.interactionManager != null) {
-                    int emptyBucketSlot = findEmptyBucketInHotbar(client.player);
-                    if (emptyBucketSlot != -1) {
-                        syncSlot(emptyBucketSlot);
-                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
-                        client.player.swingHand(Hand.MAIN_HAND);
-                        if (originalSlotBeforeWeb != -1) {
-                            // Give a small delay to pick up
-                            comboRestoreSlot = originalSlotBeforeWeb;
-                            comboRestoreTicks = 2;
-                        }
+    private void handleSelfWaterWeb(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.selfWaterWebEnabled) {
+            currentWebWaterState = WebWaterState.NONE;
+            return;
+        }
+        if (client.player == null || client.world == null) return;
+
+        if (currentWebWaterState == WebWaterState.NONE) {
+            if (client.player.getPitch() > 85.0f && (client.world.getBlockState(client.player.getBlockPos()).isOf(Blocks.COBWEB) || client.world.getBlockState(client.player.getBlockPos().up()).isOf(Blocks.COBWEB))) {
+                int waterSlot = findWaterBucketInHotbar(client.player);
+                if (waterSlot != -1) {
+                    originalSlotBeforeWebWater = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
+                    if (TutorialMod.CONFIG.selfWaterWebSwitchDelay > 0) {
+                        currentWebWaterState = WebWaterState.SWITCH_TO_BUCKET;
+                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebSwitchDelay;
+                    } else {
+                        syncSlot(waterSlot);
+                        currentWebWaterState = WebWaterState.PLACING;
+                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebPlaceDelay;
                     }
                 }
-                webWaterTimer = -1;
-                originalSlotBeforeWeb = -1;
+            }
+        } else {
+            if (webWaterStateTimer > 0) {
+                webWaterStateTimer--;
+                return;
+            }
+
+            switch (currentWebWaterState) {
+                case SWITCH_TO_BUCKET:
+                    int waterSlot = findWaterBucketInHotbar(client.player);
+                    if (waterSlot != -1) {
+                        syncSlot(waterSlot);
+                        currentWebWaterState = WebWaterState.PLACING;
+                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebPlaceDelay;
+                    } else {
+                        currentWebWaterState = WebWaterState.NONE;
+                    }
+                    break;
+                case PLACING:
+                    if (client.interactionManager != null) {
+                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        client.player.swingHand(Hand.MAIN_HAND);
+                        currentWebWaterState = WebWaterState.PICKING_UP;
+                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebPickDelay;
+                    } else {
+                        currentWebWaterState = WebWaterState.NONE;
+                    }
+                    break;
+                case PICKING_UP:
+                    if (client.interactionManager != null) {
+                        int bucketSlot = findEmptyBucketInHotbar(client.player);
+                        if (bucketSlot != -1) {
+                            syncSlot(bucketSlot);
+                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                            client.player.swingHand(Hand.MAIN_HAND);
+                            currentWebWaterState = WebWaterState.RESTORING;
+                            webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebRestoreDelay;
+                        } else {
+                            currentWebWaterState = WebWaterState.NONE;
+                        }
+                    } else {
+                        currentWebWaterState = WebWaterState.NONE;
+                    }
+                    break;
+                case RESTORING:
+                    if (originalSlotBeforeWebWater != -1) {
+                        syncSlot(originalSlotBeforeWebWater);
+                    }
+                    currentWebWaterState = WebWaterState.NONE;
+                    originalSlotBeforeWebWater = -1;
+                    break;
+                default:
+                    currentWebWaterState = WebWaterState.NONE;
+                    break;
             }
         }
     }
 
-    private void handleLavaAntiBucket(MinecraftClient client) {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.lavaAntiBucketEnabled) return;
+    private void handleCounterLavaDrain(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.counterLavaDrainEnabled) {
+            currentCounterLavaState = CounterLavaState.NONE;
+            return;
+        }
         if (client.player == null || client.world == null || client.interactionManager == null) return;
 
-        // Only trigger if we are looking at lava
-        double range = client.player.getBlockInteractionRange();
-        Vec3d start = client.player.getCameraPosVec(1.0f);
-        Vec3d dir = client.player.getRotationVec(1.0f);
-        Vec3d end = start.add(dir.multiply(range));
-        BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
+        if (currentCounterLavaState == CounterLavaState.NONE) {
+            // Only trigger if we are looking at lava
+            double range = client.player.getBlockInteractionRange();
+            Vec3d start = client.player.getCameraPosVec(1.0f);
+            Vec3d dir = client.player.getRotationVec(1.0f);
+            Vec3d end = start.add(dir.multiply(range));
+            BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
 
-        if (hit.getType() == HitResult.Type.BLOCK && client.world.getFluidState(hit.getBlockPos()).isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
-            // Find nearest enemy
-            PlayerEntity enemy = getPlayerLookingAt(client, TutorialMod.CONFIG.lavaAntiBucketRange);
-            if (enemy == null) {
-                // Also check enemies within range regardless of look direction
-                double minDist = TutorialMod.CONFIG.lavaAntiBucketRange;
-                for (PlayerEntity p : client.world.getPlayers()) {
-                    if (p == client.player || TutorialMod.CONFIG.teamManager.isTeammate(p.getName().getString())) continue;
-                    double d = client.player.distanceTo(p);
-                    if (d < minDist) {
-                        minDist = d;
-                        enemy = p;
+            if (hit.getType() == HitResult.Type.BLOCK && client.world.getFluidState(hit.getBlockPos()).isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
+                // Find nearest enemy
+                PlayerEntity enemy = getPlayerLookingAt(client, TutorialMod.CONFIG.counterLavaDrainRange);
+                if (enemy == null) {
+                    double minDist = TutorialMod.CONFIG.counterLavaDrainRange;
+                    for (PlayerEntity p : client.world.getPlayers()) {
+                        if (p == client.player || TutorialMod.CONFIG.teamManager.isTeammate(p.getName().getString())) continue;
+                        double d = client.player.distanceTo(p);
+                        if (d < minDist) {
+                            minDist = d;
+                            enemy = p;
+                        }
+                    }
+                }
+
+                if (enemy != null) {
+                    ItemStack main = enemy.getMainHandStack();
+                    ItemStack off = enemy.getOffHandStack();
+                    if (isCounterItem(main) || isCounterItem(off)) {
+                        int bucketSlot = findEmptyBucketInHotbar(client.player);
+                        if (bucketSlot != -1) {
+                            originalSlotBeforeCounterLava = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
+                            currentCounterLavaState = CounterLavaState.SWITCH_TO_EMPTY;
+                            counterLavaTimer = TutorialMod.CONFIG.counterLavaDrainSwitchDelay;
+                        }
                     }
                 }
             }
+        } else {
+            if (counterLavaTimer > 0) {
+                counterLavaTimer--;
+                return;
+            }
 
-            if (enemy != null) {
-                ItemStack main = enemy.getMainHandStack();
-                ItemStack off = enemy.getOffHandStack();
-                boolean holdsCounter = isCounterItem(main) || isCounterItem(off);
-
-                if (holdsCounter) {
+            switch (currentCounterLavaState) {
+                case SWITCH_TO_EMPTY:
                     int bucketSlot = findEmptyBucketInHotbar(client.player);
                     if (bucketSlot != -1) {
-                        originalSlotBeforeDrain = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
                         syncSlot(bucketSlot);
+                        currentCounterLavaState = CounterLavaState.PICKING_UP;
+                        counterLavaTimer = TutorialMod.CONFIG.counterLavaDrainPickDelay;
+                    } else {
+                        currentCounterLavaState = CounterLavaState.NONE;
+                    }
+                    break;
+                case PICKING_UP:
+                    if (client.interactionManager != null) {
                         client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                         client.player.swingHand(Hand.MAIN_HAND);
-                        drainRestoreTicks = 20 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
-                        drainSwitchBackTimer = -1;
+                        currentCounterLavaState = CounterLavaState.RESTORING;
+                        counterLavaTimer = TutorialMod.CONFIG.counterLavaDrainRestoreDelay;
+                    } else {
+                        currentCounterLavaState = CounterLavaState.NONE;
+                    }
+                    break;
+                case RESTORING:
+                    if (originalSlotBeforeCounterLava != -1) {
+                        syncSlot(originalSlotBeforeCounterLava);
+                    }
+                    currentCounterLavaState = CounterLavaState.NONE;
+                    originalSlotBeforeCounterLava = -1;
+                    break;
+                default:
+                    currentCounterLavaState = CounterLavaState.NONE;
+                    break;
+            }
+        }
+    }
+
+    private void handleAntiLavaFlow(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.antiLavaFlowEnabled) {
+            currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+            return;
+        }
+        if (client.player == null || client.world == null) return;
+
+        if (currentAntiLavaFlowState == AntiLavaFlowState.NONE) {
+            double range = client.player.getBlockInteractionRange();
+            Vec3d start = client.player.getCameraPosVec(1.0f);
+            Vec3d dir = client.player.getRotationVec(1.0f);
+            Vec3d end = start.add(dir.multiply(range));
+            BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
+
+            if (hit.getType() == HitResult.Type.BLOCK && client.world.getFluidState(hit.getBlockPos()).isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
+                // Check if enemy nearby the lava
+                boolean enemyNear = false;
+                double enemyRangeSq = TutorialMod.CONFIG.antiLavaFlowEnemyRange * TutorialMod.CONFIG.antiLavaFlowEnemyRange;
+                Vec3d lavaPos = hit.getPos();
+                for (PlayerEntity p : client.world.getPlayers()) {
+                    if (p == client.player || TutorialMod.CONFIG.teamManager.isTeammate(p.getName().getString())) continue;
+                    if (p.squaredDistanceTo(lavaPos) <= enemyRangeSq) {
+                        enemyNear = true;
+                        break;
                     }
                 }
+
+                if (enemyNear) {
+                    int bucketSlot = findEmptyBucketInHotbar(client.player);
+                    if (bucketSlot != -1) {
+                        originalSlotBeforeAntiLava = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
+                        currentAntiLavaFlowState = AntiLavaFlowState.SWITCH_TO_EMPTY;
+                        antiLavaFlowTimer = TutorialMod.CONFIG.antiLavaFlowPickDelay;
+                    }
+                }
+            }
+        } else {
+            if (antiLavaFlowTimer > 0) {
+                antiLavaFlowTimer--;
+                return;
+            }
+
+            switch (currentAntiLavaFlowState) {
+                case SWITCH_TO_EMPTY:
+                    int bucketSlot = findEmptyBucketInHotbar(client.player);
+                    if (bucketSlot != -1) {
+                        syncSlot(bucketSlot);
+                        if (client.interactionManager != null) {
+                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                            client.player.swingHand(Hand.MAIN_HAND);
+                        }
+                        currentAntiLavaFlowState = AntiLavaFlowState.HOLDING;
+                        antiLavaFlowTimer = TutorialMod.CONFIG.antiLavaFlowHoldDelay;
+                    } else {
+                        currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+                    }
+                    break;
+                case HOLDING:
+                    // Check if still looking at a safe place (not self)
+                    if (client.interactionManager != null) {
+                        // Prevent placing on self: raycast check
+                        double range = client.player.getBlockInteractionRange();
+                        Vec3d start = client.player.getCameraPosVec(1.0f);
+                        Vec3d dir = client.player.getRotationVec(1.0f);
+                        Vec3d end = start.add(dir.multiply(range));
+                        BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player));
+
+                        if (hit.getType() == HitResult.Type.BLOCK) {
+                            BlockPos placePos = hit.getBlockPos().offset(hit.getSide());
+                            Box playerBox = client.player.getBoundingBox();
+                            if (playerBox.intersects(new Box(placePos))) {
+                                // Too close!
+                                currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+                                return;
+                            }
+
+                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                            client.player.swingHand(Hand.MAIN_HAND);
+                            currentAntiLavaFlowState = AntiLavaFlowState.RESTORING;
+                            antiLavaFlowTimer = TutorialMod.CONFIG.antiLavaFlowRestoreDelay;
+                        } else {
+                            currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+                        }
+                    } else {
+                        currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+                    }
+                    break;
+                case RESTORING:
+                    if (originalSlotBeforeAntiLava != -1) {
+                        syncSlot(originalSlotBeforeAntiLava);
+                    }
+                    currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+                    originalSlotBeforeAntiLava = -1;
+                    break;
+                default:
+                    currentAntiLavaFlowState = AntiLavaFlowState.NONE;
+                    break;
             }
         }
     }
@@ -1848,6 +2050,18 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public void handleSprintResetInput(net.minecraft.client.input.Input input) {
+        if (autoCritTimer > 0) {
+            autoCritTimer--;
+            net.minecraft.util.PlayerInput old = input.playerInput;
+            input.playerInput = new net.minecraft.util.PlayerInput(false, old.backward(), old.left(), old.right(), old.jump(), old.sneak(), old.sprint());
+
+            float leftImpulse = 0.0f;
+            if (old.left()) leftImpulse++;
+            if (old.right()) leftImpulse--;
+
+            ((net.rev.tutorialmod.mixin.InputAccessor) input).setMovementVector(new net.minecraft.util.math.Vec2f(leftImpulse, 0.0f));
+        }
+
         if (sprintResetTimer > 0) {
             net.minecraft.util.PlayerInput old = input.playerInput;
             boolean forward = false;

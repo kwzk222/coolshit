@@ -62,6 +62,7 @@ public class ModConfig {
     public boolean autoStunFacingCheck = true;
     public int axeToOriginalDelay = 1;
     public int maceToOriginalDelay = 1;
+    public boolean autoCritEnabled = true;
 
 
     // --- Minecart Tech ---
@@ -114,11 +115,25 @@ public class ModConfig {
     public boolean masterEnabled = true;
     public int bowCooldown = 100;
 
-    public boolean lavaAntiBucketEnabled = true;
-    public double lavaAntiBucketRange = 5.0;
-    public boolean webWaterPickerEnabled = true;
-    public int webWaterPickerDelayTop = 5;
-    public int webWaterPickerDelaySide = 10;
+    public boolean counterLavaDrainEnabled = true;
+    public double counterLavaDrainRange = 5.0;
+    public int counterLavaDrainSwitchDelay = 0;
+    public int counterLavaDrainPickDelay = 0;
+    public int counterLavaDrainRestoreDelay = 2;
+
+    public boolean selfWaterWebEnabled = true;
+    public int selfWaterWebSwitchDelay = 0;
+    public int selfWaterWebPlaceDelay = 0;
+    public int selfWaterWebPickDelay = 5;
+    public int selfWaterWebRestoreDelay = 2;
+
+    public boolean antiLavaFlowEnabled = false;
+    public double antiLavaFlowEnemyRange = 6.0;
+    public int antiLavaFlowPickDelay = 0;
+    public int antiLavaFlowHoldDelay = 5;
+    public int antiLavaFlowPlaceDelay = 0;
+    public int antiLavaFlowRestoreDelay = 2;
+
     public boolean lavaPlacementRestriction = true;
 
     // --- Auto Tool ---

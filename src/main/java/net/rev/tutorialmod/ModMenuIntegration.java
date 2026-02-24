@@ -62,6 +62,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // 1.1 Attribute Swapping
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
+            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Crit Enabled"), TutorialMod.CONFIG.autoCritEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCritEnabled = newValue).build());
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue).build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe to Original Delay"), TutorialMod.CONFIG.axeToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.axeToOriginalDelay = newValue).build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Mace to Original Delay"), TutorialMod.CONFIG.maceToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.maceToOriginalDelay = newValue).build());
@@ -221,12 +222,8 @@ public class ModMenuIntegration implements ModMenuApi {
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.triggerBotWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotWeaponOnly = newValue).build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit Only"), TutorialMod.CONFIG.attackOnCrit).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue).build());
 
-            // 1.8 UHC/Cart (Minecart Tech)
+            // 1.8 UHC/Cart
             ConfigCategory minecartTech = builder.getOrCreateCategory(Text.literal("UHC/Cart"));
-            minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement Enabled"), TutorialMod.CONFIG.tntMinecartPlacementEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue).build());
-            minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence Enabled"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
-            minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence Enabled"), TutorialMod.CONFIG.bowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue).build());
-            minecartTech.addEntry(entryBuilder.startIntSlider(Text.literal("Bow Sequence Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());
 
             SubCategoryBuilder waterDrainSub = entryBuilder.startSubCategory(Text.literal("Bucket Drain"));
             waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Water Drain"), TutorialMod.CONFIG.waterDrainEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue).build());
@@ -239,11 +236,38 @@ public class ModMenuIntegration implements ModMenuApi {
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Hotbar Restore Delay"), TutorialMod.CONFIG.bucketDrainRestoreDelay, 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainRestoreDelay = newValue).build());
             minecartTech.addEntry(waterDrainSub.build());
 
-            minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Lava Anti-Bucket Enabled"), TutorialMod.CONFIG.lavaAntiBucketEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaAntiBucketEnabled = newValue).build());
-            minecartTech.addEntry(entryBuilder.startLongSlider(Text.literal("Lava Anti-Bucket Range"), (long)(TutorialMod.CONFIG.lavaAntiBucketRange * 10), 0, 100).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaAntiBucketRange = newValue / 10.0).build());
-            minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Web Water Picker Enabled"), TutorialMod.CONFIG.webWaterPickerEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.webWaterPickerEnabled = newValue).build());
-            minecartTech.addEntry(entryBuilder.startIntSlider(Text.literal("Web Picker Delay (Top)"), TutorialMod.CONFIG.webWaterPickerDelayTop, 0, 20).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.webWaterPickerDelayTop = newValue).build());
-            minecartTech.addEntry(entryBuilder.startIntSlider(Text.literal("Web Picker Delay (Side)"), TutorialMod.CONFIG.webWaterPickerDelaySide, 0, 20).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.webWaterPickerDelaySide = newValue).build());
+            SubCategoryBuilder counterLavaSub = entryBuilder.startSubCategory(Text.literal("Counter Lava Drain"));
+            counterLavaSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.counterLavaDrainEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.counterLavaDrainEnabled = newValue).build());
+            counterLavaSub.add(entryBuilder.startLongSlider(Text.literal("Range"), (long)(TutorialMod.CONFIG.counterLavaDrainRange * 10), 0, 100).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.counterLavaDrainRange = newValue / 10.0).build());
+            counterLavaSub.add(entryBuilder.startIntSlider(Text.literal("Switch Delay"), TutorialMod.CONFIG.counterLavaDrainSwitchDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.counterLavaDrainSwitchDelay = newValue).build());
+            counterLavaSub.add(entryBuilder.startIntSlider(Text.literal("Pick Delay"), TutorialMod.CONFIG.counterLavaDrainPickDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.counterLavaDrainPickDelay = newValue).build());
+            counterLavaSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay"), TutorialMod.CONFIG.counterLavaDrainRestoreDelay, 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.counterLavaDrainRestoreDelay = newValue).build());
+            minecartTech.addEntry(counterLavaSub.build());
+
+            SubCategoryBuilder selfWaterWebSub = entryBuilder.startSubCategory(Text.literal("Self Water Web"));
+            selfWaterWebSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.selfWaterWebEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.selfWaterWebEnabled = newValue).build());
+            selfWaterWebSub.add(entryBuilder.startIntSlider(Text.literal("Switch Delay"), TutorialMod.CONFIG.selfWaterWebSwitchDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.selfWaterWebSwitchDelay = newValue).build());
+            selfWaterWebSub.add(entryBuilder.startIntSlider(Text.literal("Place Delay"), TutorialMod.CONFIG.selfWaterWebPlaceDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.selfWaterWebPlaceDelay = newValue).build());
+            selfWaterWebSub.add(entryBuilder.startIntSlider(Text.literal("Pick Delay"), TutorialMod.CONFIG.selfWaterWebPickDelay, 0, 20).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.selfWaterWebPickDelay = newValue).build());
+            selfWaterWebSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay"), TutorialMod.CONFIG.selfWaterWebRestoreDelay, 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.selfWaterWebRestoreDelay = newValue).build());
+            minecartTech.addEntry(selfWaterWebSub.build());
+
+            SubCategoryBuilder antiLavaFlowSub = entryBuilder.startSubCategory(Text.literal("Anti Lava Flow"));
+            antiLavaFlowSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.antiLavaFlowEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowEnabled = newValue).build());
+            antiLavaFlowSub.add(entryBuilder.startLongSlider(Text.literal("Enemy Range"), (long)(TutorialMod.CONFIG.antiLavaFlowEnemyRange * 10), 0, 200).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowEnemyRange = newValue / 10.0).build());
+            antiLavaFlowSub.add(entryBuilder.startIntSlider(Text.literal("Pick Delay"), TutorialMod.CONFIG.antiLavaFlowPickDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowPickDelay = newValue).build());
+            antiLavaFlowSub.add(entryBuilder.startIntSlider(Text.literal("Hold Delay"), TutorialMod.CONFIG.antiLavaFlowHoldDelay, 0, 40).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowHoldDelay = newValue).build());
+            antiLavaFlowSub.add(entryBuilder.startIntSlider(Text.literal("Place Delay"), TutorialMod.CONFIG.antiLavaFlowPlaceDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowPlaceDelay = newValue).build());
+            antiLavaFlowSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay"), TutorialMod.CONFIG.antiLavaFlowRestoreDelay, 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowRestoreDelay = newValue).build());
+            minecartTech.addEntry(antiLavaFlowSub.build());
+
+            SubCategoryBuilder sequencesSub = entryBuilder.startSubCategory(Text.literal("Placement Sequences"));
+            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement"), TutorialMod.CONFIG.tntMinecartPlacementEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue).build());
+            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
+            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence"), TutorialMod.CONFIG.bowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue).build());
+            sequencesSub.add(entryBuilder.startIntSlider(Text.literal("Bow Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());
+            minecartTech.addEntry(sequencesSub.build());
+
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Prevent Lava Placement in Water"), TutorialMod.CONFIG.lavaPlacementRestriction).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaPlacementRestriction = newValue).build());
 
             SubCategoryBuilder extinguishSub = entryBuilder.startSubCategory(Text.literal("Auto Extinguish"));
