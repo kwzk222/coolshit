@@ -49,6 +49,14 @@ public class AimAssist {
             return;
         }
 
+        // --- THE STRICTEST CHECK ---
+        // If we are NOT already assisting, and our crosshair is ANYWHERE on ANY valid target's hitbox, we do nothing.
+        // This completely prevents micro-tracking when the user is already on target.
+        if (!isAssisting && isCrosshairOnAnyTarget()) {
+            lastFrameTime = 0;
+            return;
+        }
+
         Entity target = findTarget();
         if (target == null) {
             isAssisting = false;
@@ -56,21 +64,32 @@ public class AimAssist {
             return;
         }
 
-        // --- THE STRICTEST CHECK ---
-        // If crosshair is ANYWHERE on the target's hitbox, we do nothing.
-        // This completely prevents micro-tracking.
-        if (isCrosshairOnTarget(target)) {
+        // If we get here, we either were already assisting, or we were off-target.
+        isAssisting = true;
+
+        Vec3d targetPos = target.getBoundingBox().getCenter();
+
+        // STOP condition: If we are close enough to the center (deadzone), stop assisting.
+        // The trigger margin goes "in" from the center.
+        if (isCrosshairOnPoint(targetPos, TutorialMod.CONFIG.aimAssistTriggerMargin)) {
             isAssisting = false;
             lastFrameTime = 0;
             return;
         }
 
-        // If we are here, we are NOT on the target.
-        // Start or continue assisting.
-        isAssisting = true;
-
-        Vec3d targetPos = target.getBoundingBox().getCenter();
         rotateToward(target, targetPos);
+    }
+
+    private boolean isCrosshairOnPoint(Vec3d targetPos, double margin) {
+        if (mc.player == null) return false;
+        Vec3d start = mc.player.getCameraPosVec(1.0f);
+        Vec3d direction = mc.player.getRotationVec(1.0f);
+        Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
+
+        // Margin goes 'in' (smaller box around center)
+        Box box = new Box(targetPos.x - margin, targetPos.y - margin, targetPos.z - margin,
+                          targetPos.x + margin, targetPos.y + margin, targetPos.z + margin);
+        return box.raycast(start, end).isPresent();
     }
 
     private boolean isHoldingMeleeWeapon() {
@@ -112,14 +131,20 @@ public class AimAssist {
         return yawDiff <= fov / 2.0 && pitchDiff <= fov / 2.0;
     }
 
-    private boolean isCrosshairOnTarget(Entity target) {
-        if (mc.player == null) return false;
+    private boolean isCrosshairOnAnyTarget() {
+        if (mc.player == null || mc.world == null) return false;
         Vec3d start = mc.player.getCameraPosVec(1.0f);
         Vec3d direction = mc.player.getRotationVec(1.0f);
         Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
 
-        Box box = target.getBoundingBox().expand(target.getTargetingMargin());
-        return box.raycast(start, end).isPresent();
+        for (Entity entity : mc.world.getEntities()) {
+            if (entity == mc.player || !entity.isAlive()) continue;
+            if (!TargetFilters.isValidTarget(entity)) continue;
+
+            Box box = entity.getBoundingBox().expand(entity.getTargetingMargin());
+            if (box.raycast(start, end).isPresent()) return true;
+        }
+        return false;
     }
 
     private void rotateToward(Entity target, Vec3d targetPos) {

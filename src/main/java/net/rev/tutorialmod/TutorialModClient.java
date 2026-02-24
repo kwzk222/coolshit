@@ -154,6 +154,9 @@ public class TutorialModClient implements ClientModInitializer {
     private int drainSwitchToTicks = -1;
     private int drainSwitchBackTimer = -1;
 
+    private int webWaterTimer = -1;
+    private int originalSlotBeforeWeb = -1;
+
     private enum ExtinguishState { NONE, PUNCHING, SWITCH_TO_BUCKET, PLACING, PICKING_UP, SWITCHING_BACK }
     private ExtinguishState currentExtinguishState = ExtinguishState.NONE;
     private int extinguishTimer = -1;
@@ -373,6 +376,8 @@ public class TutorialModClient implements ClientModInitializer {
         handleAutoExtinguish(client);
         handleWaterDrainSwitchTo(client);
         handleWaterDrainRestore(client);
+        handleWebWaterPicker(client);
+        handleLavaAntiBucket(client);
 
         ClickSpamModule.onTick();
     }
@@ -1134,7 +1139,10 @@ public class TutorialModClient implements ClientModInitializer {
                 boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
 
                 if (isWater && isNether) return; // No water drain in Nether
-                if (isLava && !TutorialMod.CONFIG.waterDrainLavaEnabled) return; // Lava disabled
+                if (isLava) {
+                    if (!TutorialMod.CONFIG.waterDrainLavaEnabled) return;
+                    if (client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return;
+                }
 
                 // Check if isolated (no adjacent fluids of same type)
                 if (isIsolatedFluid(client.world, pos)) {
@@ -1288,9 +1296,43 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public boolean onItemUse() {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled) return false;
+        if (!TutorialMod.CONFIG.masterEnabled) return false;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return false;
+
+        ItemStack stack = client.player.getMainHandStack();
+
+        // --- Lava Placement Restriction ---
+        if (TutorialMod.CONFIG.lavaPlacementRestriction && stack.isOf(Items.LAVA_BUCKET)) {
+            if (client.crosshairTarget instanceof BlockHitResult bhr) {
+                BlockState state = client.world.getBlockState(bhr.getBlockPos());
+                if (state.getFluidState().isIn(net.minecraft.registry.tag.FluidTags.WATER) || state.isOf(Blocks.WATER)) {
+                    return true; // Cancel
+                }
+                BlockPos offset = bhr.getBlockPos().offset(bhr.getSide());
+                if (client.world.getFluidState(offset).isIn(net.minecraft.registry.tag.FluidTags.WATER)) {
+                    return true; // Cancel
+                }
+            }
+        }
+
+        // --- Web Water Picker ---
+        if (TutorialMod.CONFIG.webWaterPickerEnabled && stack.isOf(Items.WATER_BUCKET)) {
+            BlockPos playerPos = BlockPos.ofFloored(client.player.getX(), client.player.getY(), client.player.getZ());
+            if (client.world.getBlockState(playerPos).isOf(Blocks.COBWEB) || client.world.getBlockState(playerPos.up()).isOf(Blocks.COBWEB)) {
+                if (client.crosshairTarget instanceof BlockHitResult bhr) {
+                    Direction side = bhr.getSide();
+                    if (side == Direction.UP) {
+                        webWaterTimer = TutorialMod.CONFIG.webWaterPickerDelayTop;
+                    } else {
+                        webWaterTimer = TutorialMod.CONFIG.webWaterPickerDelaySide;
+                    }
+                    originalSlotBeforeWeb = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
+                }
+            }
+        }
+
+        if (!TutorialMod.CONFIG.waterDrainEnabled) return false;
 
         // Condition: Not swimming/in water
         if (client.player.isTouchingWater()) return false;
@@ -1321,7 +1363,10 @@ public class TutorialModClient implements ClientModInitializer {
                 boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
 
                 if (isWater && isNether) return false; // No water drain in Nether
-                if (isLava && !TutorialMod.CONFIG.waterDrainLavaEnabled) return false; // Lava disabled
+                if (isLava) {
+                    if (!TutorialMod.CONFIG.waterDrainLavaEnabled) return false;
+                    if (client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return false;
+                }
 
                 int bucketSlot = findEmptyBucketInHotbar(client.player);
                 PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
@@ -1398,9 +1443,94 @@ public class TutorialModClient implements ClientModInitializer {
 
     private void restoreDrainSlot() {
         if (originalSlotBeforeDrain != -1) {
-            syncSlot(originalSlotBeforeDrain);
+            int delay = TutorialMod.CONFIG.bucketDrainRestoreDelay;
+            if (delay <= 0) {
+                syncSlot(originalSlotBeforeDrain);
+            } else {
+                this.comboRestoreSlot = originalSlotBeforeDrain;
+                this.comboRestoreTicks = delay;
+            }
             originalSlotBeforeDrain = -1;
         }
+    }
+
+    private void handleWebWaterPicker(MinecraftClient client) {
+        if (webWaterTimer > 0) {
+            webWaterTimer--;
+            if (webWaterTimer == 0) {
+                if (client.player != null && client.interactionManager != null) {
+                    int emptyBucketSlot = findEmptyBucketInHotbar(client.player);
+                    if (emptyBucketSlot != -1) {
+                        syncSlot(emptyBucketSlot);
+                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        client.player.swingHand(Hand.MAIN_HAND);
+                        if (originalSlotBeforeWeb != -1) {
+                            // Give a small delay to pick up
+                            comboRestoreSlot = originalSlotBeforeWeb;
+                            comboRestoreTicks = 2;
+                        }
+                    }
+                }
+                webWaterTimer = -1;
+                originalSlotBeforeWeb = -1;
+            }
+        }
+    }
+
+    private void handleLavaAntiBucket(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.lavaAntiBucketEnabled) return;
+        if (client.player == null || client.world == null || client.interactionManager == null) return;
+
+        // Only trigger if we are looking at lava
+        double range = client.player.getBlockInteractionRange();
+        Vec3d start = client.player.getCameraPosVec(1.0f);
+        Vec3d dir = client.player.getRotationVec(1.0f);
+        Vec3d end = start.add(dir.multiply(range));
+        BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
+
+        if (hit.getType() == HitResult.Type.BLOCK && client.world.getFluidState(hit.getBlockPos()).isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
+            // Find nearest enemy
+            PlayerEntity enemy = getPlayerLookingAt(client, TutorialMod.CONFIG.lavaAntiBucketRange);
+            if (enemy == null) {
+                // Also check enemies within range regardless of look direction
+                double minDist = TutorialMod.CONFIG.lavaAntiBucketRange;
+                for (PlayerEntity p : client.world.getPlayers()) {
+                    if (p == client.player || TutorialMod.CONFIG.teamManager.isTeammate(p.getName().getString())) continue;
+                    double d = client.player.distanceTo(p);
+                    if (d < minDist) {
+                        minDist = d;
+                        enemy = p;
+                    }
+                }
+            }
+
+            if (enemy != null) {
+                ItemStack main = enemy.getMainHandStack();
+                ItemStack off = enemy.getOffHandStack();
+                boolean holdsCounter = isCounterItem(main) || isCounterItem(off);
+
+                if (holdsCounter) {
+                    int bucketSlot = findEmptyBucketInHotbar(client.player);
+                    if (bucketSlot != -1) {
+                        originalSlotBeforeDrain = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
+                        syncSlot(bucketSlot);
+                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        client.player.swingHand(Hand.MAIN_HAND);
+                        drainRestoreTicks = 20 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                        drainSwitchBackTimer = -1;
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isCounterItem(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        if (stack.isOf(Items.BUCKET) || stack.isOf(Items.WATER_BUCKET) || stack.isOf(Items.COBWEB) || stack.isOf(Items.POWDER_SNOW_BUCKET)) return true;
+        if (stack.getItem() instanceof net.minecraft.item.BlockItem bi) {
+            return bi.getBlock() == Blocks.COBWEB || bi.getBlock() == Blocks.POWDER_SNOW;
+        }
+        return false;
     }
 
     private int findEmptyBucketInHotbar(PlayerEntity player) {

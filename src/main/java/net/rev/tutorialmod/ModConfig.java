@@ -101,16 +101,25 @@ public class ModConfig {
     public int miningResetDelay = 0;
     public boolean waterDrainEnabled = false;
     public boolean waterDrainLavaEnabled = false;
+    public double lavaDrainMinPitch = 40.0;
     public boolean autoWaterDrainMode = false;
     public String autoWaterDrainHotkey = "key.keyboard.n";
     public int waterDrainSwitchToDelay = 0;
     public int waterDrainSwitchBackDelay = 0;
+    public int bucketDrainRestoreDelay = 2;
     public boolean autoExtinguishEnabled = false;
     public double autoExtinguishPitch = 60.0;
 
     // --- General ---
     public boolean masterEnabled = true;
     public int bowCooldown = 100;
+
+    public boolean lavaAntiBucketEnabled = true;
+    public double lavaAntiBucketRange = 5.0;
+    public boolean webWaterPickerEnabled = true;
+    public int webWaterPickerDelayTop = 5;
+    public int webWaterPickerDelaySide = 10;
+    public boolean lavaPlacementRestriction = true;
 
     // --- Auto Tool ---
     public boolean autoToolSwitchEnabled = true;
@@ -220,7 +229,7 @@ public class ModConfig {
     // --- O-ESP ---
     public boolean showESP = false;
     public boolean espAntiVanish = true;
-    public int espRefreshRate = 20; // FPS (approx)
+    public int espRefreshRate = 60; // FPS (approx)
     public double espScaleFactor = 1.0;
     public int espOffsetX = 0;
     public int espOffsetY = 0;
