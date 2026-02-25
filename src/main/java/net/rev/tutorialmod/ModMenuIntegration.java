@@ -59,6 +59,7 @@ public class ModMenuIntegration implements ModMenuApi {
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.aimAssistWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistWeaponOnly = newValue).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Center Deadzone (Margin)"), (long)(TutorialMod.CONFIG.aimAssistTriggerMargin * 100), 0, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistTriggerMargin = newValue / 100.0).build());
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Bow Release Block"), TutorialMod.CONFIG.bowReleaseBlockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowReleaseBlockEnabled = newValue).build());
 
             // 1.1 Attribute Swapping
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
@@ -323,7 +324,6 @@ public class ModMenuIntegration implements ModMenuApi {
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue).build());
             misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue).build());
-            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Bow Release Block"), TutorialMod.CONFIG.bowReleaseBlockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowReleaseBlockEnabled = newValue).build());
 
 
             // 2.3 O-ESP (Moved here, renamed)

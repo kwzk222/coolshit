@@ -3,7 +3,6 @@
 	"package": "net.rev.tutorialmod.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"BowItemMixin",
 		"PlayerInventoryMixin",
 		"EntityS2CPacketAccessor"
 	],
@@ -20,7 +19,8 @@
 		"GameOptionsAccessor",
 		"ScreenMixin",
 		"ScreenAccessor",
-		"WorldRendererMixin"
+		"WorldRendererMixin",
+		"LivingEntityMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

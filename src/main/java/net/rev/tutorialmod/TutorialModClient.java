@@ -25,6 +25,7 @@ import net.minecraft.item.AxeItem;
 import net.minecraft.item.CrossbowItem;
 import net.minecraft.item.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.BowItem;
 import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.text.Text;
@@ -188,6 +189,18 @@ public class TutorialModClient implements ClientModInitializer {
     private String overlayStatusMessage = null;
     private long overlayStatusTime = 0;
 
+    private boolean isWaitingForBowRelease = false;
+    private boolean isAutoReleasingBow = false;
+
+    public void setPendingBowRelease(boolean val) {
+        this.isWaitingForBowRelease = val;
+    }
+
+    public boolean isAutoReleasingBow() {
+        return this.isAutoReleasingBow;
+    }
+
+
     public void onShieldBreak(int entityId) {
         if (MinecraftClient.getInstance().world != null) {
             shieldCooldowns.put(entityId, MinecraftClient.getInstance().world.getTime() + 100);
@@ -311,6 +324,7 @@ public class TutorialModClient implements ClientModInitializer {
         // Handle keybinds first, as they might toggle features on/off.
         handleKeybinds(client);
         handleQuickCrossbow(client);
+        handleAutoBowRelease(client);
 
         if (client.world != null && client.world.getTime() % 100 == 0) {
             shieldCooldowns.entrySet().removeIf(entry -> client.world.getTime() > entry.getValue());
@@ -404,6 +418,33 @@ public class TutorialModClient implements ClientModInitializer {
         ClickSpamModule.onTick();
     }
 
+    private void handleAutoBowRelease(MinecraftClient client) {
+        if (!isWaitingForBowRelease || client.player == null) return;
+
+        ItemStack stack = client.player.getActiveItem();
+        if (!(stack.getItem() instanceof BowItem)) {
+            isWaitingForBowRelease = false;
+            return;
+        }
+
+        // If player physically holds the key again, cancel waiting
+        if (client.options.useKey.isPressed()) {
+            isWaitingForBowRelease = false;
+            return;
+        }
+
+        int useTicks = client.player.getItemUseTime();
+        float progress = BowItem.getPullProgress(useTicks);
+
+        if (progress >= 1.0f) {
+            isAutoReleasingBow = true;
+            client.player.stopUsingItem();
+            isAutoReleasingBow = false;
+            isWaitingForBowRelease = false;
+        }
+    }
+
+
     private void handleAutoCrit(MinecraftClient client) {
         if (autoCritDelay > 0) {
             autoCritDelay--;
@@ -425,15 +466,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        // --- Lunge Swap ---
-        if (TutorialMod.CONFIG.lungeSwapEnabled && !player.isOnGround() && !player.getMainHandStack().isIn(ItemTags.SPEARS) && !player.getMainHandStack().isOf(Items.TRIDENT)) {
-            int spearSlot = findSpearInHotbar(player);
-            if (spearSlot != -1) {
-                executeLungeSwap(player, target, spearSlot);
-                return ActionResult.FAIL;
-            }
-        }
-
+        if (isAutoCritAttacking) return ActionResult.PASS;
 
         if (TutorialMod.CONFIG.autoCritEnabled && player.fallDistance > 0 && player.isSprinting() &&
             isKeyDown(mc.options.forwardKey.getBoundKeyTranslationKey()) &&
@@ -471,7 +504,7 @@ public class TutorialModClient implements ClientModInitializer {
             Vec3d dirToMe = new Vec3d(player.getX(), player.getY(), player.getZ()).subtract(attackedPlayer.getX(), attackedPlayer.getY(), attackedPlayer.getZ()).normalize();
             if (attackedPlayer.getRotationVector().dotProduct(dirToMe) > 0.8) {
                 int chance;
-                if (held.isIn(ItemTags.SPEARS)) chance = TutorialMod.CONFIG.spearAutoStunFakePredictionChance;
+                if (held.isIn(ItemTags.SPEARS) || held.isOf(Items.TRIDENT)) chance = TutorialMod.CONFIG.spearAutoStunFakePredictionChance;
                 else if (held.getItem() == Items.MACE) chance = TutorialMod.CONFIG.maceAutoStunFakePredictionChance;
                 else chance = TutorialMod.CONFIG.axeSwapFakePredictionChance;
 
@@ -483,7 +516,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         boolean needsStun = (isShielding || predictShield) && isFacing && findAxeInHotbar(player) != -1;
         // Check specific stun toggles based on held item
-        if (held.isIn(ItemTags.SPEARS)) needsStun &= TutorialMod.CONFIG.spearAutoStunEnabled;
+        if (held.isIn(ItemTags.SPEARS) || held.isOf(Items.TRIDENT)) needsStun &= TutorialMod.CONFIG.spearAutoStunEnabled;
         else if (held.getItem() == Items.MACE) needsStun &= TutorialMod.CONFIG.maceAutoStunEnabled;
         else needsStun &= TutorialMod.CONFIG.axeSwapEnabled;
 
@@ -546,7 +579,7 @@ public class TutorialModClient implements ClientModInitializer {
                 if (target.getRotationVector().dotProduct(dirToMe) > 0.8) {
                     int chance;
                     ItemStack held = player.getMainHandStack();
-                    if (held.isIn(ItemTags.SPEARS)) chance = TutorialMod.CONFIG.spearAutoStunFakePredictionChance;
+                    if (held.isIn(ItemTags.SPEARS) || held.isOf(Items.TRIDENT)) chance = TutorialMod.CONFIG.spearAutoStunFakePredictionChance;
                     else if (held.getItem() == Items.MACE) chance = TutorialMod.CONFIG.maceAutoStunFakePredictionChance;
                     else chance = TutorialMod.CONFIG.axeSwapFakePredictionChance;
 
@@ -951,7 +984,7 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private boolean isWeapon(ItemStack stack) {
-        return stack.isIn(ItemTags.SWORDS) || stack.isIn(ItemTags.AXES) || stack.getItem() == Items.MACE || stack.isIn(ItemTags.SPEARS);
+        return stack.isIn(ItemTags.SWORDS) || stack.isIn(ItemTags.AXES) || stack.getItem() == Items.MACE || stack.isIn(ItemTags.SPEARS) || stack.isOf(Items.TRIDENT);
     }
 
     private void executeLungeSwap(PlayerEntity player, Entity target, int spearSlot) {
@@ -981,27 +1014,29 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public boolean onReachSwap() {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled || isExecutingCombo) return false;
+        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo) return false;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null || client.interactionManager == null) return false;
 
-        // Check if there is a target within spear reach (4.1) but beyond current reach (3.0)
+        // Check if there is a target within spear reach (4.1)
         Entity target = getEntityLookingAt(client, TutorialMod.CONFIG.spearReachSwapRange, TutorialMod.CONFIG.reachSwapIgnoreCobwebs);
         if (target != null) {
             double dist = client.player.distanceTo(target);
-            if (dist > TutorialMod.CONFIG.reachSwapActivationRange) {
+
+            boolean isHoldingSpear = client.player.getMainHandStack().isIn(ItemTags.SPEARS) || client.player.getMainHandStack().isOf(Items.TRIDENT);
+
+            boolean needsReachSwap = TutorialMod.CONFIG.spearReachSwapEnabled && dist > TutorialMod.CONFIG.reachSwapActivationRange;
+            boolean needsLungeSwap = TutorialMod.CONFIG.lungeSwapEnabled && !client.player.isOnGround() && !isHoldingSpear;
+
+            if (needsReachSwap || needsLungeSwap) {
                 if (target instanceof PlayerEntity tp) {
                     executeCombatCombo(client.player, tp);
                     return true;
                 } else {
-                    // Non-player target, just do simple reach swap
-                    int originalSlot = ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot();
+                    // Non-player target, just do simple reach/lunge swap
                     int spearSlot = findSpearInHotbar(client.player);
                     if (spearSlot != -1) {
-                        syncSlot(spearSlot);
-                        client.interactionManager.attackEntity(client.player, target);
-                        client.player.swingHand(Hand.MAIN_HAND);
-                        syncSlot(originalSlot);
+                        executeLungeSwap(client.player, target, spearSlot);
                         return true;
                     }
                 }
