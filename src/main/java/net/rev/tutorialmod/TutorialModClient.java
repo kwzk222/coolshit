@@ -426,7 +426,7 @@ public class TutorialModClient implements ClientModInitializer {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         // --- Lunge Swap ---
-        if (TutorialMod.CONFIG.lungeSwapEnabled && !isWeapon(player.getMainHandStack()) && !player.isOnGround() && player.getVelocity().y > 0.01) {
+        if (TutorialMod.CONFIG.lungeSwapEnabled && !player.isOnGround() && !player.getMainHandStack().isIn(ItemTags.SPEARS)) {
             int spearSlot = findSpearInHotbar(player);
             if (spearSlot != -1) {
                 executeLungeSwap(player, target, spearSlot);
