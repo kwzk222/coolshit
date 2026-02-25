@@ -421,18 +421,19 @@ public class TutorialModClient implements ClientModInitializer {
 
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo || isAutoCritAttacking || isLungeSwapping) return ActionResult.PASS;
+        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo || isLungeSwapping) return ActionResult.PASS;
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
         // --- Lunge Swap ---
-        if (TutorialMod.CONFIG.lungeSwapEnabled && !player.isOnGround() && !player.getMainHandStack().isIn(ItemTags.SPEARS)) {
+        if (TutorialMod.CONFIG.lungeSwapEnabled && !player.isOnGround() && !player.getMainHandStack().isIn(ItemTags.SPEARS) && !player.getMainHandStack().isOf(Items.TRIDENT)) {
             int spearSlot = findSpearInHotbar(player);
             if (spearSlot != -1) {
                 executeLungeSwap(player, target, spearSlot);
                 return ActionResult.FAIL;
             }
         }
+
 
         if (TutorialMod.CONFIG.autoCritEnabled && player.fallDistance > 0 && player.isSprinting() &&
             isKeyDown(mc.options.forwardKey.getBoundKeyTranslationKey()) &&
@@ -979,10 +980,10 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
-    public void onReachSwap() {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled || isExecutingCombo) return;
+    public boolean onReachSwap() {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled || isExecutingCombo) return false;
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.world == null || client.interactionManager == null) return;
+        if (client.player == null || client.world == null || client.interactionManager == null) return false;
 
         // Check if there is a target within spear reach (4.1) but beyond current reach (3.0)
         Entity target = getEntityLookingAt(client, TutorialMod.CONFIG.spearReachSwapRange, TutorialMod.CONFIG.reachSwapIgnoreCobwebs);
@@ -991,6 +992,7 @@ public class TutorialModClient implements ClientModInitializer {
             if (dist > TutorialMod.CONFIG.reachSwapActivationRange) {
                 if (target instanceof PlayerEntity tp) {
                     executeCombatCombo(client.player, tp);
+                    return true;
                 } else {
                     // Non-player target, just do simple reach swap
                     int originalSlot = ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot();
@@ -1000,10 +1002,12 @@ public class TutorialModClient implements ClientModInitializer {
                         client.interactionManager.attackEntity(client.player, target);
                         client.player.swingHand(Hand.MAIN_HAND);
                         syncSlot(originalSlot);
+                        return true;
                     }
                 }
             }
         }
+        return false;
     }
 
     private boolean isKeyCurrentlyPressed(net.minecraft.client.option.KeyBinding keyBinding, MinecraftClient client) {
@@ -1088,7 +1092,8 @@ public class TutorialModClient implements ClientModInitializer {
 
     public int findSpearInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
-            if (player.getInventory().getStack(i).isIn(ItemTags.SPEARS)) return i;
+            ItemStack stack = player.getInventory().getStack(i);
+            if (stack.isIn(ItemTags.SPEARS) || stack.isOf(Items.TRIDENT)) return i;
         }
         return -1;
     }
