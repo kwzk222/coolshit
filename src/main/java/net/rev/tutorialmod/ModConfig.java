@@ -243,7 +243,7 @@ public class ModConfig {
     public boolean showNetherCoords = false;
     public boolean showSprintModeOverlay = true;
     public boolean showSneakModeOverlay = true;
-    public boolean showLatestToggleOverlay = false;
+    public boolean showLatestToggleOverlay = true;
     public boolean trajectoriesEnabled = true;
     public int trajectoriesColor = 0xFFFFFF;
     public int trajectoriesHitColor = 0xFF0000;

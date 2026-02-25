@@ -450,7 +450,9 @@ public class TutorialModClient implements ClientModInitializer {
             if (progress >= 1.0f) {
                 setOverlayStatus("Auto-Firing Bow");
                 isAutoReleasingBow = true;
-                client.player.stopUsingItem();
+                if (client.interactionManager != null) {
+                    client.interactionManager.stopUsingItem(client.player);
+                }
                 isAutoReleasingBow = false;
                 isWaitingForBowRelease = false;
             }
@@ -1037,7 +1039,6 @@ public class TutorialModClient implements ClientModInitializer {
         if (TutorialMod.CONFIG.lungeSwapEnabled && isMidAir && !isHoldingMelee) {
             int spearSlot = findSpearInHotbar(client.player);
             if (spearSlot != -1) {
-                setOverlayStatus("Lunge Swap Active");
                 syncSlot(spearSlot);
                 return false; // Continue with attack using spear
             }
@@ -1068,13 +1069,11 @@ public class TutorialModClient implements ClientModInitializer {
 
             if (needsReachSwap) {
                 if (target instanceof PlayerEntity tp) {
-                    setOverlayStatus("Triggering Reach Swap");
                     executeCombatCombo(client.player, tp, false);
                     return true;
                 } else {
                     int spearSlot = findSpearInHotbar(client.player);
                     if (spearSlot != -1) {
-                        setOverlayStatus("Triggering Reach Swap: Non-Player");
                         executeLungeSwap(client.player, target, spearSlot);
                         return true;
                     }

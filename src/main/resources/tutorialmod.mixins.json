@@ -19,8 +19,7 @@
 		"GameOptionsAccessor",
 		"ScreenMixin",
 		"ScreenAccessor",
-		"WorldRendererMixin",
-		"LivingEntityMixin"
+		"WorldRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -34,6 +34,29 @@ public abstract class ClientPlayerInteractionManagerMixin {
     @Shadow private BlockPos currentBreakingPos;
 
     private static final Random tutorialmod$random = new Random();
+
+    @Inject(method = "stopUsingItem", at = @At("HEAD"), cancellable = true)
+    private void onStopUsingItem(PlayerEntity player, CallbackInfo ci) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.bowReleaseBlockEnabled) return;
+
+        ItemStack stack = player.getActiveItem();
+        if (stack.getItem() instanceof net.minecraft.item.BowItem) {
+            int useTicks = player.getItemUseTime();
+            float progress = net.minecraft.item.BowItem.getPullProgress(useTicks);
+
+            // Check if we are waiting for an auto-release OR if it's a full charge release
+            if (TutorialModClient.getInstance().isAutoReleasingBow() || progress >= 1.0f) {
+                TutorialModClient.recordBowUsage();
+                return; // Allow
+            }
+
+            // If we are below full charge, and the use key is NOT pressed, block the stop
+            // This prevents the RELEASE_USE_ITEM packet from being sent.
+            if (!MinecraftClient.getInstance().options.useKey.isPressed()) {
+                ci.cancel();
+            }
+        }
+    }
     private BlockPos tutorialmod$lastResetPos = null;
 
     @Inject(at = @At("HEAD"), method = "attackEntity(Lnet/minecraft/entity/player/PlayerEntity;Lnet/minecraft/entity/Entity;)V", cancellable = true)
