@@ -419,12 +419,23 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handleAutoBowRelease(MinecraftClient client) {
-        if (!isWaitingForBowRelease || client.player == null) return;
+        if (client.player == null) return;
 
         ItemStack stack = client.player.getActiveItem();
-        if (!(stack.getItem() instanceof BowItem)) {
+        boolean isBow = stack.getItem() instanceof BowItem;
+
+        if (!isBow) {
             isWaitingForBowRelease = false;
             return;
+        }
+
+        // Detect release
+        if (!client.options.useKey.isPressed() && client.player.isUsingItem()) {
+            int useTicks = client.player.getItemUseTime();
+            float progress = BowItem.getPullProgress(useTicks);
+            if (progress < 1.0f) {
+                isWaitingForBowRelease = true;
+            }
         }
 
         // If player physically holds the key again, cancel waiting
@@ -433,14 +444,16 @@ public class TutorialModClient implements ClientModInitializer {
             return;
         }
 
-        int useTicks = client.player.getItemUseTime();
-        float progress = BowItem.getPullProgress(useTicks);
+        if (isWaitingForBowRelease) {
+            int useTicks = client.player.getItemUseTime();
+            float progress = BowItem.getPullProgress(useTicks);
 
-        if (progress >= 1.0f) {
-            isAutoReleasingBow = true;
-            client.player.stopUsingItem();
-            isAutoReleasingBow = false;
-            isWaitingForBowRelease = false;
+            if (progress >= 1.0f) {
+                isAutoReleasingBow = true;
+                client.player.stopUsingItem();
+                isAutoReleasingBow = false;
+                isWaitingForBowRelease = false;
+            }
         }
     }
 
@@ -523,7 +536,7 @@ public class TutorialModClient implements ClientModInitializer {
         boolean needsMace = hasArmor && player.fallDistance > TutorialMod.CONFIG.maceSwapMinFallDistance && TutorialMod.CONFIG.maceSwapEnabled && findMaceInHotbar(player) != -1;
 
         if (needsSpear || needsStun || needsMace) {
-            executeCombatCombo(player, attackedPlayer);
+            executeCombatCombo(player, attackedPlayer, false);
             return ActionResult.FAIL;
         }
 
@@ -534,7 +547,7 @@ public class TutorialModClient implements ClientModInitializer {
         return ActionResult.PASS;
     }
 
-    private void executeCombatCombo(PlayerEntity player, PlayerEntity target) {
+    private void executeCombatCombo(PlayerEntity player, PlayerEntity target, boolean forceSpear) {
         if (isExecutingCombo || player == null || target == null) return;
         isExecutingCombo = true;
 
@@ -549,8 +562,8 @@ public class TutorialModClient implements ClientModInitializer {
         try {
             double dist = player.distanceTo(target);
 
-            // 1. Spear Hit (if range > 3)
-            if (dist > TutorialMod.CONFIG.reachSwapActivationRange && dist <= TutorialMod.CONFIG.spearReachSwapRange && TutorialMod.CONFIG.spearReachSwapEnabled) {
+            // 1. Spear Hit
+            if (forceSpear || (dist > TutorialMod.CONFIG.reachSwapActivationRange && dist <= TutorialMod.CONFIG.spearReachSwapRange && TutorialMod.CONFIG.spearReachSwapEnabled)) {
                 int spearSlot = findSpearInHotbar(player);
                 if (spearSlot != -1) {
                     syncSlot(spearSlot);
@@ -1019,18 +1032,26 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null || client.interactionManager == null) return false;
 
         // Check if there is a target within spear reach (4.1)
-        Entity target = getEntityLookingAt(client, TutorialMod.CONFIG.spearReachSwapRange, TutorialMod.CONFIG.reachSwapIgnoreCobwebs);
+        Entity target = null;
+        if (client.crosshairTarget instanceof net.minecraft.util.hit.EntityHitResult ehr) {
+            target = ehr.getEntity();
+        }
+        if (target == null) {
+            target = getEntityLookingAt(client, TutorialMod.CONFIG.spearReachSwapRange, TutorialMod.CONFIG.reachSwapIgnoreCobwebs);
+        }
+
         if (target != null) {
             double dist = client.player.distanceTo(target);
 
             boolean isHoldingSpear = client.player.getMainHandStack().isIn(ItemTags.SPEARS) || client.player.getMainHandStack().isOf(Items.TRIDENT);
 
-            boolean needsReachSwap = TutorialMod.CONFIG.spearReachSwapEnabled && dist > TutorialMod.CONFIG.reachSwapActivationRange;
-            boolean needsLungeSwap = TutorialMod.CONFIG.lungeSwapEnabled && !client.player.isOnGround() && !isHoldingSpear;
+            boolean hasSpear = findSpearInHotbar(client.player) != -1;
+            boolean needsReachSwap = TutorialMod.CONFIG.spearReachSwapEnabled && dist > TutorialMod.CONFIG.reachSwapActivationRange && hasSpear;
+            boolean needsLungeSwap = TutorialMod.CONFIG.lungeSwapEnabled && (!client.player.isOnGround() || client.player.fallDistance > 0) && !isHoldingSpear && hasSpear;
 
             if (needsReachSwap || needsLungeSwap) {
                 if (target instanceof PlayerEntity tp) {
-                    executeCombatCombo(client.player, tp);
+                    executeCombatCombo(client.player, tp, needsLungeSwap);
                     return true;
                 } else {
                     // Non-player target, just do simple reach/lunge swap
