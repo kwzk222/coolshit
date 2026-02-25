@@ -59,6 +59,17 @@ public class ModMenuIntegration implements ModMenuApi {
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.aimAssistWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistWeaponOnly = newValue).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Center Deadzone (Margin)"), (long)(TutorialMod.CONFIG.aimAssistTriggerMargin * 100), 0, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistTriggerMargin = newValue / 100.0).build());
+            aimAssist.addEntry(entryBuilder.startIntSlider(Text.literal("Fake Fail Chance"), TutorialMod.CONFIG.aimAssistFakeFailChance, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistFakeFailChance = newValue).build());
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Sensitivity Match"), TutorialMod.CONFIG.aimAssistSensitivityMatch).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistSensitivityMatch = newValue).build());
+
+            SubCategoryBuilder aimFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
+            aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.aimAssistIncludePlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistIncludePlayers = newValue).build());
+            aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Exclude Teammates"), TutorialMod.CONFIG.aimAssistExcludeTeammates).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistExcludeTeammates = newValue).build());
+            aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Hostiles"), TutorialMod.CONFIG.aimAssistIncludeHostiles).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistIncludeHostiles = newValue).build());
+            aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Passives"), TutorialMod.CONFIG.aimAssistIncludePassives).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistIncludePassives = newValue).build());
+            aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Exclude Villagers"), TutorialMod.CONFIG.aimAssistExcludeVillagers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistExcludeVillagers = newValue).build());
+            aimAssist.addEntry(aimFilters.build());
+
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Bow Release Block"), TutorialMod.CONFIG.bowReleaseBlockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowReleaseBlockEnabled = newValue).build());
 
             // 1.1 Attribute Swapping

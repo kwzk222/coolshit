@@ -173,6 +173,14 @@ public class ModConfig {
     public boolean aimAssistWeaponOnly = true;
     public double aimAssistChargeThreshold = 0.9;
     public double aimAssistTriggerMargin = 0.0;
+    public int aimAssistFakeFailChance = 0;
+    public boolean aimAssistSensitivityMatch = true;
+    public boolean aimAssistIncludePlayers = true;
+    public boolean aimAssistExcludeTeammates = true;
+    public boolean aimAssistIncludeHostiles = true;
+    public boolean aimAssistIncludePassives = false;
+    public boolean aimAssistExcludeVillagers = true;
+
     public boolean triggerBotWeaponOnly = true;
     public boolean attackOnCrit = false;
     public boolean triggerBotEnabled = true;

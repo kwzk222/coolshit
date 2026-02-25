@@ -11,12 +11,15 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.TutorialModClient;
 import net.rev.tutorialmod.modules.filters.TargetFilters;
 
 public class AimAssist {
     private final MinecraftClient mc = MinecraftClient.getInstance();
     private long lastFrameTime = 0;
     private boolean isAssisting = false;
+    private int failTicks = 0;
+    private final java.util.Random random = new java.util.Random();
 
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.aimAssistEnabled) {
@@ -64,7 +67,24 @@ public class AimAssist {
             return;
         }
 
+        // --- FAKE FAIL PREDICTION ---
+        if (failTicks > 0) {
+            failTicks--;
+            lastFrameTime = 0;
+            return;
+        }
+
+        if (TutorialMod.CONFIG.aimAssistFakeFailChance > 0 && random.nextInt(1000) < TutorialMod.CONFIG.aimAssistFakeFailChance) {
+            failTicks = 5 + random.nextInt(10);
+            isAssisting = false;
+            lastFrameTime = 0;
+            return;
+        }
+
         // If we get here, we either were already assisting, or we were off-target.
+        if (!isAssisting) {
+            TutorialModClient.getInstance().setOverlayStatus("Aim Assist Active");
+        }
         isAssisting = true;
 
         Vec3d targetPos = target.getBoundingBox().getCenter();
@@ -95,7 +115,7 @@ public class AimAssist {
     private boolean isHoldingMeleeWeapon() {
         if (mc.player == null) return false;
         ItemStack stack = mc.player.getMainHandStack();
-        return stack.isIn(ItemTags.SWORDS) || stack.isIn(ItemTags.AXES) || stack.getItem() instanceof MaceItem || stack.isIn(ItemTags.SPEARS);
+        return stack.isIn(ItemTags.SWORDS) || stack.isIn(ItemTags.AXES) || stack.getItem() instanceof MaceItem || stack.isIn(ItemTags.SPEARS) || stack.isOf(net.minecraft.item.Items.TRIDENT);
     }
 
     private Entity findTarget() {
@@ -105,7 +125,7 @@ public class AimAssist {
 
         for (Entity entity : mc.world.getEntities()) {
             if (entity == mc.player || !entity.isAlive() || entity instanceof EndCrystalEntity) continue;
-            if (!TargetFilters.isValidTarget(entity)) continue;
+            if (!TargetFilters.isValidTarget(entity, true)) continue;
 
             double dist = mc.player.distanceTo(entity);
             if (dist < TutorialMod.CONFIG.aimAssistMinRange || dist > minDist) continue;
@@ -139,7 +159,7 @@ public class AimAssist {
 
         for (Entity entity : mc.world.getEntities()) {
             if (entity == mc.player || !entity.isAlive()) continue;
-            if (!TargetFilters.isValidTarget(entity)) continue;
+            if (!TargetFilters.isValidTarget(entity, true)) continue;
 
             Box box = entity.getBoundingBox().expand(entity.getTargetingMargin());
             if (box.raycast(start, end).isPresent()) return true;
@@ -186,6 +206,14 @@ public class AimAssist {
             // A simple distance scaling:
             double distFactor = 4.0 / Math.max(1.0, dist); // Higher factor when closer
             strength *= distFactor * TutorialMod.CONFIG.aimAssistVariableStrengthFactor;
+        }
+
+        // --- SENSITIVITY MATCH ---
+        if (TutorialMod.CONFIG.aimAssistSensitivityMatch) {
+            double sens = mc.options.getMouseSensitivity().getValue();
+            // Sensitivity usually ranges from 0.0 to 1.0
+            // We want the step to be proportional to how much the mouse usually moves.
+            strength *= (sens * 2.0 + 0.1);
         }
 
         double step = strength * 8.0 * deltaTime;

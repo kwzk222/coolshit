@@ -449,6 +449,7 @@ public class TutorialModClient implements ClientModInitializer {
             float progress = BowItem.getPullProgress(useTicks);
 
             if (progress >= 1.0f) {
+                setOverlayStatus("Auto-Firing Bow");
                 isAutoReleasingBow = true;
                 client.player.stopUsingItem();
                 isAutoReleasingBow = false;
@@ -1051,12 +1052,14 @@ public class TutorialModClient implements ClientModInitializer {
 
             if (needsReachSwap || needsLungeSwap) {
                 if (target instanceof PlayerEntity tp) {
+                    setOverlayStatus("Triggering Combat Combo: " + (needsLungeSwap ? "Lunge" : "Reach"));
                     executeCombatCombo(client.player, tp, needsLungeSwap);
                     return true;
                 } else {
                     // Non-player target, just do simple reach/lunge swap
                     int spearSlot = findSpearInHotbar(client.player);
                     if (spearSlot != -1) {
+                        setOverlayStatus("Triggering Lunge Swap: Non-Player");
                         executeLungeSwap(client.player, target, spearSlot);
                         return true;
                     }
