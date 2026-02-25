@@ -447,7 +447,7 @@ public class TutorialModClient implements ClientModInitializer {
             int useTicks = client.player.getItemUseTime();
             float progress = BowItem.getPullProgress(useTicks);
 
-            if (progress >= 1.0f) {
+            if (progress >= TutorialMod.CONFIG.bowAutoFireThreshold) {
                 setOverlayStatus("Auto-Firing Bow");
                 isAutoReleasingBow = true;
                 if (client.interactionManager != null) {
@@ -1039,7 +1039,12 @@ public class TutorialModClient implements ClientModInitializer {
         if (TutorialMod.CONFIG.lungeSwapEnabled && isMidAir && !isHoldingMelee) {
             int spearSlot = findSpearInHotbar(client.player);
             if (spearSlot != -1) {
+                int originalSlot = ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot();
                 syncSlot(spearSlot);
+                if (TutorialMod.CONFIG.lungeSwapBackDelay > 0) {
+                    this.comboRestoreSlot = originalSlot;
+                    this.comboRestoreTicks = TutorialMod.CONFIG.lungeSwapBackDelay;
+                }
                 return false; // Continue with attack using spear
             }
         }

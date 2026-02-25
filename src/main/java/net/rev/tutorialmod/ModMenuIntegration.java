@@ -70,7 +70,10 @@ public class ModMenuIntegration implements ModMenuApi {
             aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Exclude Villagers"), TutorialMod.CONFIG.aimAssistExcludeVillagers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistExcludeVillagers = newValue).build());
             aimAssist.addEntry(aimFilters.build());
 
-            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Bow Release Block"), TutorialMod.CONFIG.bowReleaseBlockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowReleaseBlockEnabled = newValue).build());
+            SubCategoryBuilder bowSub = entryBuilder.startSubCategory(Text.literal("Bow Utilities"));
+            bowSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Release Block"), TutorialMod.CONFIG.bowReleaseBlockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowReleaseBlockEnabled = newValue).build());
+            bowSub.add(entryBuilder.startLongSlider(Text.literal("Auto-Fire Threshold"), (long)(TutorialMod.CONFIG.bowAutoFireThreshold * 100), 10, 100).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowAutoFireThreshold = newValue / 100.0).build());
+            aimAssist.addEntry(bowSub.build());
 
             // 1.1 Attribute Swapping
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));

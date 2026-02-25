@@ -118,6 +118,7 @@ public class ModConfig {
     // --- General ---
     public boolean masterEnabled = true;
     public boolean bowReleaseBlockEnabled = true;
+    public double bowAutoFireThreshold = 0.1;
     public int bowCooldown = 100;
 
     public boolean counterLavaDrainEnabled = true;

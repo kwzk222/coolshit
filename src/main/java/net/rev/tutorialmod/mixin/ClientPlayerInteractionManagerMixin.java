@@ -44,13 +44,13 @@ public abstract class ClientPlayerInteractionManagerMixin {
             int useTicks = player.getItemUseTime();
             float progress = net.minecraft.item.BowItem.getPullProgress(useTicks);
 
-            // Check if we are waiting for an auto-release OR if it's a full charge release
-            if (TutorialModClient.getInstance().isAutoReleasingBow() || progress >= 1.0f) {
+            // Check if we are waiting for an auto-release OR if it's a sufficient charge release
+            if (TutorialModClient.getInstance().isAutoReleasingBow() || progress >= TutorialMod.CONFIG.bowAutoFireThreshold) {
                 TutorialModClient.recordBowUsage();
                 return; // Allow
             }
 
-            // If we are below full charge, and the use key is NOT pressed, block the stop
+            // If we are below required charge, and the use key is NOT pressed, block the stop
             // This prevents the RELEASE_USE_ITEM packet from being sent.
             if (!MinecraftClient.getInstance().options.useKey.isPressed()) {
                 ci.cancel();
