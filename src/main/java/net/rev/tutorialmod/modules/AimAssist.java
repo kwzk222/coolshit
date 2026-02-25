@@ -114,8 +114,7 @@ public class AimAssist {
 
     private boolean isHoldingMeleeWeapon() {
         if (mc.player == null) return false;
-        ItemStack stack = mc.player.getMainHandStack();
-        return stack.isIn(ItemTags.SWORDS) || stack.isIn(ItemTags.AXES) || stack.getItem() instanceof MaceItem || stack.isIn(ItemTags.SPEARS) || stack.isOf(net.minecraft.item.Items.TRIDENT);
+        return TutorialModClient.getInstance().isMeleeWeapon(mc.player.getMainHandStack());
     }
 
     private Entity findTarget() {

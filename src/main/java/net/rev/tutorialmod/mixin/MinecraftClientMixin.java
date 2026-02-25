@@ -20,7 +20,7 @@ public abstract class MinecraftClientMixin {
 
     @Inject(method = "doAttack", at = @At("HEAD"), cancellable = true)
     private void onDoAttack(CallbackInfoReturnable<Boolean> cir) {
-        if (TutorialModClient.getInstance().onReachSwap()) {
+        if (TutorialModClient.getInstance().onLungeSwap()) {
             cir.setReturnValue(true);
         }
     }

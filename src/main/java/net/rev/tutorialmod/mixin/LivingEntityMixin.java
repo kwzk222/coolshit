@@ -20,28 +20,24 @@ public abstract class LivingEntityMixin {
         LivingEntity entity = (LivingEntity) (Object) this;
 
         // Only apply to local player
-        if (!(entity instanceof net.minecraft.client.network.ClientPlayerEntity)) return;
+        if (!(entity instanceof net.minecraft.client.network.ClientPlayerEntity clientPlayer)) return;
 
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.bowReleaseBlockEnabled) return;
 
-        ItemStack stack = entity.getActiveItem();
+        ItemStack stack = clientPlayer.getActiveItem();
         if (stack.getItem() instanceof net.minecraft.item.BowItem) {
-            // Check if we are waiting for an auto-release
-            if (TutorialModClient.getInstance().isAutoReleasingBow()) {
+            int useTicks = clientPlayer.getItemUseTime();
+            float progress = net.minecraft.item.BowItem.getPullProgress(useTicks);
+
+            // Check if we are waiting for an auto-release OR if it's a full charge release
+            if (TutorialModClient.getInstance().isAutoReleasingBow() || progress >= 1.0f) {
                 TutorialModClient.recordBowUsage();
                 return; // Allow
             }
 
-            int useTicks = entity.getItemUseTime();
-            float progress = net.minecraft.item.BowItem.getPullProgress(useTicks);
-
             // If we are below full charge, and the use key is NOT pressed, block the stop
-            // This happens when the user releases the key early.
-            // But we should only block if we are actually intending to auto-fire.
-            if (progress < 1.0f && !net.minecraft.client.MinecraftClient.getInstance().options.useKey.isPressed()) {
+            if (!net.minecraft.client.MinecraftClient.getInstance().options.useKey.isPressed()) {
                 ci.cancel();
-            } else if (progress >= 1.0f) {
-                TutorialModClient.recordBowUsage();
             }
         }
     }

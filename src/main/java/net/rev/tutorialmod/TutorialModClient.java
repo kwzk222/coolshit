@@ -424,13 +424,8 @@ public class TutorialModClient implements ClientModInitializer {
         ItemStack stack = client.player.getActiveItem();
         boolean isBow = stack.getItem() instanceof BowItem;
 
-        if (!isBow) {
-            isWaitingForBowRelease = false;
-            return;
-        }
-
-        // Detect release
-        if (!client.options.useKey.isPressed() && client.player.isUsingItem()) {
+        // Detect release: using bow, key NOT pressed, not yet flagged
+        if (isBow && !client.options.useKey.isPressed() && !isWaitingForBowRelease) {
             int useTicks = client.player.getItemUseTime();
             float progress = BowItem.getPullProgress(useTicks);
             if (progress < 1.0f) {
@@ -438,10 +433,14 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
 
+        // Reset waiting if we switch items or stop using (e.g. forced stop)
+        if (!isBow || !client.player.isUsingItem()) {
+            isWaitingForBowRelease = false;
+        }
+
         // If player physically holds the key again, cancel waiting
         if (client.options.useKey.isPressed()) {
             isWaitingForBowRelease = false;
-            return;
         }
 
         if (isWaitingForBowRelease) {
@@ -997,7 +996,7 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    private boolean isWeapon(ItemStack stack) {
+    public boolean isMeleeWeapon(ItemStack stack) {
         return stack.isIn(ItemTags.SWORDS) || stack.isIn(ItemTags.AXES) || stack.getItem() == Items.MACE || stack.isIn(ItemTags.SPEARS) || stack.isOf(Items.TRIDENT);
     }
 
@@ -1027,6 +1026,27 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
+    public boolean onLungeSwap() {
+        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo) return false;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null || client.world == null) return false;
+
+        boolean isHoldingMelee = isMeleeWeapon(client.player.getMainHandStack());
+        boolean isMidAir = !client.player.isOnGround() || client.player.fallDistance > 0;
+
+        if (TutorialMod.CONFIG.lungeSwapEnabled && isMidAir && !isHoldingMelee) {
+            int spearSlot = findSpearInHotbar(client.player);
+            if (spearSlot != -1) {
+                setOverlayStatus("Lunge Swap Active");
+                syncSlot(spearSlot);
+                return false; // Continue with attack using spear
+            }
+        }
+
+        // Reach Swap logic (requires a target)
+        return onReachSwap();
+    }
+
     public boolean onReachSwap() {
         if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo) return false;
         MinecraftClient client = MinecraftClient.getInstance();
@@ -1043,23 +1063,18 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (target != null) {
             double dist = client.player.distanceTo(target);
-
-            boolean isHoldingSpear = client.player.getMainHandStack().isIn(ItemTags.SPEARS) || client.player.getMainHandStack().isOf(Items.TRIDENT);
-
             boolean hasSpear = findSpearInHotbar(client.player) != -1;
             boolean needsReachSwap = TutorialMod.CONFIG.spearReachSwapEnabled && dist > TutorialMod.CONFIG.reachSwapActivationRange && hasSpear;
-            boolean needsLungeSwap = TutorialMod.CONFIG.lungeSwapEnabled && (!client.player.isOnGround() || client.player.fallDistance > 0) && !isHoldingSpear && hasSpear;
 
-            if (needsReachSwap || needsLungeSwap) {
+            if (needsReachSwap) {
                 if (target instanceof PlayerEntity tp) {
-                    setOverlayStatus("Triggering Combat Combo: " + (needsLungeSwap ? "Lunge" : "Reach"));
-                    executeCombatCombo(client.player, tp, needsLungeSwap);
+                    setOverlayStatus("Triggering Reach Swap");
+                    executeCombatCombo(client.player, tp, false);
                     return true;
                 } else {
-                    // Non-player target, just do simple reach/lunge swap
                     int spearSlot = findSpearInHotbar(client.player);
                     if (spearSlot != -1) {
-                        setOverlayStatus("Triggering Lunge Swap: Non-Player");
+                        setOverlayStatus("Triggering Reach Swap: Non-Player");
                         executeLungeSwap(client.player, target, spearSlot);
                         return true;
                     }
