@@ -64,6 +64,9 @@ public class ModConfig {
     public int maceToOriginalDelay = 1;
     public boolean autoCritEnabled = true;
 
+    public boolean lungeSwapEnabled = true;
+    public int lungeSwapBackDelay = 1;
+
 
     // --- Minecart Tech ---
     public boolean tntMinecartPlacementEnabled = true;
@@ -107,12 +110,14 @@ public class ModConfig {
     public String autoWaterDrainHotkey = "key.keyboard.n";
     public int waterDrainSwitchToDelay = 0;
     public int waterDrainSwitchBackDelay = 0;
+    public int bucketDrainPlaceDelay = 10;
     public int bucketDrainRestoreDelay = 2;
     public boolean autoExtinguishEnabled = false;
     public double autoExtinguishPitch = 60.0;
 
     // --- General ---
     public boolean masterEnabled = true;
+    public boolean bowReleaseBlockEnabled = true;
     public int bowCooldown = 100;
 
     public boolean counterLavaDrainEnabled = true;
@@ -158,7 +163,7 @@ public class ModConfig {
     // --- Aim Assist ---
     public boolean aimAssistEnabled = false;
     public String aimAssistHotkey = "key.keyboard.v";
-    public double aimAssistStrength = 1.0;
+    public double aimAssistStrength = 1.0; // Slider will be adjusted to allow lower
     public double aimAssistFov = 40.0;
     public boolean aimAssistVariableStrength = true;
     public double aimAssistVariableStrengthFactor = 1.0;

@@ -159,6 +159,9 @@ public class TutorialModClient implements ClientModInitializer {
     private int autoCritDelay = -1;
     private boolean isAutoCritAttacking = false;
 
+    private boolean isLungeSwapping = false;
+    private long lastPlacedWaterTick = -1;
+
     private enum WebWaterState { NONE, SWITCH_TO_BUCKET, PLACING, PICKING_UP, RESTORING }
     private WebWaterState currentWebWaterState = WebWaterState.NONE;
     private int webWaterStateTimer = -1;
@@ -418,9 +421,19 @@ public class TutorialModClient implements ClientModInitializer {
 
 
     private ActionResult onAttackEntity(PlayerEntity player, Entity target) {
-        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo || isAutoCritAttacking) return ActionResult.PASS;
+        if (!TutorialMod.CONFIG.masterEnabled || isExecutingCombo || isAutoCritAttacking || isLungeSwapping) return ActionResult.PASS;
 
         MinecraftClient mc = MinecraftClient.getInstance();
+
+        // --- Lunge Swap ---
+        if (TutorialMod.CONFIG.lungeSwapEnabled && !isWeapon(player.getMainHandStack()) && !player.isOnGround() && player.getVelocity().y > 0.01) {
+            int spearSlot = findSpearInHotbar(player);
+            if (spearSlot != -1) {
+                executeLungeSwap(player, target, spearSlot);
+                return ActionResult.FAIL;
+            }
+        }
+
         if (TutorialMod.CONFIG.autoCritEnabled && player.fallDistance > 0 && player.isSprinting() &&
             isKeyDown(mc.options.forwardKey.getBoundKeyTranslationKey()) &&
             isKeyDown(mc.options.jumpKey.getBoundKeyTranslationKey())) {
@@ -936,6 +949,36 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
+    private boolean isWeapon(ItemStack stack) {
+        return stack.isIn(ItemTags.SWORDS) || stack.isIn(ItemTags.AXES) || stack.getItem() == Items.MACE || stack.isIn(ItemTags.SPEARS);
+    }
+
+    private void executeLungeSwap(PlayerEntity player, Entity target, int spearSlot) {
+        if (isLungeSwapping || player == null || target == null) return;
+        isLungeSwapping = true;
+        MinecraftClient client = MinecraftClient.getInstance();
+
+        int originalSlot = ((PlayerInventoryMixin) player.getInventory()).getSelectedSlot();
+
+        try {
+            syncSlot(spearSlot);
+            if (client.interactionManager != null) {
+                client.interactionManager.attackEntity(player, target);
+                player.swingHand(Hand.MAIN_HAND);
+            }
+
+            int delay = TutorialMod.CONFIG.lungeSwapBackDelay;
+            if (delay <= 0) {
+                syncSlot(originalSlot);
+            } else {
+                this.comboRestoreSlot = originalSlot;
+                this.comboRestoreTicks = delay;
+            }
+        } finally {
+            isLungeSwapping = false;
+        }
+    }
+
     public void onReachSwap() {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.spearReachSwapEnabled || isExecutingCombo) return;
         MinecraftClient client = MinecraftClient.getInstance();
@@ -1155,6 +1198,11 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleAutoWaterDrain(MinecraftClient client) {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled || !TutorialMod.CONFIG.autoWaterDrainMode) return;
         if (client.player == null || client.world == null) return;
+
+        // Check placement immunity
+        if (lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) {
+            return;
+        }
         if (drainRestoreTicks != -1 || drainSwitchToTicks != -1) return; // Busy
 
         // Condition: Not swimming/in water
@@ -1362,6 +1410,10 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
 
+        // Record water placement
+        if (stack.isOf(Items.WATER_BUCKET)) {
+            lastPlacedWaterTick = client.world.getTime();
+        }
 
         if (!TutorialMod.CONFIG.waterDrainEnabled) return false;
 
@@ -1393,7 +1445,13 @@ public class TutorialModClient implements ClientModInitializer {
                 boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
                 boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
 
-                if (isWater && isNether) return false; // No water drain in Nether
+                if (isWater) {
+                    if (isNether) return false; // No water drain in Nether
+                    // Check placement immunity
+                    if (lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) {
+                        return false;
+                    }
+                }
                 if (isLava) {
                     if (!TutorialMod.CONFIG.waterDrainLavaEnabled) return false;
                     if (client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return false;
@@ -2102,6 +2160,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (autoCritTimer > 0) {
             autoCritTimer--;
             net.minecraft.util.PlayerInput old = input.playerInput;
+            // Force stop forward movement
             input.playerInput = new net.minecraft.util.PlayerInput(false, old.backward(), old.left(), old.right(), old.jump(), old.sneak(), old.sprint());
 
             float leftImpulse = 0.0f;

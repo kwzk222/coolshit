@@ -49,7 +49,7 @@ public class ModMenuIntegration implements ModMenuApi {
             ConfigCategory aimAssist = builder.getOrCreateCategory(Text.literal("Aim Assist"));
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Aim Assist Enabled"), TutorialMod.CONFIG.aimAssistEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEnabled = newValue).build());
             aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Toggle)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.v").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 10), 1, 100).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 100), 1, 1000).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 100.0).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistFov, 1, 180).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistFov = newValue.doubleValue()).build());
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Variable Strength (Distance)"), TutorialMod.CONFIG.aimAssistVariableStrength).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistVariableStrength = newValue).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Variable Strength Factor"), (long)(TutorialMod.CONFIG.aimAssistVariableStrengthFactor * 10), 1, 50).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistVariableStrengthFactor = newValue / 10.0).build());
@@ -63,6 +63,12 @@ public class ModMenuIntegration implements ModMenuApi {
             // 1.1 Attribute Swapping
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Crit Enabled"), TutorialMod.CONFIG.autoCritEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCritEnabled = newValue).build());
+
+            SubCategoryBuilder lungeSwapSub = entryBuilder.startSubCategory(Text.literal("Lunge Swap"));
+            lungeSwapSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.lungeSwapEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lungeSwapEnabled = newValue).build());
+            lungeSwapSub.add(entryBuilder.startIntSlider(Text.literal("Back Delay"), TutorialMod.CONFIG.lungeSwapBackDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.lungeSwapBackDelay = newValue).build());
+            autoStun.addEntry(lungeSwapSub.build());
+
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue).build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe to Original Delay"), TutorialMod.CONFIG.axeToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.axeToOriginalDelay = newValue).build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Mace to Original Delay"), TutorialMod.CONFIG.maceToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.maceToOriginalDelay = newValue).build());
@@ -233,6 +239,7 @@ public class ModMenuIntegration implements ModMenuApi {
             waterDrainSub.add(entryBuilder.startStrField(Text.literal("Auto Mode Hotkey"), TutorialMod.CONFIG.autoWaterDrainHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.autoWaterDrainHotkey = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Switch To Delay"), TutorialMod.CONFIG.waterDrainSwitchToDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchToDelay = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Switch Back Delay"), TutorialMod.CONFIG.waterDrainSwitchBackDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchBackDelay = newValue).build());
+            waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Placed Water Immunity (Ticks)"), TutorialMod.CONFIG.bucketDrainPlaceDelay, 0, 40).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainPlaceDelay = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Hotbar Restore Delay"), TutorialMod.CONFIG.bucketDrainRestoreDelay, 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainRestoreDelay = newValue).build());
             minecartTech.addEntry(waterDrainSub.build());
 
@@ -316,6 +323,7 @@ public class ModMenuIntegration implements ModMenuApi {
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue).build());
             misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue).build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Bow Release Block"), TutorialMod.CONFIG.bowReleaseBlockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowReleaseBlockEnabled = newValue).build());
 
 
             // 2.3 O-ESP (Moved here, renamed)
