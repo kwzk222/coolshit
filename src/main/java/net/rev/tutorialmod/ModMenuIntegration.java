@@ -161,12 +161,6 @@ public class ModMenuIntegration implements ModMenuApi {
             waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Bucket Switch"), TutorialMod.CONFIG.clutchAutoSwitch).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchAutoSwitch = newValue).build());
             movement.addEntry(waterClutchSub.build());
 
-            SubCategoryBuilder windClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Wind Charge)"));
-            windClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.windClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchEnabled = newValue).build());
-            windClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.windClutchMinFallDistance), 0, 200).setDefaultValue(8).setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchMinFallDistance = newValue.doubleValue()).build());
-            windClutchSub.add(entryBuilder.startIntSlider(Text.literal("Max Retry Attempts"), TutorialMod.CONFIG.windClutchMaxRetries, 0, 5).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchMaxRetries = newValue).build());
-            windClutchSub.add(entryBuilder.startLongSlider(Text.literal("Success Velocity Delta"), (long)(TutorialMod.CONFIG.windClutchSuccessVyDelta * 100), 0, 200).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.windClutchSuccessVyDelta = newValue / 100.0).build());
-            movement.addEntry(windClutchSub.build());
 
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Clutch Module Toggle"), TutorialMod.CONFIG.clutchEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue).build());
 

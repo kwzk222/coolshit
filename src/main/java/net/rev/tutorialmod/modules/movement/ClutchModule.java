@@ -26,12 +26,7 @@ public class ClutchModule {
         PLACING_WATER,   // Placing water
         LANDED,          // On ground, buffer for lag
         RECOVERING,      // Picking up water
-        FINISHING,       // Restoring slot
-
-        // Wind Charge States
-        WIND_PREARMED,
-        WIND_READY_TO_FIRE,
-        WIND_FIRED
+        FINISHING        // Restoring slot
     }
 
     private ClutchState state = ClutchState.IDLE;
@@ -39,12 +34,6 @@ public class ClutchModule {
     private int tickCounter = 0;
     private int spamTickCounter = 0;
     private boolean forcedSneaking = false;
-
-    // Wind charge runtime fields
-    private int fireAttempts = 0;
-    private double vyBeforeFire = 0.0;
-    private int successTickCounter = 0;
-    private int armedSlot = -1;
 
     private static final int MAX_SPAM_TICKS = 30;
     private static final double CLUTCH_REACH = 4.0;
@@ -89,19 +78,6 @@ public class ClutchModule {
                         }
                         tickCounter++;
                         handleArming(p, config);
-                    }
-                    // Fallback to Wind Charge Clutch
-                    else if (config.windClutchEnabled && p.fallDistance >= config.windClutchMinFallDistance) {
-                        int slot = findWindChargeSlot();
-                        if (slot != -1) {
-                            originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
-                            armedSlot = slot;
-                            setSlot(slot);
-                            fireAttempts = 0;
-                            vyBeforeFire = 0.0;
-                            successTickCounter = 0;
-                            state = ClutchState.WIND_PREARMED;
-                        }
                     }
                 }
             }
@@ -176,46 +152,6 @@ public class ClutchModule {
                     reset();
                 }
             }
-
-            case WIND_PREARMED -> {
-                if (p.isOnGround()) { reset(); return; }
-
-                Vec3d vel = p.getVelocity();
-                if (vel.y >= -0.15) return; // must be clearly falling
-
-                // Raycast DOWN by next-tick fall distance + safety margin
-                double checkDistance = Math.max(1.0, -vel.y + 0.1);
-
-                HitResult hit = p.raycast(checkDistance, 1.0f, false);
-
-                if (hit.getType() == HitResult.Type.BLOCK) {
-                    // We are within one tick of impact → fire now
-                    state = ClutchState.WIND_READY_TO_FIRE;
-                }
-            }
-
-            case WIND_READY_TO_FIRE -> {
-                if (p.isOnGround()) { reset(); return; }
-                doWindFireAttempt();
-                state = ClutchState.WIND_FIRED;
-                vyBeforeFire = p.getVelocity().y;
-                successTickCounter = 0;
-            }
-
-            case WIND_FIRED -> {
-                successTickCounter++;
-                double vyNow = p.getVelocity().y;
-                boolean velocitySuccess = (vyNow - vyBeforeFire) >= config.windClutchSuccessVyDelta;
-                boolean fallDistanceReset = p.fallDistance < Math.max(1.0, config.windClutchMinFallDistance / 2.0);
-
-                if (velocitySuccess || fallDistanceReset) {
-                    state = ClutchState.FINISHING;
-                    tickCounter = 0;
-                    return;
-                }
-
-                if (successTickCounter > 8) { reset(); return; }
-            }
         }
     }
 
@@ -280,32 +216,9 @@ public class ClutchModule {
             forcedSneaking = false;
         }
         originalSlot = -1;
-        armedSlot = -1;
         state = ClutchState.IDLE;
         tickCounter = 0;
         spamTickCounter = 0;
-        fireAttempts = 0;
-        vyBeforeFire = 0.0;
-        successTickCounter = 0;
-    }
-
-    private void doWindFireAttempt() {
-        if (mc.player == null) return;
-        if (((PlayerInventoryMixin) mc.player.getInventory()).getSelectedSlot() != armedSlot) {
-            setSlot(armedSlot);
-        }
-        ((MinecraftClientAccessor) mc).setItemUseCooldown(0);
-        ((MinecraftClientAccessor) mc).invokeDoItemUse();
-        fireAttempts++;
-    }
-
-
-    private int findWindChargeSlot() {
-        if (mc.player == null) return -1;
-        for (int i = 0; i < 9; i++) {
-            if (mc.player.getInventory().getStack(i).isOf(Items.WIND_CHARGE)) return i;
-        }
-        return -1;
     }
 
     private boolean isHoldingWater() {

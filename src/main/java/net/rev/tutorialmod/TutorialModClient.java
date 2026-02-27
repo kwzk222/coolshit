@@ -1036,6 +1036,12 @@ public class TutorialModClient implements ClientModInitializer {
         boolean isHoldingMelee = isMeleeWeapon(client.player.getMainHandStack());
         boolean isMidAir = !client.player.isOnGround() || client.player.fallDistance > 0;
 
+        if (client.crosshairTarget instanceof BlockHitResult bhr && bhr.getType() == HitResult.Type.BLOCK) {
+            if (client.player.getCameraPosVec(1.0f).distanceTo(bhr.getPos()) < 5.0) {
+                return false;
+            }
+        }
+
         if (TutorialMod.CONFIG.lungeSwapEnabled && isMidAir && !isHoldingMelee) {
             int spearSlot = findSpearInHotbar(client.player);
             if (spearSlot != -1) {
@@ -1318,7 +1324,8 @@ public class TutorialModClient implements ClientModInitializer {
                 if (isWater && isNether) return; // No water drain in Nether
                 if (isLava) {
                     if (!TutorialMod.CONFIG.waterDrainLavaEnabled) return;
-                    if (client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return;
+                    boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
+                    if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return;
                 }
 
                 // Check if isolated (no adjacent fluids of same type)
@@ -1537,7 +1544,8 @@ public class TutorialModClient implements ClientModInitializer {
                 }
                 if (isLava) {
                     if (!TutorialMod.CONFIG.waterDrainLavaEnabled) return false;
-                    if (client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return false;
+                    boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
+                    if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return false;
                 }
 
                 int bucketSlot = findEmptyBucketInHotbar(client.player);
