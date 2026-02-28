@@ -18,8 +18,6 @@ public class AimAssist {
     private final MinecraftClient mc = MinecraftClient.getInstance();
     private long lastFrameTime = 0;
     private boolean isAssisting = false;
-    private int failTicks = 0;
-    private final java.util.Random random = new java.util.Random();
 
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.aimAssistEnabled) {
@@ -53,9 +51,10 @@ public class AimAssist {
         }
 
         // --- THE STRICTEST CHECK ---
-        // If we are NOT already assisting, and our crosshair is ANYWHERE on ANY valid target's hitbox, we do nothing.
-        // This completely prevents micro-tracking when the user is already on target.
-        if (!isAssisting && isCrosshairOnAnyTarget()) {
+        // If our crosshair is ANYWHERE on ANY valid target's hitbox, we do nothing.
+        // This completely prevents tracking when the user is already on target.
+        if (isCrosshairOnAnyTarget()) {
+            isAssisting = false;
             lastFrameTime = 0;
             return;
         }
@@ -67,21 +66,7 @@ public class AimAssist {
             return;
         }
 
-        // --- FAKE FAIL PREDICTION ---
-        if (failTicks > 0) {
-            failTicks--;
-            lastFrameTime = 0;
-            return;
-        }
-
-        if (TutorialMod.CONFIG.aimAssistFakeFailChance > 0 && random.nextInt(1000) < TutorialMod.CONFIG.aimAssistFakeFailChance) {
-            failTicks = 5 + random.nextInt(10);
-            isAssisting = false;
-            lastFrameTime = 0;
-            return;
-        }
-
-        // If we get here, we either were already assisting, or we were off-target.
+        // If we get here, we were off-target.
         if (!isAssisting) {
             TutorialModClient.getInstance().setOverlayStatus("Aim Assist Active");
         }
@@ -89,27 +74,7 @@ public class AimAssist {
 
         Vec3d targetPos = target.getBoundingBox().getCenter();
 
-        // STOP condition: If we are close enough to the center (deadzone), stop assisting.
-        // The trigger margin goes "in" from the center.
-        if (isCrosshairOnPoint(targetPos, TutorialMod.CONFIG.aimAssistTriggerMargin)) {
-            isAssisting = false;
-            lastFrameTime = 0;
-            return;
-        }
-
         rotateToward(target, targetPos);
-    }
-
-    private boolean isCrosshairOnPoint(Vec3d targetPos, double margin) {
-        if (mc.player == null) return false;
-        Vec3d start = mc.player.getCameraPosVec(1.0f);
-        Vec3d direction = mc.player.getRotationVec(1.0f);
-        Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
-
-        // Margin goes 'in' (smaller box around center)
-        Box box = new Box(targetPos.x - margin, targetPos.y - margin, targetPos.z - margin,
-                          targetPos.x + margin, targetPos.y + margin, targetPos.z + margin);
-        return box.raycast(start, end).isPresent();
     }
 
     private boolean isHoldingMeleeWeapon() {
@@ -160,7 +125,9 @@ public class AimAssist {
             if (entity == mc.player || !entity.isAlive()) continue;
             if (!TargetFilters.isValidTarget(entity, true)) continue;
 
-            Box box = entity.getBoundingBox().expand(entity.getTargetingMargin());
+            // Using bounding box without the full targeting margin to stop "a bit after the edge"
+            // of the interactable area (which is typically bounding box + 0.1).
+            Box box = entity.getBoundingBox().expand(0.02);
             if (box.raycast(start, end).isPresent()) return true;
         }
         return false;

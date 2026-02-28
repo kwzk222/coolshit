@@ -58,8 +58,6 @@ public class ModMenuIntegration implements ModMenuApi {
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.aimAssistMinRange * 10), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMinRange = newValue / 10.0).build());
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.aimAssistWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistWeaponOnly = newValue).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Center Deadzone (Margin)"), (long)(TutorialMod.CONFIG.aimAssistTriggerMargin * 100), 0, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistTriggerMargin = newValue / 100.0).build());
-            aimAssist.addEntry(entryBuilder.startIntSlider(Text.literal("Fake Fail Chance"), TutorialMod.CONFIG.aimAssistFakeFailChance, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistFakeFailChance = newValue).build());
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Sensitivity Match"), TutorialMod.CONFIG.aimAssistSensitivityMatch).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistSensitivityMatch = newValue).build());
 
             SubCategoryBuilder aimFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
@@ -195,7 +193,6 @@ public class ModMenuIntegration implements ModMenuApi {
             // 1.5 Tool Switch
             ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch Enabled"), TutorialMod.CONFIG.autoToolSwitchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchEnabled = newValue).build());
-            toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Restock Enabled"), TutorialMod.CONFIG.autoRestockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoRestockEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Durability Safety Enabled"), TutorialMod.CONFIG.toolDurabilitySafetyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.toolDurabilitySafetyEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Restore Original Item"), TutorialMod.CONFIG.autoToolSwitchBackEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Min Restore Delay"), TutorialMod.CONFIG.autoToolSwitchBackMinDelay, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackMinDelay = newValue).build());

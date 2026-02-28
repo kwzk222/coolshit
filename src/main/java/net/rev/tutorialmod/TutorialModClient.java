@@ -397,7 +397,7 @@ public class TutorialModClient implements ClientModInitializer {
         // Master toggle check for all subsequent features.
         if (!TutorialMod.CONFIG.masterEnabled) return;
 
-        if (TutorialMod.CONFIG.autoTotemEnabled || TutorialMod.CONFIG.autoRestockEnabled) {
+        if (TutorialMod.CONFIG.autoTotemEnabled) {
             autoTotem.onTick(client);
         }
 
@@ -1068,7 +1068,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null) return false;
 
         boolean isHoldingMelee = isMeleeWeapon(client.player.getMainHandStack());
-        boolean isMidAir = !client.player.isOnGround() || client.player.fallDistance > 0;
+        boolean isMidAir = (!client.player.isOnGround() || client.player.fallDistance > 0) && !client.player.checkFallFlying();
 
         if (client.crosshairTarget instanceof BlockHitResult bhr && bhr.getType() == HitResult.Type.BLOCK) {
             if (client.player.getCameraPosVec(1.0f).distanceTo(bhr.getPos()) < 5.0) {

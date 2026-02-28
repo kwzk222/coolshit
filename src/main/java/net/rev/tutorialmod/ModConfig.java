@@ -141,7 +141,6 @@ public class ModConfig {
 
     // --- Auto Tool ---
     public boolean autoToolSwitchEnabled = true;
-    public boolean autoRestockEnabled = true;
     public boolean toolDurabilitySafetyEnabled = true;
     public boolean autoToolSwitchBackEnabled = true;
     public int autoToolSwitchBackMinDelay = 0;
@@ -171,8 +170,6 @@ public class ModConfig {
     public double aimAssistMinRange = 0.0;
     public boolean aimAssistWeaponOnly = true;
     public double aimAssistChargeThreshold = 0.9;
-    public double aimAssistTriggerMargin = 0.0;
-    public int aimAssistFakeFailChance = 0;
     public boolean aimAssistSensitivityMatch = true;
     public boolean aimAssistIncludePlayers = true;
     public boolean aimAssistExcludeTeammates = true;
