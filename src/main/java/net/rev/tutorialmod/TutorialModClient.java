@@ -192,6 +192,8 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean isWaitingForBowRelease = false;
     private boolean isAutoReleasingBow = false;
     private int elytraFlyTimer = -1;
+    private boolean wasEating = false;
+    private boolean ignoreNextUse = false;
 
     public void setPendingBowRelease(boolean val) {
         this.isWaitingForBowRelease = val;
@@ -395,7 +397,7 @@ public class TutorialModClient implements ClientModInitializer {
         // Master toggle check for all subsequent features.
         if (!TutorialMod.CONFIG.masterEnabled) return;
 
-        if (TutorialMod.CONFIG.autoTotemEnabled) {
+        if (TutorialMod.CONFIG.autoTotemEnabled || TutorialMod.CONFIG.autoRestockEnabled) {
             autoTotem.onTick(client);
         }
 
@@ -416,6 +418,17 @@ public class TutorialModClient implements ClientModInitializer {
         handleAntiLavaFlow(client);
         handleAutoCrit(client);
         handleAutoElytraFly(client);
+
+        if (client.player != null) {
+            boolean isEating = client.player.isUsingItem() && client.player.getActiveItem().getComponents().contains(net.minecraft.component.DataComponentTypes.FOOD);
+            if (wasEating && !isEating && isKeyDown(client.options.useKey.getBoundKeyTranslationKey())) {
+                ignoreNextUse = true;
+            }
+            if (ignoreNextUse && !isKeyDown(client.options.useKey.getBoundKeyTranslationKey())) {
+                ignoreNextUse = false;
+            }
+            wasEating = isEating;
+        }
 
         ClickSpamModule.onTick();
     }
@@ -521,7 +534,7 @@ public class TutorialModClient implements ClientModInitializer {
         boolean hasArmor = isArmored(attackedPlayer);
 
         // Check if any combo should be triggered
-        boolean needsSpear = dist > TutorialMod.CONFIG.reachSwapActivationRange && TutorialMod.CONFIG.spearReachSwapEnabled && findSpearInHotbar(player) != -1;
+        boolean needsSpear = dist > TutorialMod.CONFIG.reachSwapActivationRange && TutorialMod.CONFIG.spearReachSwapEnabled && findSpearInHotbar(player, false) != -1;
 
         // Determine if stun is needed
         boolean isFacing = true;
@@ -587,7 +600,7 @@ public class TutorialModClient implements ClientModInitializer {
 
             // 1. Spear Hit
             if (forceSpear || (dist > TutorialMod.CONFIG.reachSwapActivationRange && dist <= TutorialMod.CONFIG.spearReachSwapRange && TutorialMod.CONFIG.spearReachSwapEnabled)) {
-                int spearSlot = findSpearInHotbar(player);
+                int spearSlot = findSpearInHotbar(player, false);
                 if (spearSlot != -1) {
                     syncSlot(spearSlot);
                     if (client.interactionManager != null) {
@@ -1064,7 +1077,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         if (TutorialMod.CONFIG.lungeSwapEnabled && isMidAir && !isHoldingMelee) {
-            int spearSlot = findSpearInHotbar(client.player);
+            int spearSlot = findSpearInHotbar(client.player, true);
             if (spearSlot != -1) {
                 int originalSlot = ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot();
                 syncSlot(spearSlot);
@@ -1096,7 +1109,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (target != null) {
             double dist = client.player.distanceTo(target);
-            boolean hasSpear = findSpearInHotbar(client.player) != -1;
+            boolean hasSpear = findSpearInHotbar(client.player, false) != -1;
             boolean needsReachSwap = TutorialMod.CONFIG.spearReachSwapEnabled && dist > TutorialMod.CONFIG.reachSwapActivationRange && hasSpear;
 
             if (needsReachSwap) {
@@ -1104,7 +1117,7 @@ public class TutorialModClient implements ClientModInitializer {
                     executeCombatCombo(client.player, tp, false);
                     return true;
                 } else {
-                    int spearSlot = findSpearInHotbar(client.player);
+                    int spearSlot = findSpearInHotbar(client.player, false);
                     if (spearSlot != -1) {
                         executeLungeSwap(client.player, target, spearSlot);
                         return true;
@@ -1195,12 +1208,31 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
-    public int findSpearInHotbar(PlayerEntity player) {
+    public int findSpearInHotbar(PlayerEntity player, boolean requireLunge) {
         for (int i = 0; i < 9; i++) {
             ItemStack stack = player.getInventory().getStack(i);
-            if (stack.isIn(ItemTags.SPEARS) || stack.isOf(Items.TRIDENT)) return i;
+            if (stack.isIn(ItemTags.SPEARS) || stack.isOf(Items.TRIDENT)) {
+                if (!requireLunge || hasLungeEnchantment(stack, player)) return i;
+            }
         }
         return -1;
+    }
+
+    private boolean hasLungeEnchantment(ItemStack stack, PlayerEntity player) {
+        if (stack.isEmpty()) return false;
+        try {
+            var registry = player.getEntityWorld().getRegistryManager().getOrThrow(net.minecraft.registry.RegistryKeys.ENCHANTMENT);
+            for (var entry : stack.getEnchantments().getEnchantments()) {
+                if (entry.getKey().isPresent()) {
+                    if (entry.getKey().get().getValue().equals(net.minecraft.util.Identifier.ofVanilla("lunge"))) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private int findTntMinecartInHotbar(PlayerEntity player) {
@@ -1502,6 +1534,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     public boolean onItemUse() {
         if (!TutorialMod.CONFIG.masterEnabled) return false;
+        if (ignoreNextUse) return true;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return false;
 

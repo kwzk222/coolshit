@@ -195,6 +195,7 @@ public class ModMenuIntegration implements ModMenuApi {
             // 1.5 Tool Switch
             ConfigCategory toolSwitch = builder.getOrCreateCategory(Text.literal("Tool Switch"));
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Tool Switch Enabled"), TutorialMod.CONFIG.autoToolSwitchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchEnabled = newValue).build());
+            toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Restock Enabled"), TutorialMod.CONFIG.autoRestockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoRestockEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Durability Safety Enabled"), TutorialMod.CONFIG.toolDurabilitySafetyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.toolDurabilitySafetyEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Restore Original Item"), TutorialMod.CONFIG.autoToolSwitchBackEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Min Restore Delay"), TutorialMod.CONFIG.autoToolSwitchBackMinDelay, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackMinDelay = newValue).build());

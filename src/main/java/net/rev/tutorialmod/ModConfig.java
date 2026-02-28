@@ -141,6 +141,7 @@ public class ModConfig {
 
     // --- Auto Tool ---
     public boolean autoToolSwitchEnabled = true;
+    public boolean autoRestockEnabled = true;
     public boolean toolDurabilitySafetyEnabled = true;
     public boolean autoToolSwitchBackEnabled = true;
     public int autoToolSwitchBackMinDelay = 0;

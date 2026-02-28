@@ -63,7 +63,33 @@ public class AutoTotem {
         HandledScreen<?> handledScreen = (HandledScreen<?>) client.currentScreen;
         Slot hoveredSlot = ((HandledScreenAccessor) handledScreen).getFocusedSlot();
 
-        if (hoveredSlot == null || !hoveredSlot.hasStack() || !isTotem(hoveredSlot.getStack())) {
+        if (hoveredSlot == null || !hoveredSlot.hasStack()) {
+            return;
+        }
+
+        ItemStack hoveredStack = hoveredSlot.getStack();
+
+        // --- Auto Restock ---
+        if (TutorialMod.CONFIG.autoRestockEnabled) {
+            // Only restock if hovered item is in inventory (not hotbar)
+            // Hotbar slots are usually 36-44 in standard ScreenHandlers (Inventory/Survival)
+            // But ScreenHandlers vary. We check if the same item is in the hotbar with < max stack.
+            boolean isHotbarSlot = hoveredSlot.inventory == client.player.getInventory() && hoveredSlot.getIndex() < 9;
+            if (!isHotbarSlot) {
+                for (int i = 0; i < 9; i++) {
+                    ItemStack hotbarStack = client.player.getInventory().getStack(i);
+                    if (ItemStack.areItemsEqual(hoveredStack, hotbarStack)) {
+                        if (hotbarStack.getCount() < hotbarStack.getMaxCount()) {
+                            client.interactionManager.clickSlot(handledScreen.getScreenHandler().syncId, hoveredSlot.id, 0, SlotActionType.QUICK_MOVE, client.player);
+                            lastActionWasModSwap.set(true);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!isTotem(hoveredStack)) {
             return;
         }
 
