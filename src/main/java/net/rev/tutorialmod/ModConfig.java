@@ -75,6 +75,7 @@ public class ModConfig {
     public int minFallDistance = 3;
 
     // --- Movement ---
+    public boolean autoElytraFlyEnabled = true;
     public boolean parkourEnabled = false;
     public double parkourPredict = 0.12;
     public double parkourMaxDropHeight = 0.6;

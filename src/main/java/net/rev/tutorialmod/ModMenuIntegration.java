@@ -148,6 +148,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // 1.3 Movement
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
+            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Elytra Fly"), TutorialMod.CONFIG.autoElytraFlyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoElytraFlyEnabled = newValue).build());
 
             SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water)"));
             waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.waterClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue).build());

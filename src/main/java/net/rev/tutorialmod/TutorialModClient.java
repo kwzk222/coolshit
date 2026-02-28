@@ -191,6 +191,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     private boolean isWaitingForBowRelease = false;
     private boolean isAutoReleasingBow = false;
+    private int elytraFlyTimer = -1;
 
     public void setPendingBowRelease(boolean val) {
         this.isWaitingForBowRelease = val;
@@ -414,6 +415,7 @@ public class TutorialModClient implements ClientModInitializer {
         handleCounterLavaDrain(client);
         handleAntiLavaFlow(client);
         handleAutoCrit(client);
+        handleAutoElytraFly(client);
 
         ClickSpamModule.onTick();
     }
@@ -456,6 +458,25 @@ public class TutorialModClient implements ClientModInitializer {
                 isAutoReleasingBow = false;
                 isWaitingForBowRelease = false;
             }
+        }
+    }
+
+
+    private void handleAutoElytraFly(MinecraftClient client) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.autoElytraFlyEnabled) {
+            elytraFlyTimer = -1;
+            return;
+        }
+        if (client.player == null) return;
+
+        if (elytraFlyTimer > 0) {
+            elytraFlyTimer--;
+            if (client.player.getEquippedStack(EquipmentSlot.CHEST).isOf(Items.ELYTRA) && !client.player.isOnGround()) {
+                client.player.networkHandler.sendPacket(new net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket(client.player, net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket.Mode.START_FALL_FLYING));
+                elytraFlyTimer = -1;
+            }
+        } else if (elytraFlyTimer == 0) {
+            elytraFlyTimer = -1;
         }
     }
 
@@ -1485,6 +1506,11 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null) return false;
 
         ItemStack stack = client.player.getMainHandStack();
+        ItemStack offhandStack = client.player.getOffHandStack();
+
+        if (TutorialMod.CONFIG.autoElytraFlyEnabled && (stack.isOf(Items.ELYTRA) || offhandStack.isOf(Items.ELYTRA))) {
+            elytraFlyTimer = 10; // Check for the next 10 ticks
+        }
 
         // --- Lava Placement Restriction ---
         if (TutorialMod.CONFIG.lavaPlacementRestriction && stack.isOf(Items.LAVA_BUCKET)) {
