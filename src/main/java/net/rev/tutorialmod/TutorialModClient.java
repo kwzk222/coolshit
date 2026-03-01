@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.AxeItem;
@@ -1068,7 +1069,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null) return false;
 
         boolean isHoldingMelee = isMeleeWeapon(client.player.getMainHandStack());
-        boolean isMidAir = (!client.player.isOnGround() || client.player.fallDistance > 0) && !client.player.isFallFlying();
+        boolean isMidAir = (!client.player.isOnGround() || client.player.fallDistance > 0) && !((LivingEntity) client.player).isFallFlying();
 
         if (client.crosshairTarget instanceof BlockHitResult bhr && bhr.getType() == HitResult.Type.BLOCK) {
             if (client.player.getCameraPosVec(1.0f).distanceTo(bhr.getPos()) < 5.0) {
