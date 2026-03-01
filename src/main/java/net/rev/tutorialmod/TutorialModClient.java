@@ -1068,7 +1068,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null) return false;
 
         boolean isHoldingMelee = isMeleeWeapon(client.player.getMainHandStack());
-        boolean isMidAir = (!client.player.isOnGround() || client.player.fallDistance > 0) && !client.player.checkFallFlying();
+        boolean isMidAir = (!client.player.isOnGround() || client.player.fallDistance > 0) && !client.player.isFallFlying();
 
         if (client.crosshairTarget instanceof BlockHitResult bhr && bhr.getType() == HitResult.Type.BLOCK) {
             if (client.player.getCameraPosVec(1.0f).distanceTo(bhr.getPos()) < 5.0) {
