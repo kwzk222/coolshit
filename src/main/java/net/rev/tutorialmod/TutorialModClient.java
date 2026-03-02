@@ -1396,9 +1396,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
         if (drainRestoreTicks != -1 || drainSwitchToTicks != -1 || currentFallbackDrainState != FallbackDrainState.NONE) return; // Busy
 
-        // Condition: Not swimming/in water
-        if (client.player.isTouchingWater()) return;
-
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
         double range = client.player.getBlockInteractionRange();
@@ -1409,15 +1406,24 @@ public class TutorialModClient implements ClientModInitializer {
         Entity blocking = getEntityLookingAt(client, client.player.getEntityInteractionRange(), false);
         if (blocking != null) return;
 
-        BlockHitResult hit = client.world.raycast(new RaycastContext(
+        // Raycast for solid surfaces through liquid
+        BlockHitResult hitNone = client.world.raycast(new RaycastContext(
+                start, end,
+                RaycastContext.ShapeType.OUTLINE,
+                RaycastContext.FluidHandling.NONE,
+                client.player
+        ));
+
+        // Regular Drain Check (Fluid only)
+        BlockHitResult hitFluid = client.world.raycast(new RaycastContext(
                 start, end,
                 RaycastContext.ShapeType.OUTLINE,
                 RaycastContext.FluidHandling.SOURCE_ONLY,
                 client.player
         ));
 
-        if (hit.getType() == HitResult.Type.BLOCK) {
-            BlockPos pos = hit.getBlockPos();
+        if (hitFluid.getType() == HitResult.Type.BLOCK) {
+            BlockPos pos = hitFluid.getBlockPos();
             var fluidState = client.world.getFluidState(pos);
             if (fluidState.isStill()) {
                 boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
@@ -1434,41 +1440,49 @@ public class TutorialModClient implements ClientModInitializer {
                 }
 
                 if (canDrainNormally) {
-                    // Check if isolated (no adjacent fluids of same type)
-                    if (isIsolatedFluid(client.world, pos)) {
-                        int bucketSlot = findEmptyBucketInHotbar(client.player);
-                        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-                        if (bucketSlot != -1 && inventory.getSelectedSlot() != bucketSlot) {
-                            if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
-                                drainPendingSlot = bucketSlot;
-                                drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
-                                originalSlotBeforeDrain = inventory.getSelectedSlot();
+                    int bucketSlot = findEmptyBucketInHotbar(client.player);
+                    if (bucketSlot != -1) {
+                        boolean shouldDrain = isIsolatedFluid(client.world, pos);
+                        // Also allow if looking at a surface through it
+                        if (!shouldDrain && hitNone.getType() == HitResult.Type.BLOCK) {
+                            if (hitNone.getBlockPos().offset(hitNone.getSide()).equals(pos)) {
+                                shouldDrain = true;
+                            }
+                        }
+
+                        if (shouldDrain) {
+                            PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                            if (inventory.getSelectedSlot() != bucketSlot) {
+                                if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
+                                    drainPendingSlot = bucketSlot;
+                                    drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
+                                    originalSlotBeforeDrain = inventory.getSelectedSlot();
+                                } else {
+                                    originalSlotBeforeDrain = inventory.getSelectedSlot();
+                                    syncSlot(bucketSlot);
+                                    if (client.interactionManager != null) {
+                                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                                        client.player.swingHand(Hand.MAIN_HAND);
+                                    }
+                                    drainRestoreTicks = 2 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                                    drainSwitchBackTimer = -1;
+                                }
                             } else {
-                                originalSlotBeforeDrain = inventory.getSelectedSlot();
-                                syncSlot(bucketSlot);
                                 if (client.interactionManager != null) {
                                     client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                                     client.player.swingHand(Hand.MAIN_HAND);
                                 }
-                                drainRestoreTicks = 20 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                                drainRestoreTicks = 2;
                                 drainSwitchBackTimer = -1;
                             }
-                        } else if (bucketSlot == -1) {
-                            handleFallbackDrain(client, hit, isWater, isLava);
+                            return; // Done
                         }
                     }
                 }
             }
         }
 
-        // New logic: Check if looking AT a surface through liquid
-        BlockHitResult hitNone = client.world.raycast(new RaycastContext(
-                start, end,
-                RaycastContext.ShapeType.OUTLINE,
-                RaycastContext.FluidHandling.NONE,
-                client.player
-        ));
-
+        // Fallback Drain Check (Looking at surface through fluid)
         if (hitNone.getType() == HitResult.Type.BLOCK) {
             BlockPos liquidPos = hitNone.getBlockPos().offset(hitNone.getSide());
             var fluidState = client.world.getFluidState(liquidPos);
@@ -1481,6 +1495,8 @@ public class TutorialModClient implements ClientModInitializer {
                         boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
                         if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return;
                     }
+
+                    // Trigger fallback if NO empty buckets
                     if (findEmptyBucketInHotbar(client.player) == -1) {
                         handleFallbackDrainThrough(client, hitNone, isWater, isLava);
                     }
@@ -1491,6 +1507,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     private boolean isIsolatedFluid(World world, BlockPos pos) {
         var state = world.getFluidState(pos);
+        if (state.isIn(net.minecraft.registry.tag.FluidTags.LAVA)) return true; // Lava is always worth picking up
         Direction[] horizontal = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
         for (Direction d : horizontal) {
             BlockPos neighbor = pos.offset(d);
@@ -1649,9 +1666,6 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (!TutorialMod.CONFIG.waterDrainEnabled || TutorialMod.CONFIG.autoWaterDrainMode) return false;
 
-        // Condition: Not swimming/in water
-        if (client.player.isTouchingWater()) return false;
-
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
         // Use attribute-based reach
@@ -1664,25 +1678,31 @@ public class TutorialModClient implements ClientModInitializer {
         Entity blocking = getEntityLookingAt(client, client.player.getEntityInteractionRange(), false);
         if (blocking != null) return false;
 
-        BlockHitResult hit = client.world.raycast(new RaycastContext(
+        // Raycast for solid surfaces through liquid
+        BlockHitResult hitNone = client.world.raycast(new RaycastContext(
+                start, end,
+                RaycastContext.ShapeType.OUTLINE,
+                RaycastContext.FluidHandling.NONE,
+                client.player
+        ));
+
+        // 1. Regular Drain Check
+        BlockHitResult hitFluid = client.world.raycast(new RaycastContext(
                 start, end,
                 RaycastContext.ShapeType.OUTLINE,
                 RaycastContext.FluidHandling.SOURCE_ONLY,
                 client.player
         ));
 
-        if (hit.getType() == HitResult.Type.BLOCK) {
-            var fluidState = client.world.getFluidState(hit.getBlockPos());
+        if (hitFluid.getType() == HitResult.Type.BLOCK) {
+            var fluidState = client.world.getFluidState(hitFluid.getBlockPos());
             if (fluidState.isStill()) {
                 boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
                 boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
 
                 if (isWater) {
-                    if (isNether) return false; // No water drain in Nether
-                    // Check placement immunity
-                    if (lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) {
-                        return false;
-                    }
+                    if (isNether) return false;
+                    if (lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) return false;
                 }
                 if (isLava) {
                     if (!TutorialMod.CONFIG.waterDrainLavaEnabled) return false;
@@ -1691,33 +1711,42 @@ public class TutorialModClient implements ClientModInitializer {
                 }
 
                 int bucketSlot = findEmptyBucketInHotbar(client.player);
-                PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-                if (bucketSlot != -1 && inventory.getSelectedSlot() != bucketSlot) {
-                    if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
-                        drainPendingSlot = bucketSlot;
-                        drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
-                        originalSlotBeforeDrain = inventory.getSelectedSlot();
-                    } else {
-                        originalSlotBeforeDrain = inventory.getSelectedSlot();
-                        syncSlot(bucketSlot);
-                        drainRestoreTicks = 20 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
-                        drainSwitchBackTimer = -1;
+                if (bucketSlot != -1) {
+                    boolean shouldDrain = isIsolatedFluid(client.world, hitFluid.getBlockPos());
+                    if (!shouldDrain && hitNone.getType() == HitResult.Type.BLOCK) {
+                        if (hitNone.getBlockPos().offset(hitNone.getSide()).equals(hitFluid.getBlockPos())) {
+                            shouldDrain = true;
+                        }
                     }
-                    return true;
-                } else if (bucketSlot == -1) {
-                    handleFallbackDrain(client, hit, isWater, isLava);
+
+                    if (shouldDrain) {
+                        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                        if (inventory.getSelectedSlot() != bucketSlot) {
+                            if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
+                                drainPendingSlot = bucketSlot;
+                                drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
+                                originalSlotBeforeDrain = inventory.getSelectedSlot();
+                            } else {
+                                originalSlotBeforeDrain = inventory.getSelectedSlot();
+                                syncSlot(bucketSlot);
+                                if (client.interactionManager != null) {
+                                    client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                                    client.player.swingHand(Hand.MAIN_HAND);
+                                }
+                                drainRestoreTicks = 2 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                                drainSwitchBackTimer = -1;
+                            }
+                        } else {
+                            // Already holding empty bucket - let vanilla handle it
+                            return false;
+                        }
+                        return true;
+                    }
                 }
             }
         }
 
-        // New logic: Check if looking AT a surface through liquid
-        BlockHitResult hitNone = client.world.raycast(new RaycastContext(
-                start, end,
-                RaycastContext.ShapeType.OUTLINE,
-                RaycastContext.FluidHandling.NONE,
-                client.player
-        ));
-
+        // 2. Fallback Drain Check
         if (hitNone.getType() == HitResult.Type.BLOCK) {
             BlockPos liquidPos = hitNone.getBlockPos().offset(hitNone.getSide());
             var fluidState = client.world.getFluidState(liquidPos);
@@ -1730,8 +1759,10 @@ public class TutorialModClient implements ClientModInitializer {
                         boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
                         if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return false;
                     }
+
                     if (findEmptyBucketInHotbar(client.player) == -1) {
                         handleFallbackDrainThrough(client, hitNone, isWater, isLava);
+                        if (currentFallbackDrainState != FallbackDrainState.NONE) return true;
                     }
                 }
             }
@@ -1770,6 +1801,7 @@ public class TutorialModClient implements ClientModInitializer {
                 if (drainSwitchBackTimer == 0) {
                     restoreDrainSlot();
                     drainRestoreTicks = -1;
+                    drainSwitchBackTimer = -1;
                     return;
                 }
             }
@@ -1783,12 +1815,10 @@ public class TutorialModClient implements ClientModInitializer {
                     return;
                 }
             }
-
-            if (drainRestoreTicks == 0) {
-                restoreDrainSlot();
-                drainRestoreTicks = -1;
-                drainSwitchBackTimer = -1;
-            }
+        } else if (drainRestoreTicks == 0) {
+            restoreDrainSlot();
+            drainRestoreTicks = -1;
+            drainSwitchBackTimer = -1;
         }
     }
 
@@ -2136,27 +2166,6 @@ public class TutorialModClient implements ClientModInitializer {
         initiateFallback(client, liquidPos, surfacePos, targetSide, isWater, isLava);
     }
 
-    private void handleFallbackDrain(MinecraftClient client, BlockHitResult hit, boolean isWater, boolean isLava) {
-        if (!TutorialMod.CONFIG.bucketDrainFallbackEnabled && !TutorialMod.CONFIG.blockDrainFallbackEnabled) return;
-        BlockPos pos = hit.getBlockPos();
-
-        // Find valid surface (adjacent block)
-        Direction targetSide = null;
-        BlockPos surfacePos = null;
-        for (Direction side : Direction.values()) {
-            BlockPos adj = pos.offset(side);
-            BlockState state = client.world.getBlockState(adj);
-            if (state.isReplaceable()) continue; // Need a solid surface to place against
-            targetSide = side.getOpposite();
-            surfacePos = adj;
-            break;
-        }
-
-        if (targetSide == null) return;
-
-        initiateFallback(client, pos, surfacePos, targetSide, isWater, isLava);
-    }
-
     private void initiateFallback(MinecraftClient client, BlockPos liquidPos, BlockPos surfacePos, Direction targetSide, boolean isWater, boolean isLava) {
         int slot = -1;
         boolean blockMode = false;
@@ -2207,7 +2216,7 @@ public class TutorialModClient implements ClientModInitializer {
             case START:
                 syncSlot(fallbackDrainPendingSlot);
                 currentFallbackDrainState = FallbackDrainState.PLACING;
-                fallbackDrainTimer = 0;
+                fallbackDrainTimer = 3; // Even more delay
                 break;
             case PLACING:
                 if (client.interactionManager != null && client.player != null) {
@@ -2218,10 +2227,10 @@ public class TutorialModClient implements ClientModInitializer {
                     client.player.swingHand(Hand.MAIN_HAND);
                     if (isBlockFallback) {
                         currentFallbackDrainState = FallbackDrainState.RESTORING;
-                        fallbackDrainTimer = TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                        fallbackDrainTimer = 3 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
                     } else {
                         currentFallbackDrainState = FallbackDrainState.PICKING_UP;
-                        fallbackDrainTimer = 1;
+                        fallbackDrainTimer = 3; // Even more delay
                     }
                 } else {
                     currentFallbackDrainState = FallbackDrainState.NONE;
@@ -2229,11 +2238,12 @@ public class TutorialModClient implements ClientModInitializer {
                 break;
             case PICKING_UP:
                 if (client.interactionManager != null && client.player != null) {
-                    // Re-scan for bucket if it moved? Usually it's in hand.
+                    // When picking up fluid after placing water/lava, we can use interactItem or interactBlock on the same spot.
+                    // interactItem is generally safer for fluids.
                     client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                     client.player.swingHand(Hand.MAIN_HAND);
                     currentFallbackDrainState = FallbackDrainState.RESTORING;
-                    fallbackDrainTimer = TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                    fallbackDrainTimer = 3 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
                 } else {
                     currentFallbackDrainState = FallbackDrainState.NONE;
                 }
