@@ -202,14 +202,6 @@ public class AimAssist {
             strength *= distFactor * TutorialMod.CONFIG.aimAssistVariableStrengthFactor;
         }
 
-        // --- SENSITIVITY MATCH ---
-        if (TutorialMod.CONFIG.aimAssistSensitivityMatch) {
-            double sens = mc.options.getMouseSensitivity().getValue();
-            // Sensitivity usually ranges from 0.0 to 1.0
-            // We want the step to be proportional to how much the mouse usually moves.
-            strength *= (sens * 2.0 + 0.1);
-        }
-
         double step = strength * 8.0 * deltaTime;
         if (step > 1.0) step = 1.0;
 

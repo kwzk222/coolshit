@@ -78,6 +78,7 @@ public class ModConfig {
     public int minFallDistance = 3;
 
     // --- Movement ---
+    public boolean autoJumpEnabled = false;
     public boolean autoElytraFlyEnabled = true;
     public boolean parkourEnabled = false;
     public double parkourPredict = 0.12;
@@ -178,7 +179,6 @@ public class ModConfig {
     public double aimAssistShieldStrength = 1.0;
     public double aimAssistShieldFov = 40.0;
     public double aimAssistShieldArc = 180.0;
-    public boolean aimAssistSensitivityMatch = true;
     public boolean aimAssistIncludePlayers = true;
     public boolean aimAssistExcludeTeammates = true;
     public boolean aimAssistIncludeHostiles = true;

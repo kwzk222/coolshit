@@ -61,11 +61,9 @@ public class ModMenuIntegration implements ModMenuApi {
 
             SubCategoryBuilder shieldAimSub = entryBuilder.startSubCategory(Text.literal("Shield Settings"));
             shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Strength"), (long)(TutorialMod.CONFIG.aimAssistShieldStrength * 100), 1, 1000).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldStrength = newValue / 100.0).build());
-            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistShieldFov, 1, 180).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldFov = newValue.doubleValue()).build());
+            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistShieldFov, 1, 360).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldFov = newValue.doubleValue()).build());
             shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Blocking Arc"), (long)TutorialMod.CONFIG.aimAssistShieldArc, 1, 360).setDefaultValue(180).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldArc = newValue.doubleValue()).build());
             aimAssist.addEntry(shieldAimSub.build());
-
-            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Sensitivity Match"), TutorialMod.CONFIG.aimAssistSensitivityMatch).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistSensitivityMatch = newValue).build());
 
             SubCategoryBuilder aimFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.aimAssistIncludePlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistIncludePlayers = newValue).build());
@@ -159,6 +157,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // 1.3 Movement
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
+            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Jump"), TutorialMod.CONFIG.autoJumpEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoJumpEnabled = newValue).build());
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Elytra Fly"), TutorialMod.CONFIG.autoElytraFlyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoElytraFlyEnabled = newValue).build());
 
             SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water)"));

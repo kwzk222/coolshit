@@ -5,7 +5,8 @@
 	"mixins": [
 		"PlayerInventoryMixin",
 		"EntityS2CPacketAccessor",
-		"PlayerEntityMixin"
+		"PlayerEntityMixin",
+		"LivingEntityMixin"
 	],
 	"client": [
 		"ClientPlayerInteractionManagerMixin",
