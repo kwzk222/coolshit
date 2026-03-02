@@ -4,7 +4,8 @@
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
 		"PlayerInventoryMixin",
-		"EntityS2CPacketAccessor"
+		"EntityS2CPacketAccessor",
+		"PlayerEntityMixin"
 	],
 	"client": [
 		"ClientPlayerInteractionManagerMixin",

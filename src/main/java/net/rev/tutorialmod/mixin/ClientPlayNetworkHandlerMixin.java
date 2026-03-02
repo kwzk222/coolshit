@@ -6,6 +6,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
 import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import org.spongepowered.asm.mixin.Mixin;
@@ -68,6 +69,13 @@ public class ClientPlayNetworkHandlerMixin {
             Entity entity = packet.getEntity(client.world);
             if (entity != null && TutorialModClient.getInstance() != null) {
                 TutorialModClient.getInstance().onShieldBreak(entity.getId());
+            }
+        }
+
+        if (packet.getStatus() == 9) {
+            Entity entity = packet.getEntity(client.world);
+            if (entity != null && TutorialModClient.getInstance() != null) {
+                TutorialModClient.getInstance().onEntityFinishEating(entity.getId());
             }
         }
     }

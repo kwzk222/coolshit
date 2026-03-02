@@ -58,6 +58,13 @@ public class ModMenuIntegration implements ModMenuApi {
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.aimAssistMinRange * 10), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMinRange = newValue / 10.0).build());
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.aimAssistWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistWeaponOnly = newValue).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
+
+            SubCategoryBuilder shieldAimSub = entryBuilder.startSubCategory(Text.literal("Shield Settings"));
+            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Strength"), (long)(TutorialMod.CONFIG.aimAssistShieldStrength * 100), 1, 1000).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldStrength = newValue / 100.0).build());
+            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistShieldFov, 1, 180).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldFov = newValue.doubleValue()).build());
+            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Blocking Arc"), (long)TutorialMod.CONFIG.aimAssistShieldArc, 1, 360).setDefaultValue(180).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldArc = newValue.doubleValue()).build());
+            aimAssist.addEntry(shieldAimSub.build());
+
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Sensitivity Match"), TutorialMod.CONFIG.aimAssistSensitivityMatch).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistSensitivityMatch = newValue).build());
 
             SubCategoryBuilder aimFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
@@ -134,6 +141,12 @@ public class ModMenuIntegration implements ModMenuApi {
             autoStun.addEntry(reachSwapSub.build());
 
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("General Fall Distance"), TutorialMod.CONFIG.minFallDistance, 1, 5).setDefaultValue(3).setSaveConsumer(newValue -> TutorialMod.CONFIG.minFallDistance = newValue).build());
+
+            SubCategoryBuilder boostedStunSub = entryBuilder.startSubCategory(Text.literal("Boosted Prediction Chances"));
+            boostedStunSub.add(entryBuilder.startIntSlider(Text.literal("After Eating Chance"), TutorialMod.CONFIG.axeBoostedPredictionChanceEating, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.axeBoostedPredictionChanceEating = newValue).build());
+            boostedStunSub.add(entryBuilder.startIntSlider(Text.literal("Shield Disabled Chance"), TutorialMod.CONFIG.axeBoostedPredictionChanceShieldDisabled, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.axeBoostedPredictionChanceShieldDisabled = newValue).build());
+            boostedStunSub.add(entryBuilder.startIntSlider(Text.literal("Eating Window (Ticks)"), TutorialMod.CONFIG.eatingWindowTicks, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.eatingWindowTicks = newValue).build());
+            autoStun.addEntry(boostedStunSub.build());
 
             // 1.2 Crystal/Mace (Auto Totem)
             ConfigCategory autoTotem = builder.getOrCreateCategory(Text.literal("Crystal/Mace"));
@@ -249,6 +262,8 @@ public class ModMenuIntegration implements ModMenuApi {
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Switch Back Delay"), TutorialMod.CONFIG.waterDrainSwitchBackDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchBackDelay = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Placed Water Immunity (Ticks)"), TutorialMod.CONFIG.bucketDrainPlaceDelay, 0, 40).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainPlaceDelay = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Hotbar Restore Delay"), TutorialMod.CONFIG.bucketDrainRestoreDelay, 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainRestoreDelay = newValue).build());
+            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Bucket Drain Fallback"), TutorialMod.CONFIG.bucketDrainFallbackEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainFallbackEnabled = newValue).build());
+            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Block Drain Fallback"), TutorialMod.CONFIG.blockDrainFallbackEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.blockDrainFallbackEnabled = newValue).build());
             minecartTech.addEntry(waterDrainSub.build());
 
             SubCategoryBuilder counterLavaSub = entryBuilder.startSubCategory(Text.literal("Counter Lava Drain"));
@@ -331,6 +346,7 @@ public class ModMenuIntegration implements ModMenuApi {
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue).build());
             misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue).build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Creative Reach Match Survival"), TutorialMod.CONFIG.creativeReachMatchSurvival).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.creativeReachMatchSurvival = newValue).build());
 
 
             // 2.3 O-ESP (Moved here, renamed)

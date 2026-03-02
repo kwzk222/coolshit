@@ -30,6 +30,9 @@ public class ModConfig {
     public int maceAutoStunDelay = 1;
     public int maceAutoStunFailChance = 0;
     public int maceAutoStunFakePredictionChance = 0;
+    public int axeBoostedPredictionChanceEating = 0;
+    public int axeBoostedPredictionChanceShieldDisabled = 0;
+    public int eatingWindowTicks = 100;
 
     // Spear AutoStun (Spear -> Axe)
     public boolean spearAutoStunEnabled = true;
@@ -109,6 +112,8 @@ public class ModConfig {
     public int waterDrainSwitchBackDelay = 0;
     public int bucketDrainPlaceDelay = 10;
     public int bucketDrainRestoreDelay = 2;
+    public boolean bucketDrainFallbackEnabled = false;
+    public boolean blockDrainFallbackEnabled = false;
     public boolean autoExtinguishEnabled = false;
     public double autoExtinguishPitch = 60.0;
 
@@ -170,6 +175,9 @@ public class ModConfig {
     public double aimAssistMinRange = 0.0;
     public boolean aimAssistWeaponOnly = true;
     public double aimAssistChargeThreshold = 0.9;
+    public double aimAssistShieldStrength = 1.0;
+    public double aimAssistShieldFov = 40.0;
+    public double aimAssistShieldArc = 180.0;
     public boolean aimAssistSensitivityMatch = true;
     public boolean aimAssistIncludePlayers = true;
     public boolean aimAssistExcludeTeammates = true;
@@ -206,6 +214,7 @@ public class ModConfig {
     public String sprintModeHotkey = "key.keyboard.n";
     public String sneakModeHotkey = "key.keyboard.b";
     public boolean activeInInventory = false;
+    public boolean creativeReachMatchSurvival = false;
 
     // --- Chat ---
     public boolean disableModChatUpdates = false;

@@ -79,13 +79,16 @@ public class AimAssist {
 
     private boolean isHoldingMeleeWeapon() {
         if (mc.player == null) return false;
-        return TutorialModClient.getInstance().isMeleeWeapon(mc.player.getMainHandStack());
+        ItemStack stack = mc.player.getMainHandStack();
+        return TutorialModClient.getInstance().isMeleeWeapon(stack) || stack.getItem() instanceof net.minecraft.item.CrossbowItem;
     }
 
     private Entity findTarget() {
         if (mc.world == null || mc.player == null) return null;
         Entity closest = null;
         double minDist = TutorialMod.CONFIG.aimAssistMaxRange;
+        boolean isShielding = mc.player.isUsingItem() && mc.player.getActiveItem().isOf(net.minecraft.item.Items.SHIELD);
+        float fov = (float) (isShielding ? TutorialMod.CONFIG.aimAssistShieldFov : TutorialMod.CONFIG.aimAssistFov);
 
         for (Entity entity : mc.world.getEntities()) {
             if (entity == mc.player || !entity.isAlive() || entity instanceof EndCrystalEntity) continue;
@@ -94,12 +97,37 @@ public class AimAssist {
             double dist = mc.player.distanceTo(entity);
             if (dist < TutorialMod.CONFIG.aimAssistMinRange || dist > minDist) continue;
 
-            if (!isInFov(entity, (float) TutorialMod.CONFIG.aimAssistFov)) continue;
+            if (!isInFov(entity, fov)) continue;
+
+            if (isShielding) {
+                if (isWithinShieldArc(entity)) continue;
+            }
 
             minDist = dist;
             closest = entity;
         }
         return closest;
+    }
+
+    private boolean isWithinShieldArc(Entity target) {
+        if (mc.player == null) return false;
+        Vec3d diff = target.getBoundingBox().getCenter().subtract(mc.player.getCameraPosVec(1.0f));
+        double targetYaw = Math.toDegrees(Math.atan2(diff.z, diff.x)) - 90.0;
+        double yawDiff = Math.abs(MathHelper.wrapDegrees(targetYaw - mc.player.getYaw()));
+
+        // Add a 5-degree buffer to prevent jitter when target is on the edge
+        double arc = TutorialMod.CONFIG.aimAssistShieldArc;
+        if (isAssisting) arc += 10.0; // wider arc once assisting to keep it engaged?
+        // Actually the requirement is "follow enough to protect".
+        // If we are already assisting, we want to stay assisting until they are comfortably inside the arc.
+        // So arc should be SMALLER when isAssisting is true?
+        // Wait, if they are outside 180, we assist. We stop when they are inside 180.
+        // To prevent jitter, we should start assisting at 180 and stop at say 170.
+
+        double limit = TutorialMod.CONFIG.aimAssistShieldArc / 2.0;
+        if (isAssisting) limit -= 5.0; // Must get closer to center to stop assisting
+
+        return yawDiff <= limit;
     }
 
     private boolean isInFov(Entity entity, float fov) {
@@ -125,9 +153,8 @@ public class AimAssist {
             if (entity == mc.player || !entity.isAlive()) continue;
             if (!TargetFilters.isValidTarget(entity, true)) continue;
 
-            // Using bounding box without the full targeting margin to stop "a bit after the edge"
-            // of the interactable area (which is typically bounding box + 0.1).
-            Box box = entity.getBoundingBox().expand(0.02);
+            // Margin goes "in" -> negative expansion
+            Box box = entity.getBoundingBox().expand(-0.05);
             if (box.raycast(start, end).isPresent()) return true;
         }
         return false;
@@ -162,7 +189,8 @@ public class AimAssist {
         float yawDiff = MathHelper.wrapDegrees(targetYaw - currentYaw);
         float pitchDiff = MathHelper.wrapDegrees(targetPitch - currentPitch);
 
-        double strength = TutorialMod.CONFIG.aimAssistStrength;
+        boolean isShielding = mc.player.isUsingItem() && mc.player.getActiveItem().isOf(net.minecraft.item.Items.SHIELD);
+        double strength = isShielding ? TutorialMod.CONFIG.aimAssistShieldStrength : TutorialMod.CONFIG.aimAssistStrength;
 
         if (TutorialMod.CONFIG.aimAssistVariableStrength) {
             double dist = mc.player.distanceTo(target);
