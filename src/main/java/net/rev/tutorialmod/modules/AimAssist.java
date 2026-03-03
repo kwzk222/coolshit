@@ -14,10 +14,24 @@ import net.rev.tutorialmod.TutorialMod;
 import net.rev.tutorialmod.TutorialModClient;
 import net.rev.tutorialmod.modules.filters.TargetFilters;
 
+import java.util.Random;
+
 public class AimAssist {
     private final MinecraftClient mc = MinecraftClient.getInstance();
+    private final Random random = new Random();
     private long lastFrameTime = 0;
     private boolean isAssisting = false;
+
+    private Entity currentTarget = null;
+    private Vec3d lastTargetPos = null;
+    private Vec3d targetVelocity = Vec3d.ZERO;
+    private Vec3d lastTargetVelocity = Vec3d.ZERO;
+
+    private double currentOvershootYaw = 0;
+    private double currentOvershootPitch = 0;
+    private float lastFrameYawStep = 0;
+    private float lastFramePitchStep = 0;
+    private double currentBorderMargin = -0.05;
 
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.aimAssistEnabled) {
@@ -63,7 +77,29 @@ public class AimAssist {
         if (target == null) {
             isAssisting = false;
             lastFrameTime = 0;
+            currentTarget = null;
+            lastTargetPos = null;
+            currentOvershootYaw = 0;
+            currentOvershootPitch = 0;
             return;
+        }
+
+        // Handle target changes/initialization
+        if (target != currentTarget) {
+            currentTarget = target;
+            lastTargetPos = target.getBoundingBox().getCenter();
+            targetVelocity = Vec3d.ZERO;
+            lastTargetVelocity = Vec3d.ZERO;
+            currentOvershootYaw = 0;
+            currentOvershootPitch = 0;
+            // Randomize border on target change
+            double min = TutorialMod.CONFIG.aimAssistBorderMin;
+            double max = TutorialMod.CONFIG.aimAssistBorderMax;
+            currentBorderMargin = min + (max - min) * random.nextDouble();
+        } else {
+            Vec3d pos = target.getBoundingBox().getCenter();
+            targetVelocity = pos.subtract(lastTargetPos);
+            lastTargetPos = pos;
         }
 
         // If we get here, we were off-target.
@@ -75,6 +111,7 @@ public class AimAssist {
         Vec3d targetPos = target.getBoundingBox().getCenter();
 
         rotateToward(target, targetPos);
+        lastTargetVelocity = targetVelocity;
     }
 
     private boolean isHoldingMeleeWeapon() {
@@ -153,8 +190,8 @@ public class AimAssist {
             if (entity == mc.player || !entity.isAlive()) continue;
             if (!TargetFilters.isValidTarget(entity, true)) continue;
 
-            // Margin goes "in" -> negative expansion
-            Box box = entity.getBoundingBox().expand(-0.05);
+            // Use the randomized border margin
+            Box box = entity.getBoundingBox().expand(currentBorderMargin);
             if (box.raycast(start, end).isPresent()) return true;
         }
         return false;
@@ -189,6 +226,34 @@ public class AimAssist {
         float yawDiff = MathHelper.wrapDegrees(targetYaw - currentYaw);
         float pitchDiff = MathHelper.wrapDegrees(targetPitch - currentPitch);
 
+        // --- OVERSHOOT LOGIC ---
+        if (TutorialMod.CONFIG.aimAssistOvershootEnabled) {
+            // Detect direction change (velocity dot product)
+            if (targetVelocity.lengthSquared() > 0.0001 && lastTargetVelocity.lengthSquared() > 0.0001) {
+                double dot = targetVelocity.normalize().dotProduct(lastTargetVelocity.normalize());
+                if (dot < 0.5) { // Significant direction change
+                    // Overshoot in the direction of previous movement
+                    currentOvershootYaw = lastFrameYawStep * TutorialMod.CONFIG.aimAssistOvershootMagnitude * 5.0;
+                    currentOvershootPitch = lastFramePitchStep * TutorialMod.CONFIG.aimAssistOvershootMagnitude * 5.0;
+                }
+            }
+
+            yawDiff += currentOvershootYaw;
+            pitchDiff += currentOvershootPitch;
+
+            // Decay overshoot
+            double correction = TutorialMod.CONFIG.aimAssistOvershootCorrection * deltaTime * 10.0;
+            currentOvershootYaw = MathHelper.lerp(correction, currentOvershootYaw, 0);
+            currentOvershootPitch = MathHelper.lerp(correction, currentOvershootPitch, 0);
+        }
+
+        // --- HUMANIZE LOGIC ---
+        if (TutorialMod.CONFIG.aimAssistHumanize > 0) {
+            double h = TutorialMod.CONFIG.aimAssistHumanize;
+            yawDiff += (random.nextDouble() * 2 - 1) * h * 5.0;
+            pitchDiff += (random.nextDouble() * 2 - 1) * h * 5.0;
+        }
+
         boolean isShielding = mc.player.isUsingItem() && mc.player.getActiveItem().isOf(net.minecraft.item.Items.SHIELD);
         double strength = isShielding ? TutorialMod.CONFIG.aimAssistShieldStrength : TutorialMod.CONFIG.aimAssistStrength;
 
@@ -205,8 +270,11 @@ public class AimAssist {
         double step = strength * 8.0 * deltaTime;
         if (step > 1.0) step = 1.0;
 
-        float newYaw = currentYaw + (float)(yawDiff * step);
-        float newPitch = currentPitch + (float)(pitchDiff * step);
+        lastFrameYawStep = (float)(yawDiff * step);
+        lastFramePitchStep = (float)(pitchDiff * step);
+
+        float newYaw = currentYaw + lastFrameYawStep;
+        float newPitch = currentPitch + lastFramePitchStep;
 
         mc.player.setYaw(newYaw);
         if (!TutorialMod.CONFIG.aimAssistHorizontalOnly) {

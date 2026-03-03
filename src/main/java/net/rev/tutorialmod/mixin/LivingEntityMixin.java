@@ -3,6 +3,7 @@ package net.rev.tutorialmod.mixin;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.LivingEntity;
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.TutorialModClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,7 +17,9 @@ public abstract class LivingEntityMixin {
     @Inject(method = "tickMovement", at = @At("HEAD"))
     private void onTickMovement(CallbackInfo ci) {
         if (TutorialMod.CONFIG.autoJumpEnabled && (Object)this instanceof ClientPlayerEntity) {
-            this.jumpingCooldown = 0;
+            if (TutorialModClient.getInstance().isBuildingRecently()) {
+                this.jumpingCooldown = 0;
+            }
         }
     }
 }

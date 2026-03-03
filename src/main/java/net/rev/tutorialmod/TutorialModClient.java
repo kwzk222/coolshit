@@ -204,6 +204,7 @@ public class TutorialModClient implements ClientModInitializer {
     private int elytraFlyTimer = -1;
     private boolean wasEating = false;
     private boolean ignoreNextUse = false;
+    private long lastBlockPlaceTick = -1;
 
     public void setPendingBowRelease(boolean val) {
         this.isWaitingForBowRelease = val;
@@ -1639,6 +1640,11 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null) return false;
 
         ItemStack stack = client.player.getMainHandStack();
+
+        // Track general block placement for Autojump
+        if (stack.getItem() instanceof net.minecraft.item.BlockItem) {
+            lastBlockPlaceTick = client.world.getTime();
+        }
         ItemStack offhandStack = client.player.getOffHandStack();
 
         if (TutorialMod.CONFIG.autoElytraFlyEnabled && (stack.isOf(Items.ELYTRA) || offhandStack.isOf(Items.ELYTRA))) {
@@ -2569,6 +2575,12 @@ public class TutorialModClient implements ClientModInitializer {
         if (!TutorialMod.CONFIG.sprintResetEnabled || sprintResetCooldownTimer > 0) return;
         sprintResetTimer = TutorialMod.CONFIG.sprintResetDelay;
         sprintResetCooldownTimer = TutorialMod.CONFIG.sprintResetCooldown;
+    }
+
+    public boolean isBuildingRecently() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null || lastBlockPlaceTick == -1) return false;
+        return mc.world.getTime() - lastBlockPlaceTick < 20;
     }
 
     public void handleSprintResetInput(net.minecraft.client.input.Input input) {

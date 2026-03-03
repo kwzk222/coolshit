@@ -179,6 +179,12 @@ public class ModConfig {
     public double aimAssistShieldStrength = 1.0;
     public double aimAssistShieldFov = 40.0;
     public double aimAssistShieldArc = 180.0;
+    public boolean aimAssistOvershootEnabled = false;
+    public double aimAssistOvershootMagnitude = 1.2;
+    public double aimAssistOvershootCorrection = 0.5;
+    public double aimAssistBorderMin = -0.05;
+    public double aimAssistBorderMax = -0.02;
+    public double aimAssistHumanize = 0.0;
     public boolean aimAssistIncludePlayers = true;
     public boolean aimAssistExcludeTeammates = true;
     public boolean aimAssistIncludeHostiles = true;

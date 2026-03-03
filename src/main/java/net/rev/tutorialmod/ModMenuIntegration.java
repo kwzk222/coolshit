@@ -65,6 +65,19 @@ public class ModMenuIntegration implements ModMenuApi {
             shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Blocking Arc"), (long)TutorialMod.CONFIG.aimAssistShieldArc, 1, 360).setDefaultValue(180).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldArc = newValue.doubleValue()).build());
             aimAssist.addEntry(shieldAimSub.build());
 
+            SubCategoryBuilder overshootSub = entryBuilder.startSubCategory(Text.literal("Overshoot Settings"));
+            overshootSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.aimAssistOvershootEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistOvershootEnabled = newValue).build());
+            overshootSub.add(entryBuilder.startLongSlider(Text.literal("Magnitude"), (long)(TutorialMod.CONFIG.aimAssistOvershootMagnitude * 10), 10, 30).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistOvershootMagnitude = newValue / 10.0).build());
+            overshootSub.add(entryBuilder.startLongSlider(Text.literal("Correction Speed"), (long)(TutorialMod.CONFIG.aimAssistOvershootCorrection * 10), 1, 10).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistOvershootCorrection = newValue / 10.0).build());
+            aimAssist.addEntry(overshootSub.build());
+
+            SubCategoryBuilder borderSub = entryBuilder.startSubCategory(Text.literal("Randomized Border (Inward)"));
+            borderSub.add(entryBuilder.startLongSlider(Text.literal("Min (Pixels)"), (long)(TutorialMod.CONFIG.aimAssistBorderMin * -100), 0, 20).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistBorderMin = newValue / -100.0).build());
+            borderSub.add(entryBuilder.startLongSlider(Text.literal("Max (Pixels)"), (long)(TutorialMod.CONFIG.aimAssistBorderMax * -100), 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistBorderMax = newValue / -100.0).build());
+            aimAssist.addEntry(borderSub.build());
+
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Humanize"), (long)(TutorialMod.CONFIG.aimAssistHumanize * 100), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHumanize = newValue / 100.0).build());
+
             SubCategoryBuilder aimFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.aimAssistIncludePlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistIncludePlayers = newValue).build());
             aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Exclude Teammates"), TutorialMod.CONFIG.aimAssistExcludeTeammates).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistExcludeTeammates = newValue).build());
