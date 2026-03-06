@@ -75,6 +75,8 @@ public class ModConfig {
     public boolean tntMinecartPlacementEnabled = true;
     public boolean lavaCrossbowSequenceEnabled = true;
     public boolean bowSequenceEnabled = true;
+    public boolean minecartRestockEnabled = true;
+    public List<Integer> minecartRestockSlots = new ArrayList<>(Arrays.asList(0));
     public int minFallDistance = 3;
 
     // --- Movement ---
@@ -87,6 +89,8 @@ public class ModConfig {
     // --- Clutch ---
     public boolean clutchEnabled = false;
     public boolean waterClutchEnabled = true;
+    public boolean windChargeClutchEnabled = true;
+    public String clutchPriority = "Water"; // "Water" or "Wind Charge"
     public double clutchMinFallDistance = 3.0;
     public double clutchActivationPitch = 60.0;
     public int clutchRecoveryDelay = 20;

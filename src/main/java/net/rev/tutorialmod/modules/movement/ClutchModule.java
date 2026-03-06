@@ -22,14 +22,16 @@ public class ClutchModule {
 
     private enum ClutchState {
         IDLE,
-        ARMING,          // Detected fall, pre-selecting bucket
+        ARMING,          // Detected fall, pre-selecting item
         PLACING_WATER,   // Placing water
+        PLACING_WIND_CHARGE, // Throwing wind charge
         LANDED,          // On ground, buffer for lag
         RECOVERING,      // Picking up water
         FINISHING        // Restoring slot
     }
 
     private ClutchState state = ClutchState.IDLE;
+    private boolean isWindClutch = false;
     private int originalSlot = -1;
     private int tickCounter = 0;
     private int spamTickCounter = 0;
@@ -53,28 +55,39 @@ public class ClutchModule {
         }
 
         // Fix random sneaking: handle interactables during water clutch sequence and recovery
-        if (state == ClutchState.ARMING || state == ClutchState.PLACING_WATER ||
+        if (state == ClutchState.ARMING || state == ClutchState.PLACING_WATER || state == ClutchState.PLACING_WIND_CHARGE ||
             state == ClutchState.LANDED || state == ClutchState.RECOVERING || state == ClutchState.FINISHING) {
             handleInteractableSneak(p);
         }
 
         switch (state) {
             case IDLE -> {
-                if (!p.isOnGround() && p.getPitch() >= config.clutchActivationPitch) {
-                    // Prioritize Water Clutch
-                    boolean hasBucket = config.clutchAutoSwitch ? (findWaterBucket() != -1) : isHoldingWater();
+                if (!p.isOnGround() && p.getPitch() >= config.clutchActivationPitch && p.fallDistance >= config.clutchMinFallDistance) {
+                    int waterSlot = findWaterBucket();
+                    int windSlot = findWindCharge();
 
-                    boolean canWaterClutch = config.waterClutchEnabled && p.fallDistance >= config.clutchMinFallDistance && hasBucket;
+                    boolean waterAvailable = config.waterClutchEnabled && (config.clutchAutoSwitch ? waterSlot != -1 : isHoldingWater());
+                    boolean windAvailable = config.windChargeClutchEnabled && (config.clutchAutoSwitch ? windSlot != -1 : isHoldingWindCharge());
 
-                    if (canWaterClutch) {
+                    boolean useWater = false;
+                    int bestSlot = -1;
+
+                    if (config.clutchPriority.equals("Water")) {
+                        if (waterAvailable) { useWater = true; bestSlot = waterSlot; }
+                        else if (windAvailable) { useWater = false; bestSlot = windSlot; }
+                    } else {
+                        if (windAvailable) { useWater = false; bestSlot = windSlot; }
+                        else if (waterAvailable) { useWater = true; bestSlot = waterSlot; }
+                    }
+
+                    if (bestSlot != -1 || (!config.clutchAutoSwitch && (waterAvailable || windAvailable))) {
                         originalSlot = ((PlayerInventoryMixin) p.getInventory()).getSelectedSlot();
                         tickCounter = 0;
                         state = ClutchState.ARMING;
+                        isWindClutch = !useWater;
 
-                        // Immediate first tick of arming/switching
-                        if (config.clutchAutoSwitch) {
-                            int waterSlot = findWaterBucket();
-                            if (waterSlot != -1) setSlot(waterSlot);
+                        if (config.clutchAutoSwitch && bestSlot != -1) {
+                            setSlot(bestSlot);
                         }
                         tickCounter++;
                         handleArming(p, config);
@@ -85,10 +98,9 @@ public class ClutchModule {
             case ARMING -> {
                 if (p.isOnGround()) { reset(); return; }
 
-                // Continuous pre-arm switch in case of inventory changes
                 if (config.clutchAutoSwitch) {
-                    int waterSlot = findWaterBucket();
-                    if (waterSlot != -1) setSlot(waterSlot);
+                    int slot = isWindClutch ? findWindCharge() : findWaterBucket();
+                    if (slot != -1) setSlot(slot);
                 }
 
                 tickCounter++;
@@ -196,13 +208,24 @@ public class ClutchModule {
 
     private void handleArming(net.minecraft.client.network.ClientPlayerEntity p, ModConfig config) {
         if (tickCounter >= config.clutchSwitchDelay) {
-            // Check target with increased reach (10.0) to transition early
-            HitResult hit = p.raycast(10.0, 1.0f, false);
-            if (hit.getType() == HitResult.Type.BLOCK) {
-                state = ClutchState.PLACING_WATER;
-                spamUse(); // Save a tick
-                spamTickCounter = 0;
-                tickCounter = 0;
+            if (isWindClutch) {
+                // Perfect timing for wind charge: approx 2.5 - 3.0 blocks above ground
+                HitResult hit = p.raycast(2.8, 1.0f, false);
+                if (hit.getType() == HitResult.Type.BLOCK) {
+                    state = ClutchState.PLACING_WIND_CHARGE;
+                    spamUse(); // Only once
+                    state = ClutchState.LANDED;
+                    tickCounter = 0;
+                }
+            } else {
+                // Check target with increased reach (10.0) to transition early for water
+                HitResult hit = p.raycast(10.0, 1.0f, false);
+                if (hit.getType() == HitResult.Type.BLOCK) {
+                    state = ClutchState.PLACING_WATER;
+                    spamUse(); // Save a tick
+                    spamTickCounter = 0;
+                    tickCounter = 0;
+                }
             }
         }
     }
@@ -219,11 +242,17 @@ public class ClutchModule {
         state = ClutchState.IDLE;
         tickCounter = 0;
         spamTickCounter = 0;
+        isWindClutch = false;
     }
 
     private boolean isHoldingWater() {
         if (mc.player == null) return false;
         return mc.player.getMainHandStack().isOf(Items.WATER_BUCKET);
+    }
+
+    private boolean isHoldingWindCharge() {
+        if (mc.player == null) return false;
+        return mc.player.getMainHandStack().isOf(Items.WIND_CHARGE);
     }
 
     private boolean isManualSneakPressed() {
@@ -233,6 +262,15 @@ public class ClutchModule {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private int findWindCharge() {
+        if (mc.player == null) return -1;
+        for (int i = 0; i < 9; i++) {
+            if (mc.player.getInventory().getStack(i).isOf(Items.WIND_CHARGE))
+                return i;
+        }
+        return -1;
     }
 
     private int findWaterBucket() {

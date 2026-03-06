@@ -173,8 +173,10 @@ public class ModMenuIntegration implements ModMenuApi {
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Jump"), TutorialMod.CONFIG.autoJumpEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoJumpEnabled = newValue).build());
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Elytra Fly"), TutorialMod.CONFIG.autoElytraFlyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoElytraFlyEnabled = newValue).build());
 
-            SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water)"));
-            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.waterClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue).build());
+            SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water/Wind Charge)"));
+            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Water Clutch Enabled"), TutorialMod.CONFIG.waterClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue).build());
+            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Wind Charge Clutch Enabled"), TutorialMod.CONFIG.windChargeClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.windChargeClutchEnabled = newValue).build());
+            waterClutchSub.add(entryBuilder.startStringDropdownMenu(Text.literal("Clutch Priority"), TutorialMod.CONFIG.clutchPriority, s -> Text.literal(s)).setSelections(Arrays.asList("Water", "Wind Charge")).setDefaultValue("Water").setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchPriority = newValue).build());
             waterClutchSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.clutchHotkey).setDefaultValue("key.keyboard.j").setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchHotkey = newValue).build());
             waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.clutchMinFallDistance), 0, 100).setDefaultValue(3).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue.doubleValue()).build());
             waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue()).build());
@@ -182,7 +184,7 @@ public class ModMenuIntegration implements ModMenuApi {
             waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Recovery Delay"), TutorialMod.CONFIG.clutchRecoveryDelay, 0, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRecoveryDelay = newValue).build());
             waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay"), TutorialMod.CONFIG.clutchRestoreDelay, 0, 100).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreDelay = newValue).build());
             waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Restore Original Slot"), TutorialMod.CONFIG.clutchRestoreOriginalSlot).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreOriginalSlot = newValue).build());
-            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Bucket Switch"), TutorialMod.CONFIG.clutchAutoSwitch).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchAutoSwitch = newValue).build());
+            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Clutch Switch"), TutorialMod.CONFIG.clutchAutoSwitch).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchAutoSwitch = newValue).build());
             movement.addEntry(waterClutchSub.build());
 
 
@@ -308,6 +310,10 @@ public class ModMenuIntegration implements ModMenuApi {
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence"), TutorialMod.CONFIG.bowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startIntSlider(Text.literal("Bow Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());
+            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Minecart Restock"), TutorialMod.CONFIG.minecartRestockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.minecartRestockEnabled = newValue).build());
+            sequencesSub.add(entryBuilder.startStrField(Text.literal("Minecart Restock Slots"), TutorialMod.CONFIG.minecartRestockSlots.stream().map(s -> String.valueOf(s + 1)).collect(Collectors.joining(","))).setDefaultValue("1").setSaveConsumer(newValue -> {
+                try { TutorialMod.CONFIG.minecartRestockSlots = Arrays.stream(newValue.replace(" ", "").split(",")).map(s -> Integer.parseInt(s) - 1).collect(Collectors.toList()); } catch (NumberFormatException ignored) {}
+            }).build());
             minecartTech.addEntry(sequencesSub.build());
 
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Prevent Lava Placement in Water"), TutorialMod.CONFIG.lavaPlacementRestriction).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaPlacementRestriction = newValue).build());

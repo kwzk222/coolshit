@@ -205,6 +205,7 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean wasEating = false;
     private boolean ignoreNextUse = false;
     private long lastBlockPlaceTick = -1;
+    private int restockTimer = -1;
 
     public void setPendingBowRelease(boolean val) {
         this.isWaitingForBowRelease = val;
@@ -450,6 +451,7 @@ public class TutorialModClient implements ClientModInitializer {
         handleFallbackDrainTick(client);
         handleAutoCrit(client);
         handleAutoElytraFly(client);
+        handleMinecartRestock(client);
 
         if (client.player != null) {
             boolean isEating = client.player.isUsingItem() && client.player.getActiveItem().getComponents().contains(net.minecraft.component.DataComponentTypes.FOOD);
@@ -1013,8 +1015,62 @@ public class TutorialModClient implements ClientModInitializer {
 
     public static void recordBowUsage() {
         if (instance != null) {
-            instance.lastBowShotTick = MinecraftClient.getInstance().world.getTime();
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.world != null) {
+                instance.lastBowShotTick = client.world.getTime();
+
+                if (TutorialMod.CONFIG.minecartRestockEnabled && (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled || TutorialMod.CONFIG.bowSequenceEnabled)) {
+                    // Start restock after shot
+                    instance.restockTimer = 2;
+                }
+            }
         }
+    }
+
+    private void handleMinecartRestock(MinecraftClient client) {
+        if (restockTimer > 0) {
+            restockTimer--;
+            if (restockTimer == 0) {
+                performRestock(client);
+            }
+        }
+    }
+
+    private void performRestock(MinecraftClient client) {
+        if (client.player == null || client.interactionManager == null) return;
+
+        // Open inventory
+        client.setScreen(new net.minecraft.client.gui.screen.ingame.InventoryScreen(client.player));
+
+        // Use a deferred task to ensure the screen is initialized
+        client.execute(() -> {
+            if (!(client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.InventoryScreen inv)) return;
+
+            for (int targetSlot : TutorialMod.CONFIG.minecartRestockSlots) {
+                if (targetSlot < 0 || targetSlot >= 9) continue;
+
+                // Find a TNT Minecart in the main inventory
+                int sourceSlot = findTntMinecartInMainInventory(client.player);
+                if (sourceSlot != -1) {
+                    // Hotkey the item using invoker
+                    ((net.rev.tutorialmod.mixin.HandledScreenAccessor) inv).invokeOnMouseClick(inv.getScreenHandler().getSlot(sourceSlot), sourceSlot, targetSlot, net.minecraft.screen.slot.SlotActionType.SWAP);
+                }
+            }
+
+            // Close inventory
+            client.player.closeHandledScreen();
+            client.setScreen(null);
+        });
+    }
+
+    private int findTntMinecartInMainInventory(PlayerEntity player) {
+        // Main inventory slots in PlayerScreenHandler are 9-35
+        for (int i = 9; i <= 35; i++) {
+            if (player.playerScreenHandler.getSlot(i).getStack().isOf(Items.TNT_MINECART)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public void startRailPlacement(BlockPos pos) {
