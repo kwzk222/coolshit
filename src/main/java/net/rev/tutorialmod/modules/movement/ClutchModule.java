@@ -131,15 +131,33 @@ public class ClutchModule {
                 if (spamTickCounter > MAX_SPAM_TICKS) { reset(); }
             }
 
+            case PLACING_WIND_CHARGE -> {
+                if (p.isOnGround()) {
+                    state = ClutchState.LANDED;
+                    tickCounter = 0;
+                    return;
+                }
+                tickCounter++;
+                if (tickCounter > 60) reset();
+            }
+
             case LANDED -> {
                 tickCounter++;
                 if (tickCounter >= config.clutchRecoveryDelay) {
                     tickCounter = 0;
-                    state = ClutchState.RECOVERING;
+                    if (isWindClutch) {
+                        state = ClutchState.FINISHING;
+                    } else {
+                        state = ClutchState.RECOVERING;
+                    }
                 }
             }
 
             case RECOVERING -> {
+                if (isWindClutch) {
+                    state = ClutchState.FINISHING;
+                    return;
+                }
                 tickCounter++;
                 int bucketSlot = findEmptyBucket();
                 if (bucketSlot != -1) {
@@ -210,11 +228,14 @@ public class ClutchModule {
         if (tickCounter >= config.clutchSwitchDelay) {
             if (isWindClutch) {
                 // Perfect timing for wind charge: approx 2.5 - 3.0 blocks above ground
-                HitResult hit = p.raycast(2.8, 1.0f, false);
+                // To account for high velocity, we check if we will hit the ground in the next tick
+                double fallVelocity = -p.getVelocity().y;
+                double checkDistance = Math.max(2.8, fallVelocity * 1.5);
+
+                HitResult hit = p.raycast(checkDistance, 1.0f, false);
                 if (hit.getType() == HitResult.Type.BLOCK) {
                     state = ClutchState.PLACING_WIND_CHARGE;
                     spamUse(); // Only once
-                    state = ClutchState.LANDED;
                     tickCounter = 0;
                 }
             } else {

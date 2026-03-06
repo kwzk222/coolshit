@@ -135,6 +135,7 @@ public class TutorialModClient implements ClientModInitializer {
     private int crossbowSlot = -1;
     private int actionTimeout = -1;
     private int minecartRetryCounter = 0;
+    private long lastSequenceTick = -1;
 
     // --- State: Misc ---
     public static long lastBowShotTick = -1;
@@ -205,6 +206,8 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean wasEating = false;
     private boolean ignoreNextUse = false;
     private long lastBlockPlaceTick = -1;
+    private enum RestockState { IDLE, TRIGGERED, OPENING, CLICKING, CLOSING }
+    private RestockState restockState = RestockState.IDLE;
     private int restockTimer = -1;
 
     public void setPendingBowRelease(boolean val) {
@@ -1020,57 +1023,101 @@ public class TutorialModClient implements ClientModInitializer {
                 instance.lastBowShotTick = client.world.getTime();
 
                 if (TutorialMod.CONFIG.minecartRestockEnabled && (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled || TutorialMod.CONFIG.bowSequenceEnabled)) {
-                    // Start restock after shot
-                    instance.restockTimer = 2;
+                    // Only trigger if a sequence was active within last 10 seconds (200 ticks)
+                    if (instance.lastSequenceTick != -1 && (client.world.getTime() - instance.lastSequenceTick) < 200) {
+                        if (instance.restockState == RestockState.IDLE) {
+                            instance.restockState = RestockState.TRIGGERED;
+                            instance.restockTimer = 5; // Wait for shot animation
+                        }
+                    }
                 }
             }
         }
     }
 
     private void handleMinecartRestock(MinecraftClient client) {
+        if (restockState == RestockState.IDLE) return;
+
         if (restockTimer > 0) {
             restockTimer--;
-            if (restockTimer == 0) {
-                performRestock(client);
+            return;
+        }
+
+        switch (restockState) {
+            case TRIGGERED -> {
+                // Check if we have minecarts to restock
+                boolean hasMinecarts = false;
+                for (int i = 0; i < client.player.getInventory().size(); i++) {
+                    if (i >= 9 && i <= 35) { // Main inventory
+                         if (client.player.getInventory().getStack(i).isOf(Items.TNT_MINECART)) {
+                             hasMinecarts = true;
+                             break;
+                         }
+                    }
+                }
+
+                if (hasMinecarts) {
+                    client.setScreen(new net.minecraft.client.gui.screen.ingame.InventoryScreen(client.player));
+                    restockState = RestockState.OPENING;
+                    restockTimer = 2; // Wait for screen to open
+                } else {
+                    restockState = RestockState.IDLE;
+                }
             }
+            case OPENING -> {
+                if (client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.InventoryScreen inv) {
+                    performRestockClicks(client, inv);
+                    restockState = RestockState.CLICKING;
+                    restockTimer = 2; // Wait for packets
+                } else {
+                    restockState = RestockState.IDLE;
+                }
+            }
+            case CLICKING -> {
+                if (client.player != null) {
+                    client.player.closeHandledScreen();
+                    client.setScreen(null);
+                }
+                restockState = RestockState.IDLE;
+                lastSequenceTick = -1; // Reset sequence window
+            }
+            default -> restockState = RestockState.IDLE;
         }
     }
 
-    private void performRestock(MinecraftClient client) {
-        if (client.player == null || client.interactionManager == null) return;
+    private void performRestockClicks(MinecraftClient client, net.minecraft.client.gui.screen.ingame.InventoryScreen inv) {
+        List<Integer> usedSourceSlots = new ArrayList<>();
+        for (int targetSlot : TutorialMod.CONFIG.minecartRestockSlots) {
+            if (targetSlot < 0 || targetSlot >= 9) continue;
 
-        // Open inventory
-        client.setScreen(new net.minecraft.client.gui.screen.ingame.InventoryScreen(client.player));
+            // Skip if target slot already has a TNT minecart
+            if (client.player.getInventory().getStack(targetSlot).isOf(Items.TNT_MINECART)) continue;
 
-        // Use a deferred task to ensure the screen is initialized
-        client.execute(() -> {
-            if (!(client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.InventoryScreen inv)) return;
+            int sourceSlotId = -1;
+            net.minecraft.screen.slot.Slot sourceSlot = null;
 
-            for (int targetSlot : TutorialMod.CONFIG.minecartRestockSlots) {
-                if (targetSlot < 0 || targetSlot >= 9) continue;
+            // Search through the slots of the screen handler
+            // 9-35 are main inventory, 36-44 are hotbar
+            for (int i = 9; i <= 44; i++) {
+                if (usedSourceSlots.contains(i)) continue;
+                if (i == (36 + targetSlot)) continue; // Don't swap with self
 
-                // Find a TNT Minecart in the main inventory
-                int sourceSlot = findTntMinecartInMainInventory(client.player);
-                if (sourceSlot != -1) {
-                    // Hotkey the item using invoker
-                    ((net.rev.tutorialmod.mixin.HandledScreenAccessor) inv).invokeOnMouseClick(inv.getScreenHandler().getSlot(sourceSlot), sourceSlot, targetSlot, net.minecraft.screen.slot.SlotActionType.SWAP);
+                net.minecraft.screen.slot.Slot slot = inv.getScreenHandler().getSlot(i);
+                if (slot.getStack().isOf(Items.TNT_MINECART)) {
+                    sourceSlotId = i;
+                    sourceSlot = slot;
+                    break;
                 }
             }
 
-            // Close inventory
-            client.player.closeHandledScreen();
-            client.setScreen(null);
-        });
-    }
-
-    private int findTntMinecartInMainInventory(PlayerEntity player) {
-        // Main inventory slots in PlayerScreenHandler are 9-35
-        for (int i = 9; i <= 35; i++) {
-            if (player.playerScreenHandler.getSlot(i).getStack().isOf(Items.TNT_MINECART)) {
-                return i;
+            if (sourceSlot != null) {
+                usedSourceSlots.add(sourceSlotId);
+                // Hover over the slot visually
+                ((net.rev.tutorialmod.mixin.HandledScreenAccessor) inv).setFocusedSlot(sourceSlot);
+                // Execute the swap
+                ((net.rev.tutorialmod.mixin.HandledScreenAccessor) inv).invokeOnMouseClick(sourceSlot, sourceSlotId, targetSlot, net.minecraft.screen.slot.SlotActionType.SWAP);
             }
         }
-        return -1;
     }
 
     public void startRailPlacement(BlockPos pos) {
@@ -1085,6 +1132,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     public void startPostMinecartSequence(MinecraftClient client) {
         if (client.player == null) return;
+        this.lastSequenceTick = client.world.getTime();
         this.railPos = null;
         PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
         if (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled) {
@@ -1446,6 +1494,11 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleAutoWaterDrain(MinecraftClient client) {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled || !TutorialMod.CONFIG.autoWaterDrainMode) return;
         if (client.player == null || client.world == null) return;
+
+        // Pause lava drain during TNT minecart placement sequences or restock
+        if (nextPlacementAction != PlacementAction.NONE || awaitingMinecartConfirmationCooldown > 0 || restockState != RestockState.IDLE) {
+            return;
+        }
 
         // Check placement immunity
         if (lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) {
