@@ -1045,41 +1045,25 @@ public class TutorialModClient implements ClientModInitializer {
 
         switch (restockState) {
             case TRIGGERED -> {
-                // Check if we have minecarts to restock
-                boolean hasMinecarts = false;
-                for (int i = 0; i < client.player.getInventory().size(); i++) {
-                    if (i >= 9 && i <= 35) { // Main inventory
-                         if (client.player.getInventory().getStack(i).isOf(Items.TNT_MINECART)) {
-                             hasMinecarts = true;
-                             break;
-                         }
-                    }
+                // Wait for player to manually open inventory
+                if (client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.InventoryScreen inv) {
+                    restockState = RestockState.OPENING;
+                    restockTimer = 5; // Wait for opening animation/init
                 }
 
-                if (hasMinecarts) {
-                    client.setScreen(new net.minecraft.client.gui.screen.ingame.InventoryScreen(client.player));
-                    restockState = RestockState.OPENING;
-                    restockTimer = 2; // Wait for screen to open
-                } else {
+                // If it's been 10 seconds and they haven't opened it, cancel
+                if (client.world != null && (client.world.getTime() - lastBowShotTick) > 200) {
                     restockState = RestockState.IDLE;
                 }
             }
             case OPENING -> {
                 if (client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.InventoryScreen inv) {
                     performRestockClicks(client, inv);
-                    restockState = RestockState.CLICKING;
-                    restockTimer = 2; // Wait for packets
+                    restockState = RestockState.IDLE;
+                    lastSequenceTick = -1; // Reset sequence window
                 } else {
                     restockState = RestockState.IDLE;
                 }
-            }
-            case CLICKING -> {
-                if (client.player != null) {
-                    client.player.closeHandledScreen();
-                    client.setScreen(null);
-                }
-                restockState = RestockState.IDLE;
-                lastSequenceTick = -1; // Reset sequence window
             }
             default -> restockState = RestockState.IDLE;
         }
@@ -1087,6 +1071,11 @@ public class TutorialModClient implements ClientModInitializer {
 
     private void performRestockClicks(MinecraftClient client, net.minecraft.client.gui.screen.ingame.InventoryScreen inv) {
         List<Integer> usedSourceSlots = new ArrayList<>();
+        net.rev.tutorialmod.mixin.HandledScreenAccessor invAccessor = (net.rev.tutorialmod.mixin.HandledScreenAccessor) inv;
+
+        int guiX = invAccessor.getX();
+        int guiY = invAccessor.getY();
+
         for (int targetSlot : TutorialMod.CONFIG.minecartRestockSlots) {
             if (targetSlot < 0 || targetSlot >= 9) continue;
 
@@ -1097,7 +1086,6 @@ public class TutorialModClient implements ClientModInitializer {
             net.minecraft.screen.slot.Slot sourceSlot = null;
 
             // Search through the slots of the screen handler
-            // 9-35 are main inventory, 36-44 are hotbar
             for (int i = 9; i <= 44; i++) {
                 if (usedSourceSlots.contains(i)) continue;
                 if (i == (36 + targetSlot)) continue; // Don't swap with self
@@ -1112,10 +1100,20 @@ public class TutorialModClient implements ClientModInitializer {
 
             if (sourceSlot != null) {
                 usedSourceSlots.add(sourceSlotId);
+
+                // Move mouse visibly to the slot
+                double mouseX = (double) (guiX + sourceSlot.x + 8);
+                double mouseY = (double) (guiY + sourceSlot.y + 8);
+
+                // Scale coordinates for setCursorPos
+                double scale = client.getWindow().getScaleFactor();
+                ((net.rev.tutorialmod.mixin.MouseAccessor) ((net.rev.tutorialmod.mixin.MinecraftClientAccessor) client).getMouse()).invokeOnCursorPos(client.getWindow().getHandle(), mouseX * scale, mouseY * scale);
+
                 // Hover over the slot visually
-                ((net.rev.tutorialmod.mixin.HandledScreenAccessor) inv).setFocusedSlot(sourceSlot);
+                invAccessor.setFocusedSlot(sourceSlot);
+
                 // Execute the swap
-                ((net.rev.tutorialmod.mixin.HandledScreenAccessor) inv).invokeOnMouseClick(sourceSlot, sourceSlotId, targetSlot, net.minecraft.screen.slot.SlotActionType.SWAP);
+                invAccessor.invokeOnMouseClick(sourceSlot, sourceSlotId, targetSlot, net.minecraft.screen.slot.SlotActionType.SWAP);
             }
         }
     }

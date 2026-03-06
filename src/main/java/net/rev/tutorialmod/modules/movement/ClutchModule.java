@@ -227,16 +227,30 @@ public class ClutchModule {
     private void handleArming(net.minecraft.client.network.ClientPlayerEntity p, ModConfig config) {
         if (tickCounter >= config.clutchSwitchDelay) {
             if (isWindClutch) {
-                // Perfect timing for wind charge: approx 2.5 - 3.0 blocks above ground
-                // To account for high velocity, we check if we will hit the ground in the next tick
+                // Wind charges work best when hit the ground within ~2 ticks.
                 double fallVelocity = -p.getVelocity().y;
-                double checkDistance = Math.max(2.8, fallVelocity * 1.5);
+                if (fallVelocity < 0.1) return;
 
-                HitResult hit = p.raycast(checkDistance, 1.0f, false);
+                // Manual downward raycast to avoid pitch/yaw influence
+                Vec3d start = new Vec3d(p.getX(), p.getY(), p.getZ());
+                Vec3d end = start.add(0, -(Math.max(5.0, fallVelocity * 3.0)), 0);
+
+                BlockHitResult hit = mc.world.raycast(new net.minecraft.world.RaycastContext(
+                    start, end,
+                    net.minecraft.world.RaycastContext.ShapeType.COLLIDER,
+                    net.minecraft.world.RaycastContext.FluidHandling.NONE,
+                    p
+                ));
+
                 if (hit.getType() == HitResult.Type.BLOCK) {
-                    state = ClutchState.PLACING_WIND_CHARGE;
-                    spamUse(); // Only once
-                    tickCounter = 0;
+                    double dist = start.y - hit.getPos().y;
+
+                    // Perfect timing for wind charge is approx 1.8 - 2.2 ticks before impact.
+                    if (dist / fallVelocity <= 2.2) {
+                        state = ClutchState.PLACING_WIND_CHARGE;
+                        spamUse(); // Only once
+                        tickCounter = 0;
+                    }
                 }
             } else {
                 // Check target with increased reach (10.0) to transition early for water
