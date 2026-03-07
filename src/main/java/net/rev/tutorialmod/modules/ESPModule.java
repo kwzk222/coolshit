@@ -362,13 +362,13 @@ public class ESPModule {
         StringBuilder boxesData = new StringBuilder();
         Vec3d cameraPos = camera.getCameraPos();
 
-        Matrix4f stableMatrix;
+        Matrix4f projView;
         if (TutorialMod.CONFIG.espManualProjection) {
-            stableMatrix = combinedMatrix;
+            projView = combinedMatrix;
         } else {
-            // Calculate a rotation-only projection matrix to avoid drift from large coordinates
-            Matrix4f rotationViewMatrix = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
-            stableMatrix = new Matrix4f(projectionMatrix).mul(rotationViewMatrix);
+            // In 1.21.x, modelViewMatrix in render() is already camera-relative view matrix.
+            // Using it directly with camera-relative coordinates is the most stable way.
+            projView = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
         }
         float tickDelta = tickCounter.getTickProgress(true);
 
@@ -423,8 +423,7 @@ public class ESPModule {
 
                 Box box = entity.getBoundingBox().offset(x - entity.getX(), y - entity.getY(), z - entity.getZ());
 
-                // Game matrices often have small precision issues or lag when applied to world-space boxes directly.
-                // We offset to camera-relative space before projecting.
+                // Offset to camera-relative space before projecting.
                 box = box.offset(cameraPos.negate());
 
                 // Relative Health Color
@@ -463,8 +462,10 @@ public class ESPModule {
                             sb.append("S:");
                             int count = 0;
                             for (StatusEffectInstance effect : effects) {
-                                if (count > 0) sb.append(",");
-                                String name = effect.getEffectType().value().getName().getString();
+                                if (count > 0) sb.append("&");
+                                Identifier id = Registries.STATUS_EFFECT.getId(effect.getEffectType().value());
+                                String name = id != null ? id.getPath().replace('_', ' ') : "unknown";
+                                if (name.length() > 0) name = name.substring(0, 1).toUpperCase() + name.substring(1);
                                 sb.append(name).append(":").append(effect.getDuration());
                                 count++;
                             }
@@ -473,7 +474,7 @@ public class ESPModule {
                     extraData = sb.toString();
                 }
 
-                projectAndAppend(boxesData, box, stableMatrix, label, color, distLabel, true, health, extraData, cameraPos);
+                projectAndAppend(boxesData, box, projView, label, color, distLabel, true, health, extraData, cameraPos);
             }
         }
 
@@ -483,7 +484,7 @@ public class ESPModule {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
                                   entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
                 box = box.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, stableMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
+                projectAndAppend(boxesData, box, projView, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
             }
         }
 
@@ -495,7 +496,7 @@ public class ESPModule {
                 if (TutorialMod.CONFIG.xrayFrustumCulling && !frustum.isVisible(worldBox)) continue;
 
                 Box box = worldBox.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, stableMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
+                projectAndAppend(boxesData, box, projView, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
             }
         }
 
@@ -514,24 +515,9 @@ public class ESPModule {
                 new Vector4f((float)box.maxX, (float)box.maxY, (float)box.maxZ, 1.0f)
         };
 
-        Matrix4f projMatrix;
-        if (TutorialMod.CONFIG.espManualProjection) {
-            projMatrix = combinedMatrix;
-        } else {
-            // When using game matrices, combinedMatrix already has modelView (translation) baked in.
-            // But we already offset box by -cameraPos.
-            // The modelViewMatrix provided by game is typically: projection * (viewMatrix * modelMatrix)
-            // Where viewMatrix already includes -cameraPos.
-            // To avoid double-subtraction, we need a matrix that DOES NOT have the translation.
-            // Or, we use the combinedMatrix but assume our corners are already in camera-relative space.
-            // Actually, the modelViewMatrix passed to render(..., modelViewMatrix) includes camera translation.
-            // So if we pass relative coords, we need to strip translation from modelViewMatrix.
-
-            projMatrix = new Matrix4f(combinedMatrix).setTranslation(0, 0, 0);
-        }
-
+        // Use the combinedMatrix provided by updateESP, which is already stable (rotation-only)
         for (Vector4f corner : corners) {
-            projMatrix.transform(corner);
+            combinedMatrix.transform(corner);
         }
 
         List<Vector4f> points = new ArrayList<>();

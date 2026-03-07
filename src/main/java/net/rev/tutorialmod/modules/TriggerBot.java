@@ -29,8 +29,8 @@ public class TriggerBot {
     private int reactionTicks = 0;
     private boolean reactionGatePassed = false;
 
-    private static final float MIN_ATTACK_CHARGE = 0.88f;
-    private static final float MAX_ATTACK_CHARGE = 0.98f;
+    private static final float MIN_ATTACK_CHARGE = 0.80f;
+    private static final float MAX_ATTACK_CHARGE = 0.95f;
 
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled) {
@@ -62,20 +62,21 @@ public class TriggerBot {
             return;
         }
 
-        Entity entity = null;
-        HitResult hitResult = mc.crosshairTarget;
-        if (hitResult instanceof EntityHitResult entityHitResult) {
-            entity = entityHitResult.getEntity();
-        }
-
-        // If no target via vanilla raycast, check up to configured max range
-        if (entity == null || (mc.player != null && mc.player.distanceTo(entity) > TutorialMod.CONFIG.triggerBotMaxRange)) {
-            entity = findEntityInCrosshair(TutorialMod.CONFIG.triggerBotMaxRange);
-        }
+        Entity entity = findEntityInCrosshair(TutorialMod.CONFIG.triggerBotMaxRange);
 
         // Minimum range check
         if (entity != null && mc.player != null && mc.player.distanceTo(entity) < TutorialMod.CONFIG.triggerBotMinRange) {
             entity = null;
+        }
+
+        // If still no entity, try a small immediate raycast for better responsiveness
+        if (entity == null) {
+            HitResult hit = mc.crosshairTarget;
+            if (hit instanceof EntityHitResult ehr) {
+                if (mc.player != null && mc.player.distanceTo(ehr.getEntity()) <= TutorialMod.CONFIG.triggerBotMaxRange + 0.5) {
+                    entity = ehr.getEntity();
+                }
+            }
         }
 
         if (entity != null && shouldAttack(entity)) {
@@ -199,7 +200,7 @@ public class TriggerBot {
     private void attack(Entity entity) {
         if (mc.interactionManager == null || mc.player == null) return;
 
-        if (mc.player.getAttackCooldownProgress(0.0f) < 0.85f) return;
+        if (mc.player.getAttackCooldownProgress(0.0f) < 0.80f) return;
 
         mc.interactionManager.attackEntity(mc.player, entity);
         mc.player.swingHand(Hand.MAIN_HAND);
@@ -219,7 +220,8 @@ public class TriggerBot {
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player || !e.isAlive()) continue;
 
-            net.minecraft.util.math.Box box = e.getBoundingBox().expand(e.getTargetingMargin());
+            // Use a small constant expansion for more reliable triggerbot targeting
+            net.minecraft.util.math.Box box = e.getBoundingBox().expand(0.1);
             java.util.Optional<net.minecraft.util.math.Vec3d> hit = box.raycast(start, end);
 
             if (hit.isPresent()) {

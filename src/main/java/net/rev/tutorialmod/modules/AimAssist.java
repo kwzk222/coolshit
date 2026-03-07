@@ -34,13 +34,13 @@ public class AimAssist {
     private double currentBorderMargin = -0.05;
 
     public void onTick() {
-        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.aimAssistEnabled) {
+        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialModClient.isKeyDown(TutorialMod.CONFIG.aimAssistHotkey)) {
             isAssisting = false;
         }
     }
 
     public void onRender(RenderTickCounter tickCounter) {
-        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.aimAssistEnabled) {
+        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialModClient.isKeyDown(TutorialMod.CONFIG.aimAssistHotkey)) {
             isAssisting = false;
             lastFrameTime = 0;
             return;

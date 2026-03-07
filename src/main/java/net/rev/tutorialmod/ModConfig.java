@@ -170,7 +170,7 @@ public class ModConfig {
 
     // --- Aim Assist ---
     public boolean aimAssistEnabled = false;
-    public String aimAssistHotkey = "key.keyboard.v";
+    public String aimAssistHotkey = "key.keyboard.apostrophe";
     public double aimAssistStrength = 1.0; // Slider will be adjusted to allow lower
     public double aimAssistFov = 40.0;
     public boolean aimAssistVariableStrength = true;

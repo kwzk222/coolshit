@@ -518,7 +518,7 @@ public class ESPOverlayApp {
                 if (!statusStr.isEmpty()) {
                     g2d.setFont(new Font("Consolas", Font.PLAIN, 10));
                     FontMetrics fm = g2d.getFontMetrics();
-                    String[] effects = statusStr.split(",");
+                    String[] effects = statusStr.split("&");
                     int sy = barY;
                     int sx = armorX + (healthBarSide.equalsIgnoreCase("Left") ? barW + 5 : -5);
 

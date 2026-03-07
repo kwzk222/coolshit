@@ -47,8 +47,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // 1.0 Aim Assist
             ConfigCategory aimAssist = builder.getOrCreateCategory(Text.literal("Aim Assist"));
-            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Aim Assist Enabled"), TutorialMod.CONFIG.aimAssistEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEnabled = newValue).build());
-            aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Toggle)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.v").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
+            aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Hold to Activate)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 100), 1, 1000).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 100.0).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistFov, 1, 180).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistFov = newValue.doubleValue()).build());
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Variable Strength (Distance)"), TutorialMod.CONFIG.aimAssistVariableStrength).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistVariableStrength = newValue).build());
