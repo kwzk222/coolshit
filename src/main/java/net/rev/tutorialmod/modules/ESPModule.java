@@ -10,6 +10,8 @@ import net.minecraft.entity.mob.Monster;
 import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
@@ -88,10 +90,7 @@ public class ESPModule {
             xrayEntries.clear();
         }
 
-        long refreshInterval = 1000 / Math.max(1, TutorialMod.CONFIG.espRefreshRate);
-        if (now - lastRefreshTime < refreshInterval) {
-            return;
-        }
+        // Send updates every frame for maximum smoothness
         lastRefreshTime = now;
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
@@ -439,27 +438,42 @@ public class ESPModule {
                     }
                 }
 
-                // Armor info
-                String armorInfo = "";
-                if (entity instanceof PlayerEntity player && TutorialMod.CONFIG.espShowArmor) {
-                    float totalArmor = 0;
-                    float maxArmor = 0;
-                    EquipmentSlot[] armorSlots = {EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD};
-                    for (EquipmentSlot slot : armorSlots) {
-                        ItemStack stack = player.getEquippedStack(slot);
-                        if (!stack.isEmpty() && stack.isDamageable()) {
-                            totalArmor += (stack.getMaxDamage() - stack.getDamage());
-                            maxArmor += stack.getMaxDamage();
+                // Armor & Status info
+                String extraData = "";
+                if (entity instanceof PlayerEntity player) {
+                    StringBuilder sb = new StringBuilder();
+                    if (TutorialMod.CONFIG.espShowArmor) {
+                        float minDurability = 1.1f;
+                        EquipmentSlot[] armorSlots = {EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD};
+                        for (EquipmentSlot slot : armorSlots) {
+                            ItemStack stack = player.getEquippedStack(slot);
+                            if (!stack.isEmpty() && stack.isDamageable()) {
+                                float dur = (float) (stack.getMaxDamage() - stack.getDamage()) / (float) stack.getMaxDamage();
+                                if (dur < minDurability) minDurability = dur;
+                            }
+                        }
+                        if (minDurability > 1.0f) sb.append("A:0.00");
+                        else sb.append(String.format(Locale.ROOT, "A:%.2f", minDurability));
+                    }
+
+                    if (TutorialMod.CONFIG.espShowStatusEffects) {
+                        Collection<StatusEffectInstance> effects = player.getStatusEffects();
+                        if (!effects.isEmpty()) {
+                            if (sb.length() > 0) sb.append("|");
+                            sb.append("S:");
+                            int count = 0;
+                            for (StatusEffectInstance effect : effects) {
+                                if (count > 0) sb.append(",");
+                                String name = effect.getEffectType().value().getName().getString();
+                                sb.append(name).append(":").append(effect.getDuration());
+                                count++;
+                            }
                         }
                     }
-                    if (maxArmor > 0) {
-                        armorInfo = String.format(Locale.ROOT, "%.2f", totalArmor / maxArmor);
-                    } else {
-                        armorInfo = "0.00";
-                    }
+                    extraData = sb.toString();
                 }
 
-                projectAndAppend(boxesData, box, stableMatrix, label, color, distLabel, true, health, armorInfo, cameraPos);
+                projectAndAppend(boxesData, box, stableMatrix, label, color, distLabel, true, health, extraData, cameraPos);
             }
         }
 
@@ -627,6 +641,9 @@ public class ESPModule {
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "HEALTH_BAR_COLORS %d,%d,%d,%d",
             TutorialMod.CONFIG.espHealthBarColorFull, TutorialMod.CONFIG.espHealthBarColorMedium,
             TutorialMod.CONFIG.espHealthBarColorLow, TutorialMod.CONFIG.espHealthBarColorEmpty));
+        net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "ARMOR_BAR_COLORS %d,%d,%d,%d",
+            TutorialMod.CONFIG.espArmorBarColorFull, TutorialMod.CONFIG.espArmorBarColorMedium,
+            TutorialMod.CONFIG.espArmorBarColorLow, TutorialMod.CONFIG.espArmorBarColorEmpty));
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "TEXTURE_OPACITY %.4f", TutorialMod.CONFIG.xrayTextureOpacity / 100f));
     }
 }

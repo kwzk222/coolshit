@@ -505,6 +505,36 @@ public class ModMenuIntegration implements ModMenuApi {
 
             SubCategoryBuilder espExtra = entryBuilder.startSubCategory(Text.literal("Extra Features"));
             espExtra.add(entryBuilder.startBooleanToggle(Text.literal("Show Armor Bars"), TutorialMod.CONFIG.espShowArmor).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowArmor = newValue).build());
+
+            SubCategoryBuilder armorColorSub = entryBuilder.startSubCategory(Text.literal("Armor Bar Colors"));
+            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Full)"), TutorialMod.CONFIG.espArmorBarColorFull).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espArmorBarColorFull = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Medium)"), TutorialMod.CONFIG.espArmorBarColorMedium).setDefaultValue(0x55FFFF).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espArmorBarColorMedium = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Low)"), TutorialMod.CONFIG.espArmorBarColorLow).setDefaultValue(0x00AAAA).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espArmorBarColorLow = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Empty)"), TutorialMod.CONFIG.espArmorBarColorEmpty).setDefaultValue(0x000000).setSaveConsumer(newValue -> {
+                TutorialMod.CONFIG.espArmorBarColorEmpty = newValue;
+                if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
+                    TutorialModClient.getInstance().getESPModule().syncWindowBounds();
+                }
+            }).build());
+            espExtra.add(armorColorSub.build());
+
+            espExtra.add(entryBuilder.startBooleanToggle(Text.literal("Show Status Effects"), TutorialMod.CONFIG.espShowStatusEffects).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowStatusEffects = newValue).build());
+
             espExtra.add(entryBuilder.startBooleanToggle(Text.literal("Relative Health Color"), TutorialMod.CONFIG.espRelativeHealthColor).setTooltip(Text.literal("Colors the health bar based on your health vs target.")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRelativeHealthColor = newValue).build());
             espExtra.add(entryBuilder.startColorField(Text.literal("Color (More Health)"), TutorialMod.CONFIG.espColorHealthMore).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHealthMore = newValue).build());
             espExtra.add(entryBuilder.startColorField(Text.literal("Color (Less Health)"), TutorialMod.CONFIG.espColorHealthLess).setDefaultValue(0xFFA500).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHealthLess = newValue).build());

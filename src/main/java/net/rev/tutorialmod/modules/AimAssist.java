@@ -257,13 +257,23 @@ public class AimAssist {
         boolean isShielding = mc.player.isUsingItem() && mc.player.getActiveItem().isOf(net.minecraft.item.Items.SHIELD);
         double strength = isShielding ? TutorialMod.CONFIG.aimAssistShieldStrength : TutorialMod.CONFIG.aimAssistStrength;
 
+        // Proximity Scaling (requested variable speed: lower when closer to hitbox)
+        double angleToTarget = Math.sqrt(yawDiff * yawDiff + pitchDiff * pitchDiff);
+        // If angle is small, we are close to the center. Scale down strength.
+        // Assume 5 degrees is "close".
+        double proximityFactor = Math.min(1.0, angleToTarget / 5.0);
+        // Don't go below 20% strength even when perfectly centered
+        proximityFactor = 0.2 + 0.8 * proximityFactor;
+        strength *= proximityFactor;
+
+        // Apply a small constant smoothing factor to the angular deltas to reduce jitter
+        double smoothing = 0.5; // Fixed internal smoothing
+        yawDiff *= (1.0 - smoothing);
+        pitchDiff *= (1.0 - smoothing);
+
         if (TutorialMod.CONFIG.aimAssistVariableStrength) {
             double dist = mc.player.distanceTo(target);
-            // Stronger when close, weaker when far? Or vice versa?
-            // "track more if that slider is lower sensitivity and flick more if its higher"
-            // Usually, we want the angular speed to feel consistent.
-            // A simple distance scaling:
-            double distFactor = 4.0 / Math.max(1.0, dist); // Higher factor when closer
+            double distFactor = 4.0 / Math.max(1.0, dist);
             strength *= distFactor * TutorialMod.CONFIG.aimAssistVariableStrengthFactor;
         }
 

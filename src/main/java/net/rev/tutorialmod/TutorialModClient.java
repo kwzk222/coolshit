@@ -643,6 +643,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         try {
             double dist = player.distanceTo(target);
+            boolean alreadyAttackedInCombo = false;
 
             // 1. Spear Hit
             if (forceSpear || (dist > TutorialMod.CONFIG.reachSwapActivationRange && dist <= TutorialMod.CONFIG.spearReachSwapRange && TutorialMod.CONFIG.spearReachSwapEnabled)) {
@@ -652,6 +653,7 @@ public class TutorialModClient implements ClientModInitializer {
                     if (client.interactionManager != null) {
                         client.interactionManager.attackEntity(player, target);
                         player.swingHand(Hand.MAIN_HAND);
+                        alreadyAttackedInCombo = true;
                     }
                 }
             }
@@ -692,10 +694,24 @@ public class TutorialModClient implements ClientModInitializer {
             if ((isShielding || predictShield) && isFacing) {
                 int axeSlot = findAxeInHotbar(player);
                 if (axeSlot != -1) {
+                    // If we haven't attacked yet (no spear hit), and we were holding a sword, do the initial sword hit
+                    if (!alreadyAttackedInCombo && player.getInventory().getStack(originalSlot).isIn(ItemTags.SWORDS) && dist <= 3.1) {
+                        if (client.interactionManager != null) {
+                            client.interactionManager.attackEntity(player, target);
+                            player.swingHand(Hand.MAIN_HAND);
+                        }
+                    }
+
                     syncSlot(axeSlot);
                     if (client.interactionManager != null) {
+                        // First Axe Hit
                         client.interactionManager.attackEntity(player, target);
                         player.swingHand(Hand.MAIN_HAND);
+
+                        // Second Axe Hit (requested: hit again really fast with axe)
+                        client.interactionManager.attackEntity(player, target);
+                        player.swingHand(Hand.MAIN_HAND);
+                        alreadyAttackedInCombo = true;
                     }
                 }
             }
@@ -708,6 +724,7 @@ public class TutorialModClient implements ClientModInitializer {
                     if (client.interactionManager != null) {
                         client.interactionManager.attackEntity(player, target);
                         player.swingHand(Hand.MAIN_HAND);
+                        alreadyAttackedInCombo = true;
                     }
                 }
             }

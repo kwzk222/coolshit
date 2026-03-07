@@ -38,6 +38,12 @@ public class TriggerBot {
             return;
         }
 
+        // Shield check - don't attack if the user's shield is up
+        if (mc.player.isUsingItem() && mc.player.getActiveItem().isOf(net.minecraft.item.Items.SHIELD)) {
+            reset();
+            return;
+        }
+
         // Check hotkey - TriggerBot is now "Active While Pressing"
         try {
             if (InputUtil.isKeyPressed(mc.getWindow(), GLFW.GLFW_KEY_F3)) {

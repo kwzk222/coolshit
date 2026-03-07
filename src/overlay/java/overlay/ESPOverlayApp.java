@@ -103,6 +103,8 @@ public class ESPOverlayApp {
             panel.setHealthBarSide(content.substring(16));
         } else if (content.startsWith("HEALTH_BAR_COLORS ")) {
             panel.setHealthBarColors(content.substring(18));
+        } else if (content.startsWith("ARMOR_BAR_COLORS ")) {
+            panel.setArmorBarColors(content.substring(17));
         } else if (content.startsWith("TEXTURE_OPACITY ")) {
             panel.setTextureOpacity(Float.parseFloat(content.substring(16)));
         } else if (content.startsWith("DEBUG_TEXT ")) {
@@ -154,6 +156,7 @@ public class ESPOverlayApp {
         private boolean healthBarInverted = false;
         private String healthBarSide = "Right";
         private int colorFull = 0x00FF00, colorMedium = 0xFFFF00, colorLow = 0xFF0000, colorEmpty = 0x000000;
+        private int armorColorFull = 0x00FFFF, armorColorMedium = 0x55FFFF, armorColorLow = 0x00AAAA, armorColorEmpty = 0x000000;
         private float textureOpacity = 1.0f;
         private final Map<String, BufferedImage> textureCache = new HashMap<>();
         private static final String TEXTURE_DIR = "tutorialmod_textures";
@@ -192,6 +195,18 @@ public class ESPOverlayApp {
                     colorMedium = Integer.parseInt(parts[1]);
                     colorLow = Integer.parseInt(parts[2]);
                     colorEmpty = Integer.parseInt(parts[3]);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        public void setArmorBarColors(String data) {
+            try {
+                String[] parts = data.split(",");
+                if (parts.length == 4) {
+                    armorColorFull = Integer.parseInt(parts[0]);
+                    armorColorMedium = Integer.parseInt(parts[1]);
+                    armorColorLow = Integer.parseInt(parts[2]);
+                    armorColorEmpty = Integer.parseInt(parts[3]);
                 }
             } catch (Exception ignored) {}
         }
@@ -434,12 +449,11 @@ public class ESPOverlayApp {
             return null;
         }
 
-        private void drawHealthBar(Graphics2D g2d, int bx, int by, int bw, int bh, float health, String extraInfo, int boxColor) {
+        private void drawHealthBar(Graphics2D g2d, int bx, int by, int bw, int bh, float health, String extraData, int boxColor) {
             int barW = (int)(bw * healthBarWidth);
             if (barW < 2) barW = 2;
 
-            int barX;
-            int armorX;
+            int barX, armorX;
             if (healthBarSide.equalsIgnoreCase("Left")) {
                 barX = bx - barW - 3;
                 armorX = bx + bw + 3;
@@ -448,19 +462,13 @@ public class ESPOverlayApp {
                 armorX = bx - barW - 3;
             }
 
-            int barY = by;
-            int barH = bh;
+            int barY = by, barH = bh;
 
             // Health Bar
             g2d.setColor(new Color(colorEmpty | 0x99000000, true));
             g2d.fillRect(barX, barY, barW, barH);
 
             int healthColor = boxColor;
-            // If it's a default white/teammate/enemy color, use the standard health thresholds
-            // but if it's the relative health color (cyan/orange), it will use that.
-            // Actually, better to just check if health color logic should be standard or overridden.
-            // In ESPModule, we only change 'color' for players if relative health color is enabled.
-
             g2d.setColor(new Color(healthColor | 0xFF000000, true));
             int healthH = (int)(barH * Math.max(0, Math.min(1, health)));
             if (healthBarInverted) g2d.fillRect(barX, barY + (barH - healthH), barW, healthH);
@@ -470,22 +478,77 @@ public class ESPOverlayApp {
             g2d.setStroke(new BasicStroke(1.0f));
             g2d.drawRect(barX, barY, barW, barH);
 
-            // Armor Bar (Opposite side)
-            if (!extraInfo.isEmpty() && !extraInfo.startsWith("TX_")) {
-                try {
-                    float armor = Float.parseFloat(extraInfo);
-                    g2d.setColor(new Color(0x33000000, true));
-                    g2d.fillRect(armorX, barY, barW, barH);
+            // Extra Info: Armor and Status Effects
+            if (!extraData.isEmpty() && !extraData.startsWith("TX_")) {
+                String armorStr = "";
+                String statusStr = "";
+                if (extraData.contains("|")) {
+                    String[] parts = extraData.split("\\|");
+                    for (String p : parts) {
+                        if (p.startsWith("A:")) armorStr = p.substring(2);
+                        else if (p.startsWith("S:")) statusStr = p.substring(2);
+                    }
+                } else {
+                    if (extraData.startsWith("A:")) armorStr = extraData.substring(2);
+                    else if (extraData.startsWith("S:")) statusStr = extraData.substring(2);
+                }
 
-                    g2d.setColor(new Color(0xAAAAAA | 0xFF000000, true));
-                    int armorH = (int)(barH * Math.max(0, Math.min(1, armor)));
-                    if (healthBarInverted) g2d.fillRect(armorX, barY + (barH - armorH), barW, armorH);
-                    else g2d.fillRect(armorX, barY, barW, armorH);
+                // Draw Armor Bar
+                if (!armorStr.isEmpty()) {
+                    try {
+                        float armor = Float.parseFloat(armorStr);
+                        g2d.setColor(new Color(armorColorEmpty | 0x99000000, true));
+                        g2d.fillRect(armorX, barY, barW, barH);
 
-                    g2d.setColor(Color.BLACK);
-                    g2d.drawRect(armorX, barY, barW, barH);
-                } catch (Exception ignored) {}
+                        int c = armorColorFull;
+                        if (armor < 0.25f) c = armorColorLow;
+                        else if (armor < 0.5f) c = armorColorMedium;
+
+                        g2d.setColor(new Color(c | 0xFF000000, true));
+                        int armorH = (int)(barH * Math.max(0, Math.min(1, armor)));
+                        if (healthBarInverted) g2d.fillRect(armorX, barY + (barH - armorH), barW, armorH);
+                        else g2d.fillRect(armorX, barY, barW, armorH);
+
+                        g2d.setColor(Color.BLACK);
+                        g2d.drawRect(armorX, barY, barW, barH);
+                    } catch (Exception ignored) {}
+                }
+
+                // Draw Status Effects
+                if (!statusStr.isEmpty()) {
+                    g2d.setFont(new Font("Consolas", Font.PLAIN, 10));
+                    FontMetrics fm = g2d.getFontMetrics();
+                    String[] effects = statusStr.split(",");
+                    int sy = barY;
+                    int sx = armorX + (healthBarSide.equalsIgnoreCase("Left") ? barW + 5 : -5);
+
+                    for (String eff : effects) {
+                        String[] ep = eff.split(":");
+                        if (ep.length >= 2) {
+                            String name = ep[0];
+                            int duration = Integer.parseInt(ep[1]);
+                            String time = formatTime(duration);
+                            String line = name + " " + time;
+                            int lw = fm.stringWidth(line);
+                            int lx = healthBarSide.equalsIgnoreCase("Left") ? sx : sx - lw;
+
+                            g2d.setColor(new Color(0, 0, 0, 150));
+                            g2d.fillRect(lx - 2, sy, lw + 4, 12);
+                            g2d.setColor(Color.WHITE);
+                            g2d.drawString(line, lx, sy + 10);
+                            sy += 14;
+                        }
+                    }
+                }
             }
+        }
+
+        private String formatTime(int ticks) {
+            if (ticks < 0 || ticks > 100000) return "∞";
+            int totalSeconds = ticks / 20;
+            int minutes = totalSeconds / 60;
+            int seconds = totalSeconds % 60;
+            return String.format("%d:%02d", minutes, seconds);
         }
     }
 

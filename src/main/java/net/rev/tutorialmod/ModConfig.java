@@ -314,6 +314,11 @@ public class ModConfig {
     public int espHealthBarColorMedium = 0xFFFF00;
     public int espHealthBarColorLow = 0xFF0000;
     public int espHealthBarColorEmpty = 0x000000;
+    public int espArmorBarColorFull = 0x00FFFF;
+    public int espArmorBarColorMedium = 0x55FFFF;
+    public int espArmorBarColorLow = 0x00AAAA;
+    public int espArmorBarColorEmpty = 0x000000;
+    public boolean espShowStatusEffects = true;
     public double espDistanceHideThreshold = 0.0;
     public double espBoxWidthFactor = 0.45;
     public int espColorTeammate = 0x00FF00;
