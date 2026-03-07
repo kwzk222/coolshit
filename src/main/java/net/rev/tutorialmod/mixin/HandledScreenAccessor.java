@@ -15,12 +15,6 @@ public interface HandledScreenAccessor {
     @Accessor("focusedSlot")
     void setFocusedSlot(Slot slot);
 
-    @Accessor("x")
-    int getX();
-
-    @Accessor("y")
-    int getY();
-
     @Invoker("onMouseClick")
     void invokeOnMouseClick(Slot slot, int slotId, int button, SlotActionType actionType);
 }

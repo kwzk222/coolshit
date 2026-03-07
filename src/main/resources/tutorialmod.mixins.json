@@ -18,7 +18,6 @@
 		"HandledScreenAccessor",
 		"MinecraftClientMixin",
 		"MinecraftClientAccessor",
-		"MouseAccessor",
 		"GameOptionsAccessor",
 		"ScreenMixin",
 		"ScreenAccessor",

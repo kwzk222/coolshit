@@ -32,6 +32,7 @@ public class ClutchModule {
 
     private ClutchState state = ClutchState.IDLE;
     private boolean isWindClutch = false;
+    private double lastBoostHeight = -1;
     private int originalSlot = -1;
     private int tickCounter = 0;
     private int spamTickCounter = 0;
@@ -60,9 +61,19 @@ public class ClutchModule {
             handleInteractableSneak(p);
         }
 
+        // Track boost height to avoid unnecessary clutching
+        if (p.isOnGround()) {
+            lastBoostHeight = -1;
+        }
+
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.getPitch() >= config.clutchActivationPitch && p.fallDistance >= config.clutchMinFallDistance) {
+                    // Check if fall distance is actually dangerous after a boost
+                    if (lastBoostHeight != -1) {
+                         double currentFall = lastBoostHeight - p.getY();
+                         if (currentFall < 3.0) return;
+                    }
                     int waterSlot = findWaterBucket();
                     int windSlot = findWindCharge();
 
@@ -137,6 +148,7 @@ public class ClutchModule {
                     tickCounter = 0;
                     return;
                 }
+                lastBoostHeight = p.getY(); // Record height of boost
                 tickCounter++;
                 if (tickCounter > 60) reset();
             }

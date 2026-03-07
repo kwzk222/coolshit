@@ -27,17 +27,4 @@ public abstract class LivingEntityMixin {
         }
     }
 
-    @Inject(method = "stopUsingItem", at = @At("HEAD"))
-    private void onStopUsingItem(CallbackInfo ci) {
-        if (!TutorialMod.CONFIG.masterEnabled) return;
-
-        if ((Object)this instanceof ClientPlayerEntity player) {
-            ItemStack stack = this.getActiveItem();
-            if (stack.getItem() instanceof CrossbowItem) {
-                // For crossbows, record usage when they are actually charged and then used
-                // The bowReleaseBlock handles bows, but crossbows fire on right-click when charged
-                // Wait, recordBowUsage is also called in InteractionManager for interactItem
-            }
-        }
-    }
 }

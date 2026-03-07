@@ -38,27 +38,23 @@ public abstract class ClientPlayerInteractionManagerMixin {
 
     @Inject(method = "stopUsingItem", at = @At("HEAD"), cancellable = true)
     private void onStopUsingItem(PlayerEntity player, CallbackInfo ci) {
-        if (!TutorialMod.CONFIG.masterEnabled) return;
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.bowReleaseBlockEnabled) return;
 
         ItemStack stack = player.getActiveItem();
         if (stack.getItem() instanceof net.minecraft.item.BowItem) {
             int useTicks = player.getItemUseTime();
             float progress = net.minecraft.item.BowItem.getPullProgress(useTicks);
 
-            if (TutorialMod.CONFIG.bowReleaseBlockEnabled) {
-                // Check if we are waiting for an auto-release OR if it's a sufficient charge release
-                if (TutorialModClient.getInstance().isAutoReleasingBow() || progress >= TutorialMod.CONFIG.bowAutoFireThreshold) {
-                    TutorialModClient.recordBowUsage();
-                    return; // Allow
-                }
-
-                // If we are below required charge, and the use key is NOT pressed, block the stop
-                // This prevents the RELEASE_USE_ITEM packet from being sent.
-                if (!MinecraftClient.getInstance().options.useKey.isPressed()) {
-                    ci.cancel();
-                }
-            } else if (progress >= 0.1f) {
+            // Check if we are waiting for an auto-release OR if it's a sufficient charge release
+            if (TutorialModClient.getInstance().isAutoReleasingBow() || progress >= TutorialMod.CONFIG.bowAutoFireThreshold) {
                 TutorialModClient.recordBowUsage();
+                return; // Allow
+            }
+
+            // If we are below required charge, and the use key is NOT pressed, block the stop
+            // This prevents the RELEASE_USE_ITEM packet from being sent.
+            if (!MinecraftClient.getInstance().options.useKey.isPressed()) {
+                ci.cancel();
             }
         }
     }
@@ -73,14 +69,6 @@ public abstract class ClientPlayerInteractionManagerMixin {
     }
 
 
-    @Inject(method = "interactItem", at = @At("HEAD"))
-    private void onInteractItem(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
-        if (!TutorialMod.CONFIG.masterEnabled) return;
-        ItemStack stack = player.getStackInHand(hand);
-        if (stack.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(stack)) {
-            TutorialModClient.recordBowUsage();
-        }
-    }
 
     @Inject(method = "interactBlock", at = @At("TAIL"))
     private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {

@@ -310,10 +310,6 @@ public class ModMenuIntegration implements ModMenuApi {
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence"), TutorialMod.CONFIG.bowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startIntSlider(Text.literal("Bow Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());
-            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Minecart Restock"), TutorialMod.CONFIG.minecartRestockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.minecartRestockEnabled = newValue).build());
-            sequencesSub.add(entryBuilder.startStrField(Text.literal("Minecart Restock Slots"), TutorialMod.CONFIG.minecartRestockSlots.stream().map(s -> String.valueOf(s + 1)).collect(Collectors.joining(","))).setDefaultValue("1").setSaveConsumer(newValue -> {
-                try { TutorialMod.CONFIG.minecartRestockSlots = Arrays.stream(newValue.replace(" ", "").split(",")).map(s -> Integer.parseInt(s) - 1).collect(Collectors.toList()); } catch (NumberFormatException ignored) {}
-            }).build());
             minecartTech.addEntry(sequencesSub.build());
 
             minecartTech.addEntry(entryBuilder.startBooleanToggle(Text.literal("Prevent Lava Placement in Water"), TutorialMod.CONFIG.lavaPlacementRestriction).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaPlacementRestriction = newValue).build());

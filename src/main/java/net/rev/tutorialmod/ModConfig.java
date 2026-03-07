@@ -75,8 +75,6 @@ public class ModConfig {
     public boolean tntMinecartPlacementEnabled = true;
     public boolean lavaCrossbowSequenceEnabled = true;
     public boolean bowSequenceEnabled = true;
-    public boolean minecartRestockEnabled = true;
-    public List<Integer> minecartRestockSlots = new ArrayList<>(Arrays.asList(0));
     public int minFallDistance = 3;
 
     // --- Movement ---

@@ -8,8 +8,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(MinecraftClient.class)
 public interface MinecraftClientAccessor {
-    @Accessor("mouse")
-    Mouse getMouse();
     @Invoker("doItemUse")
     void invokeDoItemUse();
 

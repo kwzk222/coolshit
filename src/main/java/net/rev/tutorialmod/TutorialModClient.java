@@ -206,9 +206,6 @@ public class TutorialModClient implements ClientModInitializer {
     private boolean wasEating = false;
     private boolean ignoreNextUse = false;
     private long lastBlockPlaceTick = -1;
-    private enum RestockState { IDLE, TRIGGERED, OPENING, CLICKING, CLOSING }
-    private RestockState restockState = RestockState.IDLE;
-    private int restockTimer = -1;
 
     public void setPendingBowRelease(boolean val) {
         this.isWaitingForBowRelease = val;
@@ -454,7 +451,6 @@ public class TutorialModClient implements ClientModInitializer {
         handleFallbackDrainTick(client);
         handleAutoCrit(client);
         handleAutoElytraFly(client);
-        handleMinecartRestock(client);
 
         if (client.player != null) {
             boolean isEating = client.player.isUsingItem() && client.player.getActiveItem().getComponents().contains(net.minecraft.component.DataComponentTypes.FOOD);
@@ -1018,103 +1014,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     public static void recordBowUsage() {
         if (instance != null) {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world != null) {
-                instance.lastBowShotTick = client.world.getTime();
-
-                if (TutorialMod.CONFIG.minecartRestockEnabled && (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled || TutorialMod.CONFIG.bowSequenceEnabled)) {
-                    // Only trigger if a sequence was active within last 10 seconds (200 ticks)
-                    if (instance.lastSequenceTick != -1 && (client.world.getTime() - instance.lastSequenceTick) < 200) {
-                        if (instance.restockState == RestockState.IDLE) {
-                            instance.restockState = RestockState.TRIGGERED;
-                            instance.restockTimer = 5; // Wait for shot animation
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private void handleMinecartRestock(MinecraftClient client) {
-        if (restockState == RestockState.IDLE) return;
-
-        if (restockTimer > 0) {
-            restockTimer--;
-            return;
-        }
-
-        switch (restockState) {
-            case TRIGGERED -> {
-                // Wait for player to manually open inventory
-                if (client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.InventoryScreen inv) {
-                    restockState = RestockState.OPENING;
-                    restockTimer = 5; // Wait for opening animation/init
-                }
-
-                // If it's been 10 seconds and they haven't opened it, cancel
-                if (client.world != null && (client.world.getTime() - lastBowShotTick) > 200) {
-                    restockState = RestockState.IDLE;
-                }
-            }
-            case OPENING -> {
-                if (client.currentScreen instanceof net.minecraft.client.gui.screen.ingame.InventoryScreen inv) {
-                    performRestockClicks(client, inv);
-                    restockState = RestockState.IDLE;
-                    lastSequenceTick = -1; // Reset sequence window
-                } else {
-                    restockState = RestockState.IDLE;
-                }
-            }
-            default -> restockState = RestockState.IDLE;
-        }
-    }
-
-    private void performRestockClicks(MinecraftClient client, net.minecraft.client.gui.screen.ingame.InventoryScreen inv) {
-        List<Integer> usedSourceSlots = new ArrayList<>();
-        net.rev.tutorialmod.mixin.HandledScreenAccessor invAccessor = (net.rev.tutorialmod.mixin.HandledScreenAccessor) inv;
-
-        int guiX = invAccessor.getX();
-        int guiY = invAccessor.getY();
-
-        for (int targetSlot : TutorialMod.CONFIG.minecartRestockSlots) {
-            if (targetSlot < 0 || targetSlot >= 9) continue;
-
-            // Skip if target slot already has a TNT minecart
-            if (client.player.getInventory().getStack(targetSlot).isOf(Items.TNT_MINECART)) continue;
-
-            int sourceSlotId = -1;
-            net.minecraft.screen.slot.Slot sourceSlot = null;
-
-            // Search through the slots of the screen handler
-            for (int i = 9; i <= 44; i++) {
-                if (usedSourceSlots.contains(i)) continue;
-                if (i == (36 + targetSlot)) continue; // Don't swap with self
-
-                net.minecraft.screen.slot.Slot slot = inv.getScreenHandler().getSlot(i);
-                if (slot.getStack().isOf(Items.TNT_MINECART)) {
-                    sourceSlotId = i;
-                    sourceSlot = slot;
-                    break;
-                }
-            }
-
-            if (sourceSlot != null) {
-                usedSourceSlots.add(sourceSlotId);
-
-                // Move mouse visibly to the slot
-                double mouseX = (double) (guiX + sourceSlot.x + 8);
-                double mouseY = (double) (guiY + sourceSlot.y + 8);
-
-                // Scale coordinates for setCursorPos
-                double scale = client.getWindow().getScaleFactor();
-                ((net.rev.tutorialmod.mixin.MouseAccessor) ((net.rev.tutorialmod.mixin.MinecraftClientAccessor) client).getMouse()).invokeOnCursorPos(client.getWindow().getHandle(), mouseX * scale, mouseY * scale);
-
-                // Hover over the slot visually
-                invAccessor.setFocusedSlot(sourceSlot);
-
-                // Execute the swap
-                invAccessor.invokeOnMouseClick(sourceSlot, sourceSlotId, targetSlot, net.minecraft.screen.slot.SlotActionType.SWAP);
-            }
+            instance.lastBowShotTick = MinecraftClient.getInstance().world.getTime();
         }
     }
 
@@ -1493,8 +1393,8 @@ public class TutorialModClient implements ClientModInitializer {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled || !TutorialMod.CONFIG.autoWaterDrainMode) return;
         if (client.player == null || client.world == null) return;
 
-        // Pause lava drain during TNT minecart placement sequences or restock
-        if (nextPlacementAction != PlacementAction.NONE || awaitingMinecartConfirmationCooldown > 0 || restockState != RestockState.IDLE) {
+        // Pause lava drain ONLY during active TNT minecart placement steps
+        if (nextPlacementAction != PlacementAction.NONE || awaitingMinecartConfirmationCooldown > 0) {
             return;
         }
 
