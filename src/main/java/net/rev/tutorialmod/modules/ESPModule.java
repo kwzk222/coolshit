@@ -360,17 +360,25 @@ public class ESPModule {
 
     private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f combinedMatrix, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
         StringBuilder boxesData = new StringBuilder();
-        Vec3d cameraPos = camera.getCameraPos();
+
+        // 1.21.x Matrix Math for External Overlay
+        // The goal is to project a 3D point to 2D screen coordinates using the game's matrices.
+        // Game view matrix (modelViewMatrix) includes camera translation.
+        // To maintain floating point precision at high coordinates, we MUST work in camera-relative space.
+        // A rotation-only view matrix is needed if we pass coordinates already offset by -cameraPos.
 
         Matrix4f projView;
         if (TutorialMod.CONFIG.espManualProjection) {
             projView = combinedMatrix;
         } else {
-            // In 1.21.x, modelViewMatrix in render() is already camera-relative view matrix.
-            // Using it directly with camera-relative coordinates is the most stable way.
-            projView = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
+            // Take the game's view matrix and strip the translation to get a pure rotation matrix.
+            // When combined with projection, this matrix correctly transforms camera-relative points.
+            Matrix4f rotationViewMatrix = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+            projView = new Matrix4f(projectionMatrix).mul(rotationViewMatrix);
         }
         float tickDelta = tickCounter.getTickProgress(true);
+        // Get interpolated camera position for perfectly smooth tracking
+        Vec3d cameraPos = camera.getCameraPos();
 
         // 1. Entities
         for (Entity entity : client.world.getEntities()) {

@@ -804,14 +804,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
         clutchToggleWasPressed = isClutchTogglePressed;
 
-        // --- Toggle Aim Assist Hotkey ---
-        boolean isAimAssistTogglePressed = isKeyDown(TutorialMod.CONFIG.aimAssistHotkey);
-        if (isAimAssistTogglePressed && !aimAssistToggleWasPressed) {
-            TutorialMod.CONFIG.aimAssistEnabled = !TutorialMod.CONFIG.aimAssistEnabled;
-            TutorialMod.CONFIG.save();
-            TutorialMod.sendUpdateMessage("Aim Assist set to " + (TutorialMod.CONFIG.aimAssistEnabled ? "ON" : "OFF"));
-        }
-        aimAssistToggleWasPressed = isAimAssistTogglePressed;
+        // Aim Assist is now strictly hold-to-activate, handled in AimAssist.java
 
         boolean isMasterTogglePressed = isKeyDown(TutorialMod.CONFIG.masterToggleHotkey);
         if (isMasterTogglePressed && !masterToggleWasPressed) {

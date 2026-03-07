@@ -29,8 +29,8 @@ public class TriggerBot {
     private int reactionTicks = 0;
     private boolean reactionGatePassed = false;
 
-    private static final float MIN_ATTACK_CHARGE = 0.80f;
-    private static final float MAX_ATTACK_CHARGE = 0.95f;
+    private static final float MIN_ATTACK_CHARGE = 0.70f;
+    private static final float MAX_ATTACK_CHARGE = 0.92f;
 
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.triggerBotEnabled) {
@@ -200,7 +200,7 @@ public class TriggerBot {
     private void attack(Entity entity) {
         if (mc.interactionManager == null || mc.player == null) return;
 
-        if (mc.player.getAttackCooldownProgress(0.0f) < 0.80f) return;
+        if (mc.player.getAttackCooldownProgress(0.0f) < 0.70f) return;
 
         mc.interactionManager.attackEntity(mc.player, entity);
         mc.player.swingHand(Hand.MAIN_HAND);
