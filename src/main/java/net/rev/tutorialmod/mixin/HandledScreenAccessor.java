@@ -11,10 +11,4 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface HandledScreenAccessor {
     @Accessor("focusedSlot")
     Slot getFocusedSlot();
-
-    @Accessor("focusedSlot")
-    void setFocusedSlot(Slot slot);
-
-    @Invoker("onMouseClick")
-    void invokeOnMouseClick(Slot slot, int slotId, int button, SlotActionType actionType);
 }

@@ -361,8 +361,9 @@ public class ESPOverlayApp {
 
                     Color c = new Color(box.color | 0xFF000000, true);
 
-                    if (!box.texture.isEmpty()) {
-                        BufferedImage img = getTexture(box.texture);
+                    if (!box.texture.isEmpty() && box.texture.startsWith("TX_")) {
+                        String textureName = box.texture.substring(3);
+                        BufferedImage img = getTexture(textureName);
                         if (img != null) {
                             Composite old = g2d.getComposite();
                             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
@@ -386,7 +387,7 @@ public class ESPOverlayApp {
 
                     // Health Bar
                     if (box.health >= 0) {
-                        drawHealthBar(g2d, bx, by, bw, bh, box.health);
+                        drawHealthBar(g2d, bx, by, bw, bh, box.health, box.texture, box.color);
                     }
 
                     int labelY = by - 4;
@@ -433,47 +434,58 @@ public class ESPOverlayApp {
             return null;
         }
 
-        private void drawHealthBar(Graphics2D g2d, int bx, int by, int bw, int bh, float health) {
+        private void drawHealthBar(Graphics2D g2d, int bx, int by, int bw, int bh, float health, String extraInfo, int boxColor) {
             int barW = (int)(bw * healthBarWidth);
             if (barW < 2) barW = 2;
 
             int barX;
+            int armorX;
             if (healthBarSide.equalsIgnoreCase("Left")) {
                 barX = bx - barW - 3;
+                armorX = bx + bw + 3;
             } else {
                 barX = bx + bw + 3;
+                armorX = bx - barW - 3;
             }
 
             int barY = by;
             int barH = bh;
 
-            // Background (Empty)
+            // Health Bar
             g2d.setColor(new Color(colorEmpty | 0x99000000, true));
             g2d.fillRect(barX, barY, barW, barH);
 
-            // Health Color based on threshold
-            int healthColor = colorFull;
-            if (health <= 0.25f) {
-                healthColor = colorLow;
-            } else if (health <= 0.5f) {
-                healthColor = colorMedium;
-            }
+            int healthColor = boxColor;
+            // If it's a default white/teammate/enemy color, use the standard health thresholds
+            // but if it's the relative health color (cyan/orange), it will use that.
+            // Actually, better to just check if health color logic should be standard or overridden.
+            // In ESPModule, we only change 'color' for players if relative health color is enabled.
 
             g2d.setColor(new Color(healthColor | 0xFF000000, true));
             int healthH = (int)(barH * Math.max(0, Math.min(1, health)));
+            if (healthBarInverted) g2d.fillRect(barX, barY + (barH - healthH), barW, healthH);
+            else g2d.fillRect(barX, barY, barW, healthH);
 
-            if (healthBarInverted) {
-                // Drains from top
-                g2d.fillRect(barX, barY + (barH - healthH), barW, healthH);
-            } else {
-                // Drains from bottom (shrinks upwards)
-                g2d.fillRect(barX, barY, barW, healthH);
-            }
-
-            // Outline
             g2d.setColor(Color.BLACK);
             g2d.setStroke(new BasicStroke(1.0f));
             g2d.drawRect(barX, barY, barW, barH);
+
+            // Armor Bar (Opposite side)
+            if (!extraInfo.isEmpty() && !extraInfo.startsWith("TX_")) {
+                try {
+                    float armor = Float.parseFloat(extraInfo);
+                    g2d.setColor(new Color(0x33000000, true));
+                    g2d.fillRect(armorX, barY, barW, barH);
+
+                    g2d.setColor(new Color(0xAAAAAA | 0xFF000000, true));
+                    int armorH = (int)(barH * Math.max(0, Math.min(1, armor)));
+                    if (healthBarInverted) g2d.fillRect(armorX, barY + (barH - armorH), barW, armorH);
+                    else g2d.fillRect(armorX, barY, barW, armorH);
+
+                    g2d.setColor(Color.BLACK);
+                    g2d.drawRect(armorX, barY, barW, barH);
+                } catch (Exception ignored) {}
+            }
         }
     }
 

@@ -70,6 +70,8 @@ public class ModConfig {
     public boolean lungeSwapEnabled = true;
     public int lungeSwapBackDelay = 1;
 
+    public boolean iceGhostSwapEnabled = true;
+    public int iceGhostSwapDelay = 5;
 
     // --- Minecart Tech ---
     public boolean tntMinecartPlacementEnabled = true;
@@ -283,6 +285,10 @@ public class ModConfig {
     public boolean espManualProjection = false;
     public double espManualFov = 70.0;
     public boolean espDebugMode = true;
+    public boolean espShowArmor = true;
+    public boolean espRelativeHealthColor = true;
+    public int espColorHealthMore = 0x00FFFF;
+    public int espColorHealthLess = 0xFFA500;
 
     // ESP Filters
     public boolean espPlayers = true;

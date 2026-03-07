@@ -100,6 +100,11 @@ public class ModMenuIntegration implements ModMenuApi {
             lungeSwapSub.add(entryBuilder.startIntSlider(Text.literal("Back Delay"), TutorialMod.CONFIG.lungeSwapBackDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.lungeSwapBackDelay = newValue).build());
             autoStun.addEntry(lungeSwapSub.build());
 
+            SubCategoryBuilder iceGhostSub = entryBuilder.startSubCategory(Text.literal("Ice Ghost Swap"));
+            iceGhostSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.iceGhostSwapEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.iceGhostSwapEnabled = newValue).build());
+            iceGhostSub.add(entryBuilder.startIntSlider(Text.literal("Wait Delay (Ticks)"), TutorialMod.CONFIG.iceGhostSwapDelay, 0, 40).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.iceGhostSwapDelay = newValue).build());
+            autoStun.addEntry(iceGhostSub.build());
+
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue).build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Axe to Original Delay"), TutorialMod.CONFIG.axeToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.axeToOriginalDelay = newValue).build());
             autoStun.addEntry(entryBuilder.startIntSlider(Text.literal("Mace to Original Delay"), TutorialMod.CONFIG.maceToOriginalDelay, 0, 20).setDefaultValue(1).setSaveConsumer(newValue -> TutorialMod.CONFIG.maceToOriginalDelay = newValue).build());
@@ -497,6 +502,13 @@ public class ModMenuIntegration implements ModMenuApi {
                     TutorialModClient.getESPOverlayManager().sendCommand("DEBUG " + newValue);
                 }
             }).build());
+
+            SubCategoryBuilder espExtra = entryBuilder.startSubCategory(Text.literal("Extra Features"));
+            espExtra.add(entryBuilder.startBooleanToggle(Text.literal("Show Armor Bars"), TutorialMod.CONFIG.espShowArmor).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowArmor = newValue).build());
+            espExtra.add(entryBuilder.startBooleanToggle(Text.literal("Relative Health Color"), TutorialMod.CONFIG.espRelativeHealthColor).setTooltip(Text.literal("Colors the health bar based on your health vs target.")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRelativeHealthColor = newValue).build());
+            espExtra.add(entryBuilder.startColorField(Text.literal("Color (More Health)"), TutorialMod.CONFIG.espColorHealthMore).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHealthMore = newValue).build());
+            espExtra.add(entryBuilder.startColorField(Text.literal("Color (Less Health)"), TutorialMod.CONFIG.espColorHealthLess).setDefaultValue(0xFFA500).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHealthLess = newValue).build());
+            espOverlay.addEntry(espExtra.build());
             espOverlay.addEntry(espCalibration.build());
 
             // 2.4 Overlay

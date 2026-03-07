@@ -72,6 +72,9 @@ public abstract class ClientPlayerInteractionManagerMixin {
 
     @Inject(method = "interactBlock", at = @At("TAIL"))
     private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+        if (cir.getReturnValue().isAccepted()) {
+            TutorialModClient.getInstance().onPostItemUse(player, hand);
+        }
         if (TutorialMod.CONFIG.tntMinecartPlacementEnabled && cir.getReturnValue().isAccepted()) {
             ItemStack stack = player.getStackInHand(hand);
             if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {

@@ -126,6 +126,9 @@ public class TutorialModClient implements ClientModInitializer {
     private int comboRestoreTicks = -1;
     private int comboRestoreSlot = -1;
 
+    private int iceGhostSwapTicks = -1;
+    private int iceGhostRestoreSlot = -1;
+
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
     private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_LAVA_PLACEMENT, AWAITING_FIRE_PLACEMENT, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
     private int placementCooldown = -1;
@@ -134,8 +137,6 @@ public class TutorialModClient implements ClientModInitializer {
     private int utilitySlot = -1;
     private int crossbowSlot = -1;
     private int actionTimeout = -1;
-    private int minecartRetryCounter = 0;
-    private long lastSequenceTick = -1;
 
     // --- State: Misc ---
     public static long lastBowShotTick = -1;
@@ -376,6 +377,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         handleComboRestore(client);
+        handleIceGhostSwapTick(client);
 
         // --- Centralized Overlay Logic ---
         boolean shouldOverlayBeRunning = TutorialMod.CONFIG.showCoordsOverlay;
@@ -928,22 +930,14 @@ public class TutorialModClient implements ClientModInitializer {
                                 awaitingMinecartConfirmationCooldown = 60; // Wait for server confirmation
                                 placementCooldown = -1;
                                 nextPlacementAction = PlacementAction.NONE;
-                                minecartRetryCounter = 0;
                                 return;
                             }
                         }
 
-                        if (minecartRetryCounter < 10) {
-                            minecartRetryCounter++;
-                            placementCooldown = 1; // Retry next tick
-                            nextPlacementAction = action;
-                        } else {
-                            // Timeout/Fail
-                            placementCooldown = -1;
-                            nextPlacementAction = PlacementAction.NONE;
-                            minecartRetryCounter = 0;
-                            railPos = null;
-                        }
+                        // Fail/Cancel if no rail found immediately
+                        placementCooldown = -1;
+                        nextPlacementAction = PlacementAction.NONE;
+                        railPos = null;
                     }
                     break;
                 case AWAITING_LAVA_PLACEMENT:
@@ -1024,13 +1018,11 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || findTntMinecartInHotbar(client.player) == -1) return;
         this.railPos = pos;
         this.placementCooldown = 1;
-        this.minecartRetryCounter = 0;
         this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
     }
 
     public void startPostMinecartSequence(MinecraftClient client) {
         if (client.player == null) return;
-        this.lastSequenceTick = client.world.getTime();
         this.railPos = null;
         PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
         if (TutorialMod.CONFIG.lavaCrossbowSequenceEnabled) {
@@ -1640,6 +1632,21 @@ public class TutorialModClient implements ClientModInitializer {
         return -1;
     }
 
+    public void onPostItemUse(PlayerEntity player, Hand hand) {
+        if (!TutorialMod.CONFIG.masterEnabled || hand != Hand.MAIN_HAND) return;
+        ItemStack stack = player.getStackInHand(hand);
+
+        if (TutorialMod.CONFIG.iceGhostSwapEnabled && isIceBlock(stack)) {
+            int airSlot = findAirSlot(player);
+            if (airSlot != -1) {
+                int originalSlot = ((PlayerInventoryMixin) player.getInventory()).getSelectedSlot();
+                syncSlot(airSlot);
+                this.iceGhostRestoreSlot = originalSlot;
+                this.iceGhostSwapTicks = TutorialMod.CONFIG.iceGhostSwapDelay;
+            }
+        }
+    }
+
     public boolean onItemUse() {
         if (!TutorialMod.CONFIG.masterEnabled) return false;
         if (ignoreNextUse) return true;
@@ -2147,6 +2154,18 @@ public class TutorialModClient implements ClientModInitializer {
         return false;
     }
 
+    private boolean isIceBlock(ItemStack stack) {
+        return stack.isOf(Items.ICE) || stack.isOf(Items.PACKED_ICE) || stack.isOf(Items.BLUE_ICE);
+    }
+
+    private int findAirSlot(PlayerEntity player) {
+        // Find a slot that is effectively empty (air)
+        for (int i = 0; i < 9; i++) {
+            if (player.getInventory().getStack(i).isEmpty()) return i;
+        }
+        return -1;
+    }
+
     private int findEmptyBucketInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
             if (player.getInventory().getStack(i).getItem() == Items.BUCKET) return i;
@@ -2588,6 +2607,19 @@ public class TutorialModClient implements ClientModInitializer {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.world == null || lastBlockPlaceTick == -1) return false;
         return mc.world.getTime() - lastBlockPlaceTick < 20;
+    }
+
+    private void handleIceGhostSwapTick(MinecraftClient client) {
+        if (iceGhostSwapTicks > 0) {
+            iceGhostSwapTicks--;
+            if (iceGhostSwapTicks == 0) {
+                if (iceGhostRestoreSlot != -1) {
+                    syncSlot(iceGhostRestoreSlot);
+                }
+                iceGhostSwapTicks = -1;
+                iceGhostRestoreSlot = -1;
+            }
+        }
     }
 
     public void handleSprintResetInput(net.minecraft.client.input.Input input) {

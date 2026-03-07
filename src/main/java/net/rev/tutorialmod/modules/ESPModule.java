@@ -9,8 +9,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.Monster;
 import net.minecraft.entity.passive.PassiveEntity;
 import net.minecraft.entity.passive.TameableEntity;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.*;
@@ -361,8 +363,14 @@ public class ESPModule {
         StringBuilder boxesData = new StringBuilder();
         Vec3d cameraPos = camera.getCameraPos();
 
-        // Use a Matrix4f that already has modelView and projection combined
-        // but we'll manually apply camera translation in projectAndAppend to ensure zero drift.
+        Matrix4f stableMatrix;
+        if (TutorialMod.CONFIG.espManualProjection) {
+            stableMatrix = combinedMatrix;
+        } else {
+            // Calculate a rotation-only projection matrix to avoid drift from large coordinates
+            Matrix4f rotationViewMatrix = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+            stableMatrix = new Matrix4f(projectionMatrix).mul(rotationViewMatrix);
+        }
         float tickDelta = tickCounter.getTickProgress(true);
 
         // 1. Entities
@@ -420,7 +428,38 @@ public class ESPModule {
                 // We offset to camera-relative space before projecting.
                 box = box.offset(cameraPos.negate());
 
-                projectAndAppend(boxesData, box, combinedMatrix, label, color, distLabel, true, health, "", cameraPos);
+                // Relative Health Color
+                if (entity instanceof PlayerEntity player && TutorialMod.CONFIG.espRelativeHealthColor && client.player != null) {
+                    float myHealth = client.player.getHealth();
+                    float targetHealth = player.getHealth();
+                    if (targetHealth > myHealth) {
+                        color = TutorialMod.CONFIG.espColorHealthMore;
+                    } else if (targetHealth < myHealth) {
+                        color = TutorialMod.CONFIG.espColorHealthLess;
+                    }
+                }
+
+                // Armor info
+                String armorInfo = "";
+                if (entity instanceof PlayerEntity player && TutorialMod.CONFIG.espShowArmor) {
+                    float totalArmor = 0;
+                    float maxArmor = 0;
+                    EquipmentSlot[] armorSlots = {EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD};
+                    for (EquipmentSlot slot : armorSlots) {
+                        ItemStack stack = player.getEquippedStack(slot);
+                        if (!stack.isEmpty() && stack.isDamageable()) {
+                            totalArmor += (stack.getMaxDamage() - stack.getDamage());
+                            maxArmor += stack.getMaxDamage();
+                        }
+                    }
+                    if (maxArmor > 0) {
+                        armorInfo = String.format(Locale.ROOT, "%.2f", totalArmor / maxArmor);
+                    } else {
+                        armorInfo = "0.00";
+                    }
+                }
+
+                projectAndAppend(boxesData, box, stableMatrix, label, color, distLabel, true, health, armorInfo, cameraPos);
             }
         }
 
@@ -430,7 +469,7 @@ public class ESPModule {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
                                   entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
                 box = box.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
+                projectAndAppend(boxesData, box, stableMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
             }
         }
 
@@ -442,14 +481,14 @@ public class ESPModule {
                 if (TutorialMod.CONFIG.xrayFrustumCulling && !frustum.isVisible(worldBox)) continue;
 
                 Box box = worldBox.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, entry.texture, cameraPos);
+                projectAndAppend(boxesData, box, stableMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
             }
         }
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
     }
 
-    private void projectAndAppend(StringBuilder data, Box box, Matrix4f combinedMatrix, String label, int color, String distLabel, boolean useWidthFactor, float health, String texture, Vec3d cameraPos) {
+    private void projectAndAppend(StringBuilder data, Box box, Matrix4f combinedMatrix, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
         Vector4f[] corners = new Vector4f[]{
                 new Vector4f((float)box.minX, (float)box.minY, (float)box.minZ, 1.0f),
                 new Vector4f((float)box.maxX, (float)box.minY, (float)box.minZ, 1.0f),
@@ -531,7 +570,8 @@ public class ESPModule {
             boxWidth = boxHeight * (float)TutorialMod.CONFIG.espBoxWidthFactor;
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
             boxY = minY;
-        } else if (!texture.isEmpty()) {
+        } else if (!extraInfo.isEmpty() && extraInfo.startsWith("TX_")) {
+            String texture = extraInfo.substring(3);
             // Unstretched square for textures, stabilized against FOV distortion
             float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
 
@@ -557,7 +597,7 @@ public class ESPModule {
         }
 
         if (data.length() > 0) data.append(";");
-        data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s,%d,%s,%.2f,%s", boxX, boxY, boxWidth, boxHeight, label, color, distLabel, health, texture));
+        data.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f,%s,%d,%s,%.2f,%s", boxX, boxY, boxWidth, boxHeight, label, color, distLabel, health, extraInfo));
     }
 
     public void syncWindowBounds() {
