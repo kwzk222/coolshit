@@ -290,7 +290,7 @@ public class AimAssist {
         double targetPitchStep = pitchDiff * step;
 
         // Exponential smoothing for rotation speed
-        double emaAlpha = 0.4;
+        double emaAlpha = 0.15; // Lower for more smoothness
         smoothYawStep = smoothYawStep * (1.0 - emaAlpha) + targetYawStep * emaAlpha;
         smoothPitchStep = smoothPitchStep * (1.0 - emaAlpha) + targetPitchStep * emaAlpha;
 

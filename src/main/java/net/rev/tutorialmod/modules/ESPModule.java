@@ -368,9 +368,6 @@ public class ESPModule {
         Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
         Vec3d cameraPos = new Vec3d(camPosVec.x / camPosVec.w, camPosVec.y / camPosVec.w, camPosVec.z / camPosVec.w);
 
-        // Screen center offset
-        Vector4f centerOffset = new Vector4f(0, 0, 0, 1).mul(projMatrix);
-
         float tickDelta = tickCounter.getTickProgress(true);
 
         // 1. Entities
@@ -475,7 +472,7 @@ public class ESPModule {
                     extraData = sb.toString();
                 }
 
-                projectAndAppend(boxesData, box, stableProjView, centerOffset, label, color, distLabel, true, health, extraData, cameraPos);
+                projectAndAppend(boxesData, box, stableProjView, label, color, distLabel, true, health, extraData, cameraPos);
             }
         }
 
@@ -485,7 +482,7 @@ public class ESPModule {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
                                   entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
                 box = box.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, stableProjView, centerOffset, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
+                projectAndAppend(boxesData, box, stableProjView, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
             }
         }
 
@@ -497,14 +494,14 @@ public class ESPModule {
                 if (TutorialMod.CONFIG.xrayFrustumCulling && !frustum.isVisible(worldBox)) continue;
 
                 Box box = worldBox.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, stableProjView, centerOffset, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
+                projectAndAppend(boxesData, box, stableProjView, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
             }
         }
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
     }
 
-    private void projectAndAppend(StringBuilder data, Box box, Matrix4f projView, Vector4f centerOffset, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
+    private void projectAndAppend(StringBuilder data, Box box, Matrix4f projView, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
         Vector4f[] corners = new Vector4f[8];
         double[] xs = {box.minX, box.maxX};
         double[] ys = {box.minY, box.maxY};
@@ -516,7 +513,6 @@ public class ESPModule {
                 for (double z : zs) {
                     Vector4f corner = new Vector4f((float)x, (float)y, (float)z, 1.0f);
                     projView.transform(corner);
-                    corner.add(centerOffset.x, centerOffset.y, centerOffset.z, 0);
                     corners[i++] = corner;
                 }
             }
