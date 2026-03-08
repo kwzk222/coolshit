@@ -95,7 +95,7 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        Matrix4f combinedMatrix;
+        Matrix4f projView;
 
         if (TutorialMod.CONFIG.espManualProjection) {
             float fov = (float) TutorialMod.CONFIG.espManualFov;
@@ -108,10 +108,12 @@ public class ESPModule {
                 .rotateX((float)Math.toRadians(camera.getPitch()))
                 .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
 
-            combinedMatrix = manualProj.mul(manualView);
+            projView = manualProj.mul(manualView);
         } else {
-            // Use the game's matrices directly to include view bobbing and proper camera sync
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
+            // To ensure perfect precision and eliminate shifting, we use camera-relative coordinates.
+            // ProjView = Proj * RotationOnly(View)
+            Matrix4f rotationView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+            projView = new Matrix4f(projectionMatrix).mul(rotationView);
         }
 
         frustum.setPosition(camera.getCameraPos().x, camera.getCameraPos().y, camera.getCameraPos().z);
@@ -119,10 +121,10 @@ public class ESPModule {
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
         if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getTrajectoriesModule() != null) {
-            TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
+            TutorialModClient.getInstance().getTrajectoriesModule().onRender(projView);
         }
 
-        updateESP(tickCounter, camera, combinedMatrix, modelViewMatrix, projectionMatrix);
+        updateESP(tickCounter, camera, projectionMatrix, modelViewMatrix, projView);
     }
 
     private final Set<String> extractedTextures = new HashSet<>();
@@ -358,27 +360,18 @@ public class ESPModule {
         }
     }
 
-    private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f combinedMatrix, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
+    private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f projMatrix, Matrix4f viewMatrix, Matrix4f stableProjView) {
         StringBuilder boxesData = new StringBuilder();
 
-        // 1.21.x Matrix Math for External Overlay
-        // The goal is to project a 3D point to 2D screen coordinates using the game's matrices.
-        // Game view matrix (modelViewMatrix) includes camera translation.
-        // To maintain floating point precision at high coordinates, we MUST work in camera-relative space.
-        // A rotation-only view matrix is needed if we pass coordinates already offset by -cameraPos.
+        // Extract camera position from view matrix for perfect sync
+        Matrix4f invView = new Matrix4f(viewMatrix).invert();
+        Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
+        Vec3d cameraPos = new Vec3d(camPosVec.x / camPosVec.w, camPosVec.y / camPosVec.w, camPosVec.z / camPosVec.w);
 
-        Matrix4f projView;
-        if (TutorialMod.CONFIG.espManualProjection) {
-            projView = combinedMatrix;
-        } else {
-            // Take the game's view matrix and strip the translation to get a pure rotation matrix.
-            // When combined with projection, this matrix correctly transforms camera-relative points.
-            Matrix4f rotationViewMatrix = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
-            projView = new Matrix4f(projectionMatrix).mul(rotationViewMatrix);
-        }
+        // Screen center offset
+        Vector4f centerOffset = new Vector4f(0, 0, 0, 1).mul(projMatrix);
+
         float tickDelta = tickCounter.getTickProgress(true);
-        // Get interpolated camera position for perfectly smooth tracking
-        Vec3d cameraPos = camera.getCameraPos();
 
         // 1. Entities
         for (Entity entity : client.world.getEntities()) {
@@ -482,7 +475,7 @@ public class ESPModule {
                     extraData = sb.toString();
                 }
 
-                projectAndAppend(boxesData, box, projView, label, color, distLabel, true, health, extraData, cameraPos);
+                projectAndAppend(boxesData, box, stableProjView, centerOffset, label, color, distLabel, true, health, extraData, cameraPos);
             }
         }
 
@@ -492,7 +485,7 @@ public class ESPModule {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
                                   entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
                 box = box.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, projView, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
+                projectAndAppend(boxesData, box, stableProjView, centerOffset, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
             }
         }
 
@@ -504,28 +497,29 @@ public class ESPModule {
                 if (TutorialMod.CONFIG.xrayFrustumCulling && !frustum.isVisible(worldBox)) continue;
 
                 Box box = worldBox.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, projView, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
+                projectAndAppend(boxesData, box, stableProjView, centerOffset, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
             }
         }
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
     }
 
-    private void projectAndAppend(StringBuilder data, Box box, Matrix4f combinedMatrix, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
-        Vector4f[] corners = new Vector4f[]{
-                new Vector4f((float)box.minX, (float)box.minY, (float)box.minZ, 1.0f),
-                new Vector4f((float)box.maxX, (float)box.minY, (float)box.minZ, 1.0f),
-                new Vector4f((float)box.minX, (float)box.maxY, (float)box.minZ, 1.0f),
-                new Vector4f((float)box.maxX, (float)box.maxY, (float)box.minZ, 1.0f),
-                new Vector4f((float)box.minX, (float)box.minY, (float)box.maxZ, 1.0f),
-                new Vector4f((float)box.maxX, (float)box.minY, (float)box.maxZ, 1.0f),
-                new Vector4f((float)box.minX, (float)box.maxY, (float)box.maxZ, 1.0f),
-                new Vector4f((float)box.maxX, (float)box.maxY, (float)box.maxZ, 1.0f)
-        };
+    private void projectAndAppend(StringBuilder data, Box box, Matrix4f projView, Vector4f centerOffset, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
+        Vector4f[] corners = new Vector4f[8];
+        double[] xs = {box.minX, box.maxX};
+        double[] ys = {box.minY, box.maxY};
+        double[] zs = {box.minZ, box.maxZ};
 
-        // Use the combinedMatrix provided by updateESP, which is already stable (rotation-only)
-        for (Vector4f corner : corners) {
-            combinedMatrix.transform(corner);
+        int i = 0;
+        for (double x : xs) {
+            for (double y : ys) {
+                for (double z : zs) {
+                    Vector4f corner = new Vector4f((float)x, (float)y, (float)z, 1.0f);
+                    projView.transform(corner);
+                    corner.add(centerOffset.x, centerOffset.y, centerOffset.z, 0);
+                    corners[i++] = corner;
+                }
+            }
         }
 
         List<Vector4f> points = new ArrayList<>();

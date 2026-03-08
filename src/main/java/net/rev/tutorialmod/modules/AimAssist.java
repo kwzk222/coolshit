@@ -33,6 +33,9 @@ public class AimAssist {
     private float lastFramePitchStep = 0;
     private double currentBorderMargin = -0.05;
 
+    private double smoothYawStep = 0;
+    private double smoothPitchStep = 0;
+
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialModClient.isKeyDown(TutorialMod.CONFIG.aimAssistHotkey)) {
             isAssisting = false;
@@ -84,10 +87,16 @@ public class AimAssist {
             return;
         }
 
+        float tickDelta = tickCounter.getTickProgress(true);
+        double tx = MathHelper.lerp(tickDelta, target.lastRenderX, target.getX());
+        double ty = MathHelper.lerp(tickDelta, target.lastRenderY, target.getY());
+        double tz = MathHelper.lerp(tickDelta, target.lastRenderZ, target.getZ());
+        Vec3d targetPos = new Vec3d(tx, ty + target.getHeight() / 2.0, tz);
+
         // Handle target changes/initialization
         if (target != currentTarget) {
             currentTarget = target;
-            lastTargetPos = target.getBoundingBox().getCenter();
+            lastTargetPos = targetPos;
             targetVelocity = Vec3d.ZERO;
             lastTargetVelocity = Vec3d.ZERO;
             currentOvershootYaw = 0;
@@ -97,9 +106,8 @@ public class AimAssist {
             double max = TutorialMod.CONFIG.aimAssistBorderMax;
             currentBorderMargin = min + (max - min) * random.nextDouble();
         } else {
-            Vec3d pos = target.getBoundingBox().getCenter();
-            targetVelocity = pos.subtract(lastTargetPos);
-            lastTargetPos = pos;
+            targetVelocity = targetPos.subtract(lastTargetPos);
+            lastTargetPos = targetPos;
         }
 
         // If we get here, we were off-target.
@@ -107,8 +115,6 @@ public class AimAssist {
             TutorialModClient.getInstance().setOverlayStatus("Aim Assist Active");
         }
         isAssisting = true;
-
-        Vec3d targetPos = target.getBoundingBox().getCenter();
 
         rotateToward(target, targetPos);
         lastTargetVelocity = targetVelocity;
@@ -280,8 +286,16 @@ public class AimAssist {
         double step = strength * 8.0 * deltaTime;
         if (step > 1.0) step = 1.0;
 
-        lastFrameYawStep = (float)(yawDiff * step);
-        lastFramePitchStep = (float)(pitchDiff * step);
+        double targetYawStep = yawDiff * step;
+        double targetPitchStep = pitchDiff * step;
+
+        // Exponential smoothing for rotation speed
+        double emaAlpha = 0.4;
+        smoothYawStep = smoothYawStep * (1.0 - emaAlpha) + targetYawStep * emaAlpha;
+        smoothPitchStep = smoothPitchStep * (1.0 - emaAlpha) + targetPitchStep * emaAlpha;
+
+        lastFrameYawStep = (float)smoothYawStep;
+        lastFramePitchStep = (float)smoothPitchStep;
 
         float newYaw = currentYaw + lastFrameYawStep;
         float newPitch = currentPitch + lastFramePitchStep;
