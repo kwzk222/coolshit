@@ -95,7 +95,7 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        Matrix4f projView;
+        Matrix4f combinedMatrix;
 
         if (TutorialMod.CONFIG.espManualProjection) {
             float fov = (float) TutorialMod.CONFIG.espManualFov;
@@ -108,12 +108,12 @@ public class ESPModule {
                 .rotateX((float)Math.toRadians(camera.getPitch()))
                 .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
 
-            projView = manualProj.mul(manualView);
+            combinedMatrix = manualProj.mul(manualView);
         } else {
-            // To ensure perfect precision and eliminate shifting, we use camera-relative coordinates.
-            // ProjView = Proj * RotationOnly(View)
-            Matrix4f rotationView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
-            projView = new Matrix4f(projectionMatrix).mul(rotationView);
+            // Take game's view matrix, strip translation to get rotation-only, combine with projection.
+            // This is the stable matrix used for coordinates offset by -cameraPos.
+            Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
         }
 
         frustum.setPosition(camera.getCameraPos().x, camera.getCameraPos().y, camera.getCameraPos().z);
@@ -121,10 +121,10 @@ public class ESPModule {
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
         if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getTrajectoriesModule() != null) {
-            TutorialModClient.getInstance().getTrajectoriesModule().onRender(projView);
+            TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
         }
 
-        updateESP(tickCounter, camera, projectionMatrix, modelViewMatrix, projView);
+        updateESP(tickCounter, camera, combinedMatrix);
     }
 
     private final Set<String> extractedTextures = new HashSet<>();
@@ -360,14 +360,9 @@ public class ESPModule {
         }
     }
 
-    private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f projMatrix, Matrix4f viewMatrix, Matrix4f stableProjView) {
+    private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f combinedMatrix) {
         StringBuilder boxesData = new StringBuilder();
-
-        // Extract camera position from view matrix for perfect sync
-        Matrix4f invView = new Matrix4f(viewMatrix).invert();
-        Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
-        Vec3d cameraPos = new Vec3d(camPosVec.x / camPosVec.w, camPosVec.y / camPosVec.w, camPosVec.z / camPosVec.w);
-
+        Vec3d cameraPos = camera.getCameraPos();
         float tickDelta = tickCounter.getTickProgress(true);
 
         // 1. Entities
@@ -472,7 +467,7 @@ public class ESPModule {
                     extraData = sb.toString();
                 }
 
-                projectAndAppend(boxesData, box, stableProjView, label, color, distLabel, true, health, extraData, cameraPos);
+                projectAndAppend(boxesData, box, combinedMatrix, label, color, distLabel, true, health, extraData, cameraPos);
             }
         }
 
@@ -482,7 +477,7 @@ public class ESPModule {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
                                   entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
                 box = box.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, stableProjView, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
+                projectAndAppend(boxesData, box, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
             }
         }
 
@@ -494,28 +489,27 @@ public class ESPModule {
                 if (TutorialMod.CONFIG.xrayFrustumCulling && !frustum.isVisible(worldBox)) continue;
 
                 Box box = worldBox.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, stableProjView, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
+                projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
             }
         }
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
     }
 
-    private void projectAndAppend(StringBuilder data, Box box, Matrix4f projView, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
-        Vector4f[] corners = new Vector4f[8];
-        double[] xs = {box.minX, box.maxX};
-        double[] ys = {box.minY, box.maxY};
-        double[] zs = {box.minZ, box.maxZ};
+    private void projectAndAppend(StringBuilder data, Box box, Matrix4f combinedMatrix, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
+        Vector4f[] corners = new Vector4f[]{
+                new Vector4f((float)box.minX, (float)box.minY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.minY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.minX, (float)box.maxY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.maxY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.minX, (float)box.minY, (float)box.maxZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.minY, (float)box.maxZ, 1.0f),
+                new Vector4f((float)box.minX, (float)box.maxY, (float)box.maxZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.maxY, (float)box.maxZ, 1.0f)
+        };
 
-        int i = 0;
-        for (double x : xs) {
-            for (double y : ys) {
-                for (double z : zs) {
-                    Vector4f corner = new Vector4f((float)x, (float)y, (float)z, 1.0f);
-                    projView.transform(corner);
-                    corners[i++] = corner;
-                }
-            }
+        for (Vector4f corner : corners) {
+            combinedMatrix.transform(corner);
         }
 
         List<Vector4f> points = new ArrayList<>();
