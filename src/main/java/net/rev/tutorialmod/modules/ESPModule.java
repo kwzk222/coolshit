@@ -63,7 +63,7 @@ public class ESPModule {
         }
     }
 
-    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f projectionMatrix, Matrix4f modelViewMatrix) {
+    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f mat1, Matrix4f mat2) {
         if (!TutorialMod.CONFIG.showESP || client.player == null || client.world == null) {
             vanishedPlayers.clear();
             xrayEntries.clear();
@@ -93,6 +93,16 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
+        // Matrix detection: Projection matrix usually has m33 = 0. View matrix usually has m33 = 1.
+        Matrix4f proj, view;
+        if (Math.abs(mat1.m33()) < 0.01f) {
+            proj = mat1;
+            view = mat2;
+        } else {
+            proj = mat2;
+            view = mat1;
+        }
+
         Matrix4f combinedMatrix;
 
         if (TutorialMod.CONFIG.espManualProjection) {
@@ -108,19 +118,14 @@ public class ESPModule {
 
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            // THE DEFINITIVE STABILITY FIX
-            // Coordinates will be camera-relative (entityPos - cameraPos).
-            // By stripping the translation from the modelViewMatrix, we ensure that:
-            // 1. The projection is done in "View Space" relative to (0,0,0).
-            // 2. High world coordinates don't cause precision jitter.
-            // 3. We are perfectly aligned with the game's rotation.
-            Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
+            // Stable rotation-only view matrix. Coordinates will be (pos - cameraPos).
+            Matrix4f rotationOnlyView = new Matrix4f(view).setTranslation(0, 0, 0);
+            combinedMatrix = new Matrix4f(proj).mul(rotationOnlyView);
         }
 
         Vec3d cameraPos = camera.getCameraPos();
         frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
-        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
+        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(view, proj);
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
         if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getTrajectoriesModule() != null) {
@@ -411,6 +416,7 @@ public class ESPModule {
             if (color != -1) {
                 if (TutorialMod.CONFIG.espFrustumCulling && !frustum.isVisible(entity.getBoundingBox())) continue;
 
+                // CRITICAL FIX: Offset by interpolated entity pos MINUS camera pos
                 Box box = entity.getBoundingBox().offset(entityPos.subtract(entity.getX(), entity.getY(), entity.getZ()));
                 box = box.offset(cameraPos.negate());
 

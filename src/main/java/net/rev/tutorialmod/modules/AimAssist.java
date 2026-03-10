@@ -78,9 +78,9 @@ public class AimAssist {
             currentSpeedScale = 0;
             targetVelocity = target.getVelocity();
         } else {
-            // Stronger filtering for target velocity to eliminate micro-jitter
+            // High-damping velocity filter to eliminate micro-jitter
             Vec3d rawVelocity = target.getVelocity();
-            targetVelocity = targetVelocity.multiply(0.9).add(rawVelocity.multiply(0.1));
+            targetVelocity = targetVelocity.multiply(0.98).add(rawVelocity.multiply(0.02));
         }
 
         if (!isAssisting) {
@@ -188,12 +188,11 @@ public class AimAssist {
         Vec3d finalTargetPos = targetPos;
         if (TutorialMod.CONFIG.aimAssistPrediction) {
             double dist = mc.player.distanceTo(target);
-            // Linear prediction with distance-based leading
             double predictFactor = 0.5 * TutorialMod.CONFIG.aimAssistPredictionFactor;
             finalTargetPos = targetPos.add(targetVelocity.multiply(dist * predictFactor));
         }
 
-        // Use player camera pos with tickDelta for perfect rotation matching
+        // Project target into camera-relative space using lerp for perfect rotation matching
         Vec3d playerPos = mc.player.getCameraPosVec(tickDelta);
         Vec3d diff = finalTargetPos.subtract(playerPos);
 
@@ -217,14 +216,14 @@ public class AimAssist {
         // --- HUMAN-LIKE CURVE (Acceleration/Deceleration) ---
         double angleToTarget = Math.sqrt(yawDiff * yawDiff + pitchDiff * pitchDiff);
 
-        // Acceleration
-        float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 4.0f;
+        // Acceleration with high weight
+        float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 2.0f;
         currentSpeedScale = Math.min(1.0f, currentSpeedScale + accelRate);
 
-        // Exponential ease-out for deceleration (very strong close to center)
-        double decelThreshold = 15.0 * TutorialMod.CONFIG.aimAssistDeceleration;
+        // Aggressive cubic ease-out deceleration
+        double decelThreshold = 25.0 * TutorialMod.CONFIG.aimAssistDeceleration;
         double decelerationFactor = Math.min(1.0, angleToTarget / decelThreshold);
-        decelerationFactor = 0.02 + 0.98 * Math.pow(decelerationFactor, 2.0); // Smoother, curved ease-out
+        decelerationFactor = 0.02 + 0.98 * Math.pow(decelerationFactor, 3.0); // Cubic ease-out
 
         double strength = baseStrength * currentSpeedScale * decelerationFactor;
 
@@ -235,15 +234,16 @@ public class AimAssist {
         double targetPitchStep = pitchDiff * step;
 
         // --- EMA SMOOTHING & SPEED CAP ---
-        // adaptive smoothing: more smoothing when closer to target center
+        // Adaptive EMA: very high smoothing when close to target or target is moving fast
         double baseAlpha = TutorialMod.CONFIG.aimAssistEmaAlpha;
-        double proximityAlpha = Math.min(1.0, angleToTarget / 5.0);
-        double finalAlpha = baseAlpha * (0.2 + 0.8 * proximityAlpha);
+        double speedSmoothing = 1.0 - Math.min(0.8, targetVelocity.length() * 5.0);
+        double finalAlpha = baseAlpha * (0.05 + 0.95 * (angleToTarget / 10.0)) * speedSmoothing;
+        finalAlpha = MathHelper.clamp(finalAlpha, 0.001, 1.0);
 
         smoothYawStep = smoothYawStep * (1.0 - finalAlpha) + targetYawStep * finalAlpha;
         smoothPitchStep = smoothPitchStep * (1.0 - finalAlpha) + targetPitchStep * finalAlpha;
 
-        double maxSpeed = 110.0 * deltaTime;
+        double maxSpeed = 80.0 * deltaTime; // Tighten speed cap for natural feel
         smoothYawStep = MathHelper.clamp(smoothYawStep, -maxSpeed, maxSpeed);
         smoothPitchStep = MathHelper.clamp(smoothPitchStep, -maxSpeed, maxSpeed);
 
