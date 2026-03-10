@@ -22,7 +22,6 @@ public class AimAssist {
 
     private Entity currentTarget = null;
     private Vec3d targetVelocity = Vec3d.ZERO;
-    private Vec3d lastTargetVelocity = Vec3d.ZERO;
 
     private double smoothYawStep = 0;
     private double smoothPitchStep = 0;
@@ -78,11 +77,10 @@ public class AimAssist {
             currentTarget = target;
             currentSpeedScale = 0;
             targetVelocity = target.getVelocity();
-            lastTargetVelocity = targetVelocity;
         } else {
-            // Low-pass filter for target velocity to smooth out prediction
+            // Stronger filtering for target velocity to eliminate micro-jitter
             Vec3d rawVelocity = target.getVelocity();
-            targetVelocity = targetVelocity.multiply(0.5).add(rawVelocity.multiply(0.5));
+            targetVelocity = targetVelocity.multiply(0.8).add(rawVelocity.multiply(0.2));
         }
 
         if (!isAssisting) {
@@ -190,13 +188,14 @@ public class AimAssist {
         Vec3d finalTargetPos = targetPos;
         if (TutorialMod.CONFIG.aimAssistPrediction) {
             double dist = mc.player.distanceTo(target);
-            // Optimized factor for 20tps velocity
+            // Linear prediction with distance-based leading
             double predictFactor = 0.5 * TutorialMod.CONFIG.aimAssistPredictionFactor;
             finalTargetPos = targetPos.add(targetVelocity.multiply(dist * predictFactor));
         }
 
-        // Use player camera pos with tickDelta for matrix stability
-        Vec3d diff = finalTargetPos.subtract(mc.player.getCameraPosVec(tickDelta));
+        // Project target into camera-relative space using lerp for perfect stability
+        Vec3d playerPos = mc.player.getCameraPosVec(tickDelta);
+        Vec3d diff = finalTargetPos.subtract(playerPos);
 
         double diffX = diff.x;
         double diffY = diff.y;
@@ -218,26 +217,32 @@ public class AimAssist {
         // --- HUMAN-LIKE CURVE (Acceleration/Deceleration) ---
         double angleToTarget = Math.sqrt(yawDiff * yawDiff + pitchDiff * pitchDiff);
 
-        float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 5.0f;
+        // Slower acceleration for more "weight"
+        float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 3.0f;
         currentSpeedScale = Math.min(1.0f, currentSpeedScale + accelRate);
 
-        double decelerationFactor = Math.min(1.0, angleToTarget / (5.0 * TutorialMod.CONFIG.aimAssistDeceleration));
-        decelerationFactor = 0.1 + 0.9 * decelerationFactor;
+        // Exponential ease-out for deceleration
+        double decelStartAngle = 10.0 * TutorialMod.CONFIG.aimAssistDeceleration;
+        double decelerationFactor = Math.min(1.0, angleToTarget / decelStartAngle);
+        decelerationFactor = 0.05 + 0.95 * Math.pow(decelerationFactor, 1.5); // Curved deceleration
 
         double strength = baseStrength * currentSpeedScale * decelerationFactor;
 
-        double step = strength * 8.0 * deltaTime;
+        double step = strength * 6.0 * deltaTime;
         if (step > 1.0) step = 1.0;
 
         double targetYawStep = yawDiff * step;
         double targetPitchStep = pitchDiff * step;
 
         // --- EMA SMOOTHING & SPEED CAP ---
-        double emaAlpha = TutorialMod.CONFIG.aimAssistEmaAlpha;
-        smoothYawStep = smoothYawStep * (1.0 - emaAlpha) + targetYawStep * emaAlpha;
-        smoothPitchStep = smoothPitchStep * (1.0 - emaAlpha) + targetPitchStep * emaAlpha;
+        // Adaptive EMA: smooth more when moving fast
+        double baseAlpha = TutorialMod.CONFIG.aimAssistEmaAlpha;
+        double adaptiveAlpha = baseAlpha * (1.0 - Math.min(0.5, angleToTarget / 45.0));
 
-        double maxSpeed = 120.0 * deltaTime; // cap rotation speed for human-like feel
+        smoothYawStep = smoothYawStep * (1.0 - adaptiveAlpha) + targetYawStep * adaptiveAlpha;
+        smoothPitchStep = smoothPitchStep * (1.0 - adaptiveAlpha) + targetPitchStep * adaptiveAlpha;
+
+        double maxSpeed = 100.0 * deltaTime; // Cap rotation speed
         smoothYawStep = MathHelper.clamp(smoothYawStep, -maxSpeed, maxSpeed);
         smoothPitchStep = MathHelper.clamp(smoothPitchStep, -maxSpeed, maxSpeed);
 

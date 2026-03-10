@@ -93,9 +93,6 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        float tickDelta = tickCounter.getTickProgress(true);
-        Vec3d cameraPos = camera.getCameraPos();
-
         Matrix4f combinedMatrix;
 
         if (TutorialMod.CONFIG.espManualProjection) {
@@ -111,18 +108,13 @@ public class ESPModule {
 
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            // Stability fix: extract exact camera position by inverting the view matrix.
-            // This ensures we're perfectly aligned with whatever offset the game applied.
-            Matrix4f invView = new Matrix4f(modelViewMatrix).invert();
-            Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
-            cameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
-
-            // Strip translation from view matrix to create a rotation-only combined matrix.
-            // Coordinates passed to projectAndAppend will be camera-relative.
+            // Stability fix: coordinates are passed relative to (entityPos - cameraPos).
+            // Stripping translation ensures that at high world coordinates, we don't lose floating-point precision.
             Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
             combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
         }
 
+        Vec3d cameraPos = camera.getCameraPos();
         frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
         ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
 
