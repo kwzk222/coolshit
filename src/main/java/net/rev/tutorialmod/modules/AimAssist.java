@@ -21,8 +21,8 @@ public class AimAssist {
     private boolean isAssisting = false;
 
     private Entity currentTarget = null;
-    private Vec3d lastTargetPos = null;
     private Vec3d targetVelocity = Vec3d.ZERO;
+    private Vec3d lastTargetVelocity = Vec3d.ZERO;
 
     private double smoothYawStep = 0;
     private double smoothPitchStep = 0;
@@ -58,7 +58,6 @@ public class AimAssist {
         if (isCrosshairOnAnyTarget()) {
             isAssisting = false;
             lastFrameTime = 0;
-            // We don't reset currentSpeedScale here to keep it ready if we drift off
             return;
         }
 
@@ -66,7 +65,6 @@ public class AimAssist {
         if (target == null) {
             reset();
             currentTarget = null;
-            lastTargetPos = null;
             return;
         }
 
@@ -78,12 +76,13 @@ public class AimAssist {
 
         if (target != currentTarget) {
             currentTarget = target;
-            lastTargetPos = targetPos;
-            targetVelocity = Vec3d.ZERO;
-            currentSpeedScale = 0; // Reset acceleration for new target
+            currentSpeedScale = 0;
+            targetVelocity = target.getVelocity();
+            lastTargetVelocity = targetVelocity;
         } else {
-            targetVelocity = targetPos.subtract(lastTargetPos);
-            lastTargetPos = targetPos;
+            // Low-pass filter for target velocity to smooth out prediction
+            Vec3d rawVelocity = target.getVelocity();
+            targetVelocity = targetVelocity.multiply(0.5).add(rawVelocity.multiply(0.5));
         }
 
         if (!isAssisting) {
@@ -91,7 +90,7 @@ public class AimAssist {
         }
         isAssisting = true;
 
-        rotateToward(target, targetPos);
+        rotateToward(target, targetPos, tickDelta);
     }
 
     private void reset() {
@@ -174,7 +173,7 @@ public class AimAssist {
         return false;
     }
 
-    private void rotateToward(Entity target, Vec3d targetPos) {
+    private void rotateToward(Entity target, Vec3d targetPos, float tickDelta) {
         if (mc.player == null) return;
 
         long now = System.currentTimeMillis();
@@ -191,11 +190,13 @@ public class AimAssist {
         Vec3d finalTargetPos = targetPos;
         if (TutorialMod.CONFIG.aimAssistPrediction) {
             double dist = mc.player.distanceTo(target);
-            double predictTicks = dist * 2.0 * TutorialMod.CONFIG.aimAssistPredictionFactor;
-            finalTargetPos = targetPos.add(targetVelocity.multiply(predictTicks));
+            // Optimized factor for 20tps velocity
+            double predictFactor = 0.5 * TutorialMod.CONFIG.aimAssistPredictionFactor;
+            finalTargetPos = targetPos.add(targetVelocity.multiply(dist * predictFactor));
         }
 
-        Vec3d diff = finalTargetPos.subtract(mc.player.getCameraPosVec(1.0f));
+        // Use player camera pos with tickDelta for matrix stability
+        Vec3d diff = finalTargetPos.subtract(mc.player.getCameraPosVec(tickDelta));
 
         double diffX = diff.x;
         double diffY = diff.y;
@@ -217,14 +218,11 @@ public class AimAssist {
         // --- HUMAN-LIKE CURVE (Acceleration/Deceleration) ---
         double angleToTarget = Math.sqrt(yawDiff * yawDiff + pitchDiff * pitchDiff);
 
-        // Acceleration
         float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 5.0f;
         currentSpeedScale = Math.min(1.0f, currentSpeedScale + accelRate);
 
-        // Deceleration (Ease out as we get closer to center)
-        // Assume deceleration starts at 5 degrees
         double decelerationFactor = Math.min(1.0, angleToTarget / (5.0 * TutorialMod.CONFIG.aimAssistDeceleration));
-        decelerationFactor = 0.1 + 0.9 * decelerationFactor; // Don't stop entirely, just slow down
+        decelerationFactor = 0.1 + 0.9 * decelerationFactor;
 
         double strength = baseStrength * currentSpeedScale * decelerationFactor;
 
@@ -234,10 +232,14 @@ public class AimAssist {
         double targetYawStep = yawDiff * step;
         double targetPitchStep = pitchDiff * step;
 
-        // --- EMA SMOOTHING ---
+        // --- EMA SMOOTHING & SPEED CAP ---
         double emaAlpha = TutorialMod.CONFIG.aimAssistEmaAlpha;
         smoothYawStep = smoothYawStep * (1.0 - emaAlpha) + targetYawStep * emaAlpha;
         smoothPitchStep = smoothPitchStep * (1.0 - emaAlpha) + targetPitchStep * emaAlpha;
+
+        double maxSpeed = 120.0 * deltaTime; // cap rotation speed for human-like feel
+        smoothYawStep = MathHelper.clamp(smoothYawStep, -maxSpeed, maxSpeed);
+        smoothPitchStep = MathHelper.clamp(smoothPitchStep, -maxSpeed, maxSpeed);
 
         float finalYawStep = (float)smoothYawStep;
         float finalPitchStep = (float)smoothPitchStep;

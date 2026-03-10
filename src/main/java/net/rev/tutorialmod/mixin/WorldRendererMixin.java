@@ -21,9 +21,6 @@ public class WorldRendererMixin {
             if (TutorialModClient.getInstance().getESPModule() != null) {
                 TutorialModClient.getInstance().getESPModule().onRender(tickCounter, camera, projectionMatrix, modelViewMatrix);
             }
-            if (TutorialModClient.getInstance().getAimAssist() != null) {
-                TutorialModClient.getInstance().getAimAssist().onRender(tickCounter);
-            }
         }
     }
 }

@@ -19,6 +19,7 @@
 		"MinecraftClientMixin",
 		"MinecraftClientAccessor",
 		"GameOptionsAccessor",
+		"GameRendererMixin",
 		"ScreenMixin",
 		"ScreenAccessor",
 		"WorldRendererMixin"

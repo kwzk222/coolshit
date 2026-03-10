@@ -1266,7 +1266,12 @@ public class TutorialModClient implements ClientModInitializer {
         for (int i = 0; i < 9; i++) {
             ItemStack stack = player.getInventory().getStack(i);
             if (stack.isIn(ItemTags.SPEARS) || stack.isOf(Items.TRIDENT)) {
-                if (!requireLunge || hasLungeEnchantment(stack, player)) return i;
+                boolean hasLunge = hasLungeEnchantment(stack, player);
+                if (requireLunge) {
+                    if (hasLunge) return i;
+                } else {
+                    if (!hasLunge) return i;
+                }
             }
         }
         return -1;

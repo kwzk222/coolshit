@@ -82,7 +82,6 @@ public class ESPModule {
 
         long now = System.currentTimeMillis();
 
-        // Handle X-Ray Scanning (Background thread)
         if (TutorialMod.CONFIG.xrayEnabled && now - lastXrayScanTime > 5000 && !isScanning) {
             lastXrayScanTime = now;
             new Thread(this::scanXray, "XRay-Scanner").start();
@@ -90,7 +89,6 @@ public class ESPModule {
             xrayEntries.clear();
         }
 
-        // Send updates every frame for maximum smoothness
         lastRefreshTime = now;
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
@@ -111,12 +109,18 @@ public class ESPModule {
             combinedMatrix = manualProj.mul(manualView);
         } else {
             // Take game's view matrix, strip translation to get rotation-only, combine with projection.
-            // This is the stable matrix used for coordinates offset by -cameraPos.
+            // This ensures stability regardless of world-space coordinates.
             Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
             combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
         }
 
-        frustum.setPosition(camera.getCameraPos().x, camera.getCameraPos().y, camera.getCameraPos().z);
+        // To fix alignment drift, we extract the camera position directly from the view matrix.
+        // This ensures that the offset we apply to entities (cameraPos) matches EXACTLY what the game uses.
+        Matrix4f invView = new Matrix4f(modelViewMatrix).invert();
+        Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
+        Vec3d internalCameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
+
+        frustum.setPosition(internalCameraPos.x, internalCameraPos.y, internalCameraPos.z);
         ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
@@ -124,7 +128,7 @@ public class ESPModule {
             TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
         }
 
-        updateESP(tickCounter, camera, combinedMatrix);
+        updateESP(tickCounter, internalCameraPos, combinedMatrix);
     }
 
     private final Set<String> extractedTextures = new HashSet<>();
@@ -136,12 +140,10 @@ public class ESPModule {
         try {
             String path = blockId.contains(":") ? blockId.split(":")[1] : blockId;
 
-            // Heuristic search for texture
             List<Identifier> candidates = new ArrayList<>();
             candidates.add(Identifier.of("minecraft", "textures/item/" + path + ".png"));
             candidates.add(Identifier.of("minecraft", "textures/block/" + path + ".png"));
 
-            // Special cases
             if (path.contains("chest")) {
                 candidates.add(Identifier.of("minecraft", "textures/entity/chest/normal.png"));
                 candidates.add(Identifier.of("minecraft", "textures/entity/chest/ender.png"));
@@ -164,12 +166,9 @@ public class ESPModule {
                     try (InputStream is = resource.get().getInputStream()) {
                         BufferedImage image = ImageIO.read(is);
                         if (image != null) {
-                            // If it's a large texture map (like chest), crop a square from it
                             if (image.getWidth() > image.getHeight() || image.getWidth() > 32) {
-                                // Heuristic: take a 16x16 or 32x32 square from near the top-left or specified chest spots
                                 int cropSize = Math.min(image.getWidth(), image.getHeight());
                                 if (path.contains("chest") && image.getWidth() == 64 && image.getHeight() == 64) {
-                                    // Chest front face heuristic
                                     image = image.getSubimage(14, 14, 14, 14);
                                 } else {
                                     image = image.getSubimage(0, 0, cropSize, cropSize);
@@ -204,12 +203,12 @@ public class ESPModule {
             for (String t : targetsRaw) {
                 if (t.contains(":")) {
                     String[] parts = t.split(":");
-                    if (parts.length == 3) { // minecraft:diamond_ore:64
+                    if (parts.length == 3) {
                         String id = parts[0] + ":" + parts[1];
                         int r = Integer.parseInt(parts[2]);
                         targets.put(id, r);
                         maxScanRange = Math.max(maxScanRange, r);
-                    } else if (parts.length == 2 && !parts[0].equals("minecraft")) { // diamond_ore:64
+                    } else if (parts.length == 2 && !parts[0].equals("minecraft")) {
                          String id = "minecraft:" + parts[0];
                          int r = Integer.parseInt(parts[1]);
                          targets.put(id, r);
@@ -360,16 +359,19 @@ public class ESPModule {
         }
     }
 
-    private void updateESP(RenderTickCounter tickCounter, Camera camera, Matrix4f combinedMatrix) {
+    private void updateESP(RenderTickCounter tickCounter, Vec3d cameraPos, Matrix4f combinedMatrix) {
         StringBuilder boxesData = new StringBuilder();
-        Vec3d cameraPos = camera.getCameraPos();
         float tickDelta = tickCounter.getTickProgress(true);
 
-        // 1. Entities
         for (Entity entity : client.world.getEntities()) {
             if (entity == client.player || !entity.isAlive()) continue;
 
-            double dist = entity.distanceTo(client.player);
+            double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
+            double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
+            double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
+            Vec3d entityPos = new Vec3d(ex, ey, ez);
+
+            double dist = entityPos.distanceTo(cameraPos);
             if (dist < TutorialMod.CONFIG.espMinRange || dist > TutorialMod.CONFIG.espMaxRange) continue;
 
             int color = -1;
@@ -410,16 +412,9 @@ public class ESPModule {
             if (color != -1) {
                 if (TutorialMod.CONFIG.espFrustumCulling && !frustum.isVisible(entity.getBoundingBox())) continue;
 
-                double x = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
-                double y = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
-                double z = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
-
-                Box box = entity.getBoundingBox().offset(x - entity.getX(), y - entity.getY(), z - entity.getZ());
-
-                // Offset to camera-relative space before projecting.
+                Box box = entity.getBoundingBox().offset(entityPos.subtract(entity.getX(), entity.getY(), entity.getZ()));
                 box = box.offset(cameraPos.negate());
 
-                // Relative Health Color
                 if (entity instanceof PlayerEntity player && TutorialMod.CONFIG.espRelativeHealthColor && client.player != null) {
                     float myHealth = client.player.getHealth();
                     float targetHealth = player.getHealth();
@@ -430,7 +425,6 @@ public class ESPModule {
                     }
                 }
 
-                // Armor & Status info
                 String extraData = "";
                 if (entity instanceof PlayerEntity player) {
                     StringBuilder sb = new StringBuilder();
@@ -471,7 +465,6 @@ public class ESPModule {
             }
         }
 
-        // 2. Vanished Players
         if (TutorialMod.CONFIG.espAntiVanish) {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
@@ -481,7 +474,6 @@ public class ESPModule {
             }
         }
 
-        // 3. X-Ray Blocks
         if (TutorialMod.CONFIG.xrayEnabled) {
             int color = TutorialMod.CONFIG.xrayColor;
             for (XRayEntry entry : xrayEntries) {
@@ -515,12 +507,10 @@ public class ESPModule {
         List<Vector4f> points = new ArrayList<>();
         float epsilon = 0.01f;
 
-        // Add corners that are in front
         for (Vector4f corner : corners) {
             if (corner.w > epsilon) points.add(corner);
         }
 
-        // Add intersections for edges crossing the near plane
         int[][] edges = {{0,1}, {2,3}, {4,5}, {6,7}, {0,2}, {1,3}, {4,6}, {5,7}, {0,4}, {1,5}, {2,6}, {3,7}};
         for (int[] edge : edges) {
             Vector4f v1 = corners[edge[0]];
@@ -564,15 +554,13 @@ public class ESPModule {
             boxY = minY;
         } else if (!extraInfo.isEmpty() && extraInfo.startsWith("TX_")) {
             String texture = extraInfo.substring(3);
-            // Unstretched square for textures, stabilized against FOV distortion
             float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
 
-            // Counter-act perspective stretching at FOV edges by using actual distance
             double cx = (box.minX + box.maxX) / 2.0;
             double cy = (box.minY + box.maxY) / 2.0;
             double cz = (box.minZ + box.maxZ) / 2.0;
             float euclideanDist = (float)Math.sqrt(cx * cx + cy * cy + cz * cz);
-            float planeDist = Math.max(0.1f, points.get(0).w); // dist from camera plane
+            float planeDist = Math.max(0.1f, points.get(0).w);
             float stabilityFactor = planeDist / euclideanDist;
 
             float sizeH = Math.abs(maxY - minY) * stabilityFactor * (float)TutorialMod.CONFIG.xrayTextureScale;
