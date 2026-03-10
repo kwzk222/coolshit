@@ -54,7 +54,9 @@ public class AimAssist {
             return;
         }
 
-        if (isCrosshairOnAnyTarget()) {
+        float tickDelta = tickCounter.getTickProgress(true);
+
+        if (isCrosshairOnAnyTarget(tickDelta)) {
             isAssisting = false;
             lastFrameTime = 0;
             return;
@@ -67,7 +69,6 @@ public class AimAssist {
             return;
         }
 
-        float tickDelta = tickCounter.getTickProgress(true);
         double tx = MathHelper.lerp(tickDelta, target.lastRenderX, target.getX());
         double ty = MathHelper.lerp(tickDelta, target.lastRenderY, target.getY());
         double tz = MathHelper.lerp(tickDelta, target.lastRenderZ, target.getZ());
@@ -78,7 +79,6 @@ public class AimAssist {
             currentSpeedScale = 0;
             targetVelocity = target.getVelocity();
         } else {
-            // Smooth target velocity
             Vec3d rawVelocity = target.getVelocity();
             targetVelocity = targetVelocity.multiply(0.9).add(rawVelocity.multiply(0.1));
         }
@@ -155,17 +155,22 @@ public class AimAssist {
         return yawDiff <= fov / 2.0 && pitchDiff <= fov / 2.0;
     }
 
-    private boolean isCrosshairOnAnyTarget() {
+    private boolean isCrosshairOnAnyTarget(float tickDelta) {
         if (mc.player == null || mc.world == null) return false;
-        Vec3d start = mc.player.getCameraPosVec(1.0f);
-        Vec3d direction = mc.player.getRotationVec(1.0f);
+        Vec3d start = mc.player.getCameraPosVec(tickDelta);
+        Vec3d direction = mc.player.getRotationVec(tickDelta);
         Vec3d end = start.add(direction.multiply(TutorialMod.CONFIG.aimAssistMaxRange + 1.0));
 
         for (Entity entity : mc.world.getEntities()) {
             if (entity == mc.player || !entity.isAlive()) continue;
             if (!TargetFilters.isValidTarget(entity, true)) continue;
 
-            Box box = entity.getBoundingBox();
+            // Use interpolated bounding box for precise check
+            double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
+            double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
+            double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
+            Box box = entity.getBoundingBox().offset(ex - entity.getX(), ey - entity.getY(), ez - entity.getZ());
+
             if (box.raycast(start, end).isPresent()) return true;
         }
         return false;
@@ -192,8 +197,8 @@ public class AimAssist {
             finalTargetPos = targetPos.add(targetVelocity.multiply(dist * predictFactor));
         }
 
-        // Project target into camera-relative space using lerp for perfect rotation matching
-        Vec3d playerPos = mc.player.getCameraPosVec(tickDelta);
+        // Project target using current camera state
+        Vec3d playerPos = mc.gameRenderer.getCamera().getCameraPos();
         Vec3d diff = finalTargetPos.subtract(playerPos);
 
         double diffX = diff.x;
@@ -216,33 +221,32 @@ public class AimAssist {
         // --- HUMAN-LIKE CURVE (Acceleration/Deceleration) ---
         double angleToTarget = Math.sqrt(yawDiff * yawDiff + pitchDiff * pitchDiff);
 
-        // Acceleration
+        // Linear acceleration
         float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 5.0f;
         currentSpeedScale = Math.min(1.0f, currentSpeedScale + accelRate);
 
-        // Deceleration
-        double decelThreshold = 10.0 * TutorialMod.CONFIG.aimAssistDeceleration;
-        double decelerationFactor = Math.min(1.0, angleToTarget / decelThreshold);
-        decelerationFactor = 0.1 + 0.9 * decelerationFactor * decelerationFactor;
+        // Linear deceleration only VERY close to target center (within 3 degrees)
+        double decelerationFactor = 1.0;
+        double decelStart = 3.0 * TutorialMod.CONFIG.aimAssistDeceleration;
+        if (angleToTarget < decelStart) {
+            decelerationFactor = Math.max(0.1, angleToTarget / decelStart);
+        }
 
         double strength = baseStrength * currentSpeedScale * decelerationFactor;
 
-        double step = strength * 8.0 * deltaTime;
+        double step = strength * 10.0 * deltaTime;
         if (step > 1.0) step = 1.0;
 
         double targetYawStep = yawDiff * step;
         double targetPitchStep = pitchDiff * step;
 
         // --- EMA SMOOTHING ---
-        double emaAlpha = TutorialMod.CONFIG.aimAssistEmaAlpha;
-        smoothYawStep = smoothYawStep * (1.0 - emaAlpha) + targetYawStep * emaAlpha;
-        smoothPitchStep = smoothPitchStep * (1.0 - emaAlpha) + targetPitchStep * emaAlpha;
+        double alpha = TutorialMod.CONFIG.aimAssistEmaAlpha;
+        smoothYawStep = smoothYawStep * (1.0 - alpha) + targetYawStep * alpha;
+        smoothPitchStep = smoothPitchStep * (1.0 - alpha) + targetPitchStep * alpha;
 
-        float finalYawStep = (float)smoothYawStep;
-        float finalPitchStep = (float)smoothPitchStep;
-
-        float newYaw = currentYaw + finalYawStep;
-        float newPitch = currentPitch + finalPitchStep;
+        float newYaw = currentYaw + (float)smoothYawStep;
+        float newPitch = currentPitch + (float)smoothPitchStep;
 
         mc.player.setYaw(newYaw);
         if (!TutorialMod.CONFIG.aimAssistHorizontalOnly) {

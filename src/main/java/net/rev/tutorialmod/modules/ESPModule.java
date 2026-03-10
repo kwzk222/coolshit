@@ -63,7 +63,7 @@ public class ESPModule {
         }
     }
 
-    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f mat1, Matrix4f mat2) {
+    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f projectionMatrix, Matrix4f modelViewMatrix) {
         if (!TutorialMod.CONFIG.showESP || client.player == null || client.world == null) {
             vanishedPlayers.clear();
             xrayEntries.clear();
@@ -93,36 +93,36 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // 1. Identify Matrices
-        Matrix4f proj, view;
-        if (Math.abs(mat1.m33()) < 0.01f) {
-            proj = mat1;
-            view = mat2;
+        Matrix4f combinedMatrix;
+
+        if (TutorialMod.CONFIG.espManualProjection) {
+            float fov = (float) TutorialMod.CONFIG.espManualFov;
+            float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
+            float near = 0.05f;
+            float far = 1000f;
+
+            Matrix4f manualProj = new Matrix4f().perspective((float)Math.toRadians(fov), aspect, near, far);
+            Matrix4f manualView = new Matrix4f()
+                .rotateX((float)Math.toRadians(camera.getPitch()))
+                .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
+
+            combinedMatrix = manualProj.mul(manualView);
         } else {
-            proj = mat2;
-            view = mat1;
+            // Use full view matrix and projection matrix for coordinate stability.
+            // This is the most accurate way to render O-ESP.
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
         }
 
-        // 2. Extract Exact Camera Position from View Matrix
-        // This is the ONLY way to ensure perfect alignment without side-to-side drift.
-        Matrix4f invView = new Matrix4f(view).invert();
-        Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
-        Vec3d extractedCameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
-
-        // 3. Build Stable Combined Matrix (Rotation Only)
-        Matrix4f rotationOnlyView = new Matrix4f(view).setTranslation(0, 0, 0);
-        Matrix4f combinedMatrix = new Matrix4f(proj).mul(rotationOnlyView);
-
-        // 4. Update Frustum for Culling (use world matrices)
-        frustum.setPosition(extractedCameraPos.x, extractedCameraPos.y, extractedCameraPos.z);
-        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(view, proj);
+        Vec3d cameraPos = camera.getCameraPos();
+        frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
+        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
         if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getTrajectoriesModule() != null) {
             TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
         }
 
-        updateESP(tickCounter, extractedCameraPos, combinedMatrix);
+        updateESP(tickCounter, cameraPos, combinedMatrix);
     }
 
     private final Set<String> extractedTextures = new HashSet<>();
@@ -360,7 +360,7 @@ public class ESPModule {
         for (Entity entity : client.world.getEntities()) {
             if (entity == client.player || !entity.isAlive()) continue;
 
-            // Proper interpolated world coordinates
+            // Interpolate entity world-pos
             double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
             double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
             double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
@@ -407,9 +407,8 @@ public class ESPModule {
             if (color != -1) {
                 if (TutorialMod.CONFIG.espFrustumCulling && !frustum.isVisible(entity.getBoundingBox())) continue;
 
-                // Box in camera-relative space (using extracted cameraPos)
+                // Absolute interpolated bounding box
                 Box box = entity.getBoundingBox().offset(ex - entity.getX(), ey - entity.getY(), ez - entity.getZ());
-                box = box.offset(cameraPos.negate());
 
                 if (entity instanceof PlayerEntity player && TutorialMod.CONFIG.espRelativeHealthColor && client.player != null) {
                     float myHealth = client.player.getHealth();
@@ -465,7 +464,6 @@ public class ESPModule {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
                                   entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
-                box = box.offset(cameraPos.negate());
                 projectAndAppend(boxesData, box, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
             }
         }
@@ -475,9 +473,7 @@ public class ESPModule {
             for (XRayEntry entry : xrayEntries) {
                 Box worldBox = new Box(entry.pos.x, entry.pos.y, entry.pos.z, entry.pos.x + 1.0, entry.pos.y + 1.0, entry.pos.z + 1.0);
                 if (TutorialMod.CONFIG.xrayFrustumCulling && !frustum.isVisible(worldBox)) continue;
-
-                Box box = worldBox.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
+                projectAndAppend(boxesData, worldBox, combinedMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
             }
         }
 
@@ -549,13 +545,11 @@ public class ESPModule {
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
             boxY = minY;
         } else if (!extraInfo.isEmpty() && extraInfo.startsWith("TX_")) {
-            String texture = extraInfo.substring(3);
             float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
-
             double cx = (box.minX + box.maxX) / 2.0;
             double cy = (box.minY + box.maxY) / 2.0;
             double cz = (box.minZ + box.maxZ) / 2.0;
-            float euclideanDist = (float)Math.sqrt(cx * cx + cy * cy + cz * cz);
+            float euclideanDist = (float)Math.sqrt(Math.pow(cx - cameraPos.x, 2) + Math.pow(cy - cameraPos.y, 2) + Math.pow(cz - cameraPos.z, 2));
             float planeDist = Math.max(0.1f, points.get(0).w);
             float stabilityFactor = planeDist / euclideanDist;
 

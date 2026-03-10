@@ -38,13 +38,11 @@ public class TriggerBot {
             return;
         }
 
-        // Shield check - don't attack if the user's shield is up
         if (mc.player.isUsingItem() && mc.player.getActiveItem().isOf(net.minecraft.item.Items.SHIELD)) {
             reset();
             return;
         }
 
-        // Check hotkey - TriggerBot is now "Active While Pressing"
         try {
             if (InputUtil.isKeyPressed(mc.getWindow(), GLFW.GLFW_KEY_F3)) {
                 reset();
@@ -62,21 +60,11 @@ public class TriggerBot {
             return;
         }
 
+        // --- STRICT REACHABILITY CHECK ---
         Entity entity = findEntityInCrosshair(TutorialMod.CONFIG.triggerBotMaxRange);
 
-        // Minimum range check
         if (entity != null && mc.player != null && mc.player.distanceTo(entity) < TutorialMod.CONFIG.triggerBotMinRange) {
             entity = null;
-        }
-
-        // If still no entity, try a small immediate raycast for better responsiveness
-        if (entity == null) {
-            HitResult hit = mc.crosshairTarget;
-            if (hit instanceof EntityHitResult ehr) {
-                if (mc.player != null && mc.player.distanceTo(ehr.getEntity()) <= TutorialMod.CONFIG.triggerBotMaxRange + 0.5) {
-                    entity = ehr.getEntity();
-                }
-            }
         }
 
         if (entity != null && shouldAttack(entity)) {
@@ -130,7 +118,6 @@ public class TriggerBot {
         } else if (entity instanceof EndCrystalEntity) {
             if (!TutorialMod.CONFIG.triggerBotIncludeCrystals) return false;
         } else if (entity instanceof LivingEntity) {
-            // Check if hostile or passive
             boolean isHostile = isHostile(entity);
             if (isHostile && !TutorialMod.CONFIG.triggerBotIncludeHostiles) return false;
             if (!isHostile && !TutorialMod.CONFIG.triggerBotIncludePassives) return false;
@@ -152,7 +139,6 @@ public class TriggerBot {
     private boolean canAttack() {
         if (mc.player == null) return false;
 
-        // Weapon check
         if (TutorialMod.CONFIG.triggerBotWeaponOnly) {
             ItemStack stack = mc.player.getMainHandStack();
             if (!stack.isIn(ItemTags.SWORDS) && !stack.isIn(ItemTags.AXES) && !(stack.getItem() instanceof MaceItem) && !stack.isIn(ItemTags.SPEARS)) {
@@ -160,7 +146,6 @@ public class TriggerBot {
             }
         }
 
-        // Crit check
         if (TutorialMod.CONFIG.attackOnCrit && !mc.player.isOnGround()) {
             if (!isCrit()) return false;
         }
@@ -168,26 +153,18 @@ public class TriggerBot {
         float cooldown = mc.player.getAttackCooldownProgress(0.0f);
 
         if (cooldown < MIN_ATTACK_CHARGE) {
-            return false; // too early -> prevents spam
+            return false;
         }
 
         if (cooldown > MAX_ATTACK_CHARGE) {
-            return true; // fully charged, always ok
+            return true;
         }
 
-        // Between min & max -> add randomness
         return random.nextFloat() < 0.4f;
     }
 
     private boolean isCrit() {
         if (mc.player == null) return false;
-        // Vanilla crit requirements:
-        // 1. Not on ground
-        // 2. Falling (velocity.y < 0 and fallDistance > 0)
-        // 3. Not climbing (ladder/vines)
-        // 4. Not in water
-        // 5. Not blind
-        // 6. Not riding
         return !mc.player.isOnGround() &&
                mc.player.getVelocity().y < -0.01 &&
                mc.player.fallDistance > 0.0f &&
@@ -220,8 +197,8 @@ public class TriggerBot {
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player || !e.isAlive()) continue;
 
-            // Use a small constant expansion for more reliable triggerbot targeting
-            net.minecraft.util.math.Box box = e.getBoundingBox().expand(0.1);
+            // USE RAW HITBOX: No expansion or buffer to ensure manually impossible hits are blocked.
+            net.minecraft.util.math.Box box = e.getBoundingBox();
             java.util.Optional<net.minecraft.util.math.Vec3d> hit = box.raycast(start, end);
 
             if (hit.isPresent()) {
