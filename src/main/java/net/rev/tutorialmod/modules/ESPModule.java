@@ -108,8 +108,12 @@ public class ESPModule {
 
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            // Stability fix: coordinates are passed relative to (entityPos - cameraPos).
-            // Stripping translation ensures that at high world coordinates, we don't lose floating-point precision.
+            // THE DEFINITIVE STABILITY FIX
+            // Coordinates will be camera-relative (entityPos - cameraPos).
+            // By stripping the translation from the modelViewMatrix, we ensure that:
+            // 1. The projection is done in "View Space" relative to (0,0,0).
+            // 2. High world coordinates don't cause precision jitter.
+            // 3. We are perfectly aligned with the game's rotation.
             Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
             combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
         }
