@@ -78,9 +78,9 @@ public class AimAssist {
             currentSpeedScale = 0;
             targetVelocity = target.getVelocity();
         } else {
-            // High-damping velocity filter to eliminate micro-jitter
+            // Smooth target velocity
             Vec3d rawVelocity = target.getVelocity();
-            targetVelocity = targetVelocity.multiply(0.98).add(rawVelocity.multiply(0.02));
+            targetVelocity = targetVelocity.multiply(0.9).add(rawVelocity.multiply(0.1));
         }
 
         if (!isAssisting) {
@@ -216,14 +216,14 @@ public class AimAssist {
         // --- HUMAN-LIKE CURVE (Acceleration/Deceleration) ---
         double angleToTarget = Math.sqrt(yawDiff * yawDiff + pitchDiff * pitchDiff);
 
-        // Acceleration with high weight
-        float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 2.0f;
+        // Acceleration
+        float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 5.0f;
         currentSpeedScale = Math.min(1.0f, currentSpeedScale + accelRate);
 
-        // Aggressive cubic ease-out deceleration
-        double decelThreshold = 25.0 * TutorialMod.CONFIG.aimAssistDeceleration;
+        // Deceleration
+        double decelThreshold = 10.0 * TutorialMod.CONFIG.aimAssistDeceleration;
         double decelerationFactor = Math.min(1.0, angleToTarget / decelThreshold);
-        decelerationFactor = 0.02 + 0.98 * Math.pow(decelerationFactor, 3.0); // Cubic ease-out
+        decelerationFactor = 0.1 + 0.9 * decelerationFactor * decelerationFactor;
 
         double strength = baseStrength * currentSpeedScale * decelerationFactor;
 
@@ -233,19 +233,10 @@ public class AimAssist {
         double targetYawStep = yawDiff * step;
         double targetPitchStep = pitchDiff * step;
 
-        // --- EMA SMOOTHING & SPEED CAP ---
-        // Adaptive EMA: very high smoothing when close to target or target is moving fast
-        double baseAlpha = TutorialMod.CONFIG.aimAssistEmaAlpha;
-        double speedSmoothing = 1.0 - Math.min(0.8, targetVelocity.length() * 5.0);
-        double finalAlpha = baseAlpha * (0.05 + 0.95 * (angleToTarget / 10.0)) * speedSmoothing;
-        finalAlpha = MathHelper.clamp(finalAlpha, 0.001, 1.0);
-
-        smoothYawStep = smoothYawStep * (1.0 - finalAlpha) + targetYawStep * finalAlpha;
-        smoothPitchStep = smoothPitchStep * (1.0 - finalAlpha) + targetPitchStep * finalAlpha;
-
-        double maxSpeed = 80.0 * deltaTime; // Tighten speed cap for natural feel
-        smoothYawStep = MathHelper.clamp(smoothYawStep, -maxSpeed, maxSpeed);
-        smoothPitchStep = MathHelper.clamp(smoothPitchStep, -maxSpeed, maxSpeed);
+        // --- EMA SMOOTHING ---
+        double emaAlpha = TutorialMod.CONFIG.aimAssistEmaAlpha;
+        smoothYawStep = smoothYawStep * (1.0 - emaAlpha) + targetYawStep * emaAlpha;
+        smoothPitchStep = smoothPitchStep * (1.0 - emaAlpha) + targetPitchStep * emaAlpha;
 
         float finalYawStep = (float)smoothYawStep;
         float finalPitchStep = (float)smoothPitchStep;

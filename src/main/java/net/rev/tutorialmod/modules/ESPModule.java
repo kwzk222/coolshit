@@ -93,7 +93,7 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Matrix detection: Projection matrix usually has m33 = 0. View matrix usually has m33 = 1.
+        // 1. Identify Matrices
         Matrix4f proj, view;
         if (Math.abs(mat1.m33()) < 0.01f) {
             proj = mat1;
@@ -103,28 +103,18 @@ public class ESPModule {
             view = mat1;
         }
 
-        Matrix4f combinedMatrix;
+        // 2. Extract Exact Camera Position from View Matrix
+        // This is the ONLY way to ensure perfect alignment without side-to-side drift.
+        Matrix4f invView = new Matrix4f(view).invert();
+        Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
+        Vec3d extractedCameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
 
-        if (TutorialMod.CONFIG.espManualProjection) {
-            float fov = (float) TutorialMod.CONFIG.espManualFov;
-            float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
-            float near = 0.05f;
-            float far = 1000f;
+        // 3. Build Stable Combined Matrix (Rotation Only)
+        Matrix4f rotationOnlyView = new Matrix4f(view).setTranslation(0, 0, 0);
+        Matrix4f combinedMatrix = new Matrix4f(proj).mul(rotationOnlyView);
 
-            Matrix4f manualProj = new Matrix4f().perspective((float)Math.toRadians(fov), aspect, near, far);
-            Matrix4f manualView = new Matrix4f()
-                .rotateX((float)Math.toRadians(camera.getPitch()))
-                .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
-
-            combinedMatrix = manualProj.mul(manualView);
-        } else {
-            // Stable rotation-only view matrix. Coordinates will be (pos - cameraPos).
-            Matrix4f rotationOnlyView = new Matrix4f(view).setTranslation(0, 0, 0);
-            combinedMatrix = new Matrix4f(proj).mul(rotationOnlyView);
-        }
-
-        Vec3d cameraPos = camera.getCameraPos();
-        frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
+        // 4. Update Frustum for Culling (use world matrices)
+        frustum.setPosition(extractedCameraPos.x, extractedCameraPos.y, extractedCameraPos.z);
         ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(view, proj);
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
@@ -132,7 +122,7 @@ public class ESPModule {
             TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
         }
 
-        updateESP(tickCounter, cameraPos, combinedMatrix);
+        updateESP(tickCounter, extractedCameraPos, combinedMatrix);
     }
 
     private final Set<String> extractedTextures = new HashSet<>();
@@ -370,6 +360,7 @@ public class ESPModule {
         for (Entity entity : client.world.getEntities()) {
             if (entity == client.player || !entity.isAlive()) continue;
 
+            // Proper interpolated world coordinates
             double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
             double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
             double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
@@ -416,8 +407,8 @@ public class ESPModule {
             if (color != -1) {
                 if (TutorialMod.CONFIG.espFrustumCulling && !frustum.isVisible(entity.getBoundingBox())) continue;
 
-                // CRITICAL FIX: Offset by interpolated entity pos MINUS camera pos
-                Box box = entity.getBoundingBox().offset(entityPos.subtract(entity.getX(), entity.getY(), entity.getZ()));
+                // Box in camera-relative space (using extracted cameraPos)
+                Box box = entity.getBoundingBox().offset(ex - entity.getX(), ey - entity.getY(), ez - entity.getZ());
                 box = box.offset(cameraPos.negate());
 
                 if (entity instanceof PlayerEntity player && TutorialMod.CONFIG.espRelativeHealthColor && client.player != null) {
