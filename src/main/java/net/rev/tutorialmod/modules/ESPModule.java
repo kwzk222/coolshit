@@ -93,6 +93,9 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
+        float tickDelta = tickCounter.getTickProgress(true);
+        Vec3d cameraPos = camera.getCameraPos();
+
         Matrix4f combinedMatrix;
 
         if (TutorialMod.CONFIG.espManualProjection) {
@@ -108,19 +111,19 @@ public class ESPModule {
 
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            // Take game's view matrix, strip translation to get rotation-only, combine with projection.
-            // This ensures stability regardless of world-space coordinates.
+            // Stability fix: extract exact camera position by inverting the view matrix.
+            // This ensures we're perfectly aligned with whatever offset the game applied.
+            Matrix4f invView = new Matrix4f(modelViewMatrix).invert();
+            Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
+            cameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
+
+            // Strip translation from view matrix to create a rotation-only combined matrix.
+            // Coordinates passed to projectAndAppend will be camera-relative.
             Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
             combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
         }
 
-        // To fix alignment drift, we extract the camera position directly from the view matrix.
-        // This ensures that the offset we apply to entities (cameraPos) matches EXACTLY what the game uses.
-        Matrix4f invView = new Matrix4f(modelViewMatrix).invert();
-        Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
-        Vec3d internalCameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
-
-        frustum.setPosition(internalCameraPos.x, internalCameraPos.y, internalCameraPos.z);
+        frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
         ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
@@ -128,7 +131,7 @@ public class ESPModule {
             TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
         }
 
-        updateESP(tickCounter, internalCameraPos, combinedMatrix);
+        updateESP(tickCounter, cameraPos, combinedMatrix);
     }
 
     private final Set<String> extractedTextures = new HashSet<>();

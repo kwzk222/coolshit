@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class WorldRendererMixin {
 
     @Inject(method = "render", at = @At("HEAD"))
-    private void onRender(ObjectAllocator allocator, RenderTickCounter tickCounter, boolean renderBlockOutline, Camera camera, Matrix4f modelViewMatrix, Matrix4f projectionMatrix, Matrix4f p_368142_, com.mojang.blaze3d.buffers.GpuBufferSlice p_366113_, Vector4f p_366057_, boolean p_368953_, CallbackInfo ci) {
+    private void onRender(ObjectAllocator allocator, RenderTickCounter tickCounter, boolean renderBlockOutline, Camera camera, Matrix4f projectionMatrix, Matrix4f modelViewMatrix, Matrix4f p_368142_, com.mojang.blaze3d.buffers.GpuBufferSlice p_366113_, Vector4f p_366057_, boolean p_368953_, CallbackInfo ci) {
         if (TutorialModClient.getInstance() != null) {
             if (TutorialModClient.getInstance().getESPModule() != null) {
                 TutorialModClient.getInstance().getESPModule().onRender(tickCounter, camera, projectionMatrix, modelViewMatrix);
