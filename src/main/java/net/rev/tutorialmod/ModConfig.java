@@ -173,8 +173,6 @@ public class ModConfig {
     public String aimAssistHotkey = "key.keyboard.apostrophe";
     public double aimAssistStrength = 1.0; // Slider will be adjusted to allow lower
     public double aimAssistFov = 40.0;
-    public boolean aimAssistVariableStrength = true;
-    public double aimAssistVariableStrengthFactor = 1.0;
     public boolean aimAssistHorizontalOnly = false;
     public double aimAssistMaxRange = 4.0;
     public double aimAssistMinRange = 0.0;
@@ -183,12 +181,11 @@ public class ModConfig {
     public double aimAssistShieldStrength = 1.0;
     public double aimAssistShieldFov = 40.0;
     public double aimAssistShieldArc = 180.0;
-    public boolean aimAssistOvershootEnabled = false;
-    public double aimAssistOvershootMagnitude = 1.2;
-    public double aimAssistOvershootCorrection = 0.5;
-    public double aimAssistBorderMin = -0.05;
-    public double aimAssistBorderMax = -0.02;
-    public double aimAssistHumanize = 0.0;
+    public double aimAssistAcceleration = 0.5;
+    public double aimAssistDeceleration = 0.5;
+    public double aimAssistEmaAlpha = 0.2;
+    public boolean aimAssistPrediction = false;
+    public double aimAssistPredictionFactor = 1.0;
     public boolean aimAssistIncludePlayers = true;
     public boolean aimAssistExcludeTeammates = true;
     public boolean aimAssistIncludeHostiles = true;

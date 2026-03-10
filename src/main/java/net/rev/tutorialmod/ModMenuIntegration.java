@@ -50,8 +50,6 @@ public class ModMenuIntegration implements ModMenuApi {
             aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Hold to Activate)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 100), 1, 1000).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 100.0).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistFov, 1, 180).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistFov = newValue.doubleValue()).build());
-            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Variable Strength (Distance)"), TutorialMod.CONFIG.aimAssistVariableStrength).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistVariableStrength = newValue).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Variable Strength Factor"), (long)(TutorialMod.CONFIG.aimAssistVariableStrengthFactor * 10), 1, 50).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistVariableStrengthFactor = newValue / 10.0).build());
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Horizontal Only"), TutorialMod.CONFIG.aimAssistHorizontalOnly).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHorizontalOnly = newValue).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range"), (long)(TutorialMod.CONFIG.aimAssistMaxRange * 10), 0, 100).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMaxRange = newValue / 10.0).build());
             aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.aimAssistMinRange * 10), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMinRange = newValue / 10.0).build());
@@ -64,18 +62,17 @@ public class ModMenuIntegration implements ModMenuApi {
             shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Blocking Arc"), (long)TutorialMod.CONFIG.aimAssistShieldArc, 1, 360).setDefaultValue(180).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldArc = newValue.doubleValue()).build());
             aimAssist.addEntry(shieldAimSub.build());
 
-            SubCategoryBuilder overshootSub = entryBuilder.startSubCategory(Text.literal("Overshoot Settings"));
-            overshootSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.aimAssistOvershootEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistOvershootEnabled = newValue).build());
-            overshootSub.add(entryBuilder.startLongSlider(Text.literal("Magnitude"), (long)(TutorialMod.CONFIG.aimAssistOvershootMagnitude * 10), 10, 30).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistOvershootMagnitude = newValue / 10.0).build());
-            overshootSub.add(entryBuilder.startLongSlider(Text.literal("Correction Speed"), (long)(TutorialMod.CONFIG.aimAssistOvershootCorrection * 10), 1, 10).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistOvershootCorrection = newValue / 10.0).build());
-            aimAssist.addEntry(overshootSub.build());
+            SubCategoryBuilder humanizeSub = entryBuilder.startSubCategory(Text.literal("Humanization & Smoothing"));
+            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Acceleration"), (long)(TutorialMod.CONFIG.aimAssistAcceleration * 100), 1, 100).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistAcceleration = newValue / 100.0).build());
+            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Deceleration"), (long)(TutorialMod.CONFIG.aimAssistDeceleration * 100), 1, 100).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDeceleration = newValue / 100.0).build());
+            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("EMA Smoothing (Alpha)"), (long)(TutorialMod.CONFIG.aimAssistEmaAlpha * 100), 1, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEmaAlpha = newValue / 100.0).build());
+            aimAssist.addEntry(humanizeSub.build());
 
-            SubCategoryBuilder borderSub = entryBuilder.startSubCategory(Text.literal("Randomized Border (Inward)"));
-            borderSub.add(entryBuilder.startLongSlider(Text.literal("Min (Pixels)"), (long)(TutorialMod.CONFIG.aimAssistBorderMin * -100), 0, 20).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistBorderMin = newValue / -100.0).build());
-            borderSub.add(entryBuilder.startLongSlider(Text.literal("Max (Pixels)"), (long)(TutorialMod.CONFIG.aimAssistBorderMax * -100), 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistBorderMax = newValue / -100.0).build());
-            aimAssist.addEntry(borderSub.build());
+            SubCategoryBuilder predictSub = entryBuilder.startSubCategory(Text.literal("Prediction"));
+            predictSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.aimAssistPrediction).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistPrediction = newValue).build());
+            predictSub.add(entryBuilder.startLongSlider(Text.literal("Prediction Factor"), (long)(TutorialMod.CONFIG.aimAssistPredictionFactor * 100), 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistPredictionFactor = newValue / 100.0).build());
+            aimAssist.addEntry(predictSub.build());
 
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Humanize"), (long)(TutorialMod.CONFIG.aimAssistHumanize * 100), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHumanize = newValue / 100.0).build());
 
             SubCategoryBuilder aimFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.aimAssistIncludePlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistIncludePlayers = newValue).build());
