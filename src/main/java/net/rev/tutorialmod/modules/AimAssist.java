@@ -22,6 +22,7 @@ public class AimAssist {
 
     private Entity currentTarget = null;
     private Vec3d targetVelocity = Vec3d.ZERO;
+    private double currentBorderMargin = -0.05;
 
     private double smoothYawStep = 0;
     private double smoothPitchStep = 0;
@@ -69,19 +70,29 @@ public class AimAssist {
             return;
         }
 
-        double tx = MathHelper.lerp(tickDelta, target.lastRenderX, target.getX());
-        double ty = MathHelper.lerp(tickDelta, target.lastRenderY, target.getY());
-        double tz = MathHelper.lerp(tickDelta, target.lastRenderZ, target.getZ());
-        Vec3d targetPos = new Vec3d(tx, ty + target.getHeight() / 2.0, tz);
-
         if (target != currentTarget) {
             currentTarget = target;
             currentSpeedScale = 0;
             targetVelocity = target.getVelocity();
+            double min = TutorialMod.CONFIG.aimAssistBorderMin;
+            double max = TutorialMod.CONFIG.aimAssistBorderMax;
+            currentBorderMargin = min + (max - min) * random.nextDouble();
         } else {
             Vec3d rawVelocity = target.getVelocity();
             targetVelocity = targetVelocity.multiply(0.9).add(rawVelocity.multiply(0.1));
         }
+
+        // Targeting closest point on hitbox
+        Vec3d cameraPos = mc.gameRenderer.getCamera().getCameraPos();
+        double ex = MathHelper.lerp(tickDelta, target.lastRenderX, target.getX());
+        double ey = MathHelper.lerp(tickDelta, target.lastRenderY, target.getY());
+        double ez = MathHelper.lerp(tickDelta, target.lastRenderZ, target.getZ());
+        Box targetBox = target.getBoundingBox().offset(ex - target.getX(), ey - target.getY(), ez - target.getZ());
+
+        double tx = MathHelper.clamp(cameraPos.x, targetBox.minX, targetBox.maxX);
+        double ty = MathHelper.clamp(cameraPos.y, targetBox.minY, targetBox.maxY);
+        double tz = MathHelper.clamp(cameraPos.z, targetBox.minZ, targetBox.maxZ);
+        Vec3d targetPos = new Vec3d(tx, ty, tz);
 
         if (!isAssisting) {
             TutorialModClient.getInstance().setOverlayStatus("Aim Assist Active");
@@ -165,13 +176,13 @@ public class AimAssist {
             if (entity == mc.player || !entity.isAlive()) continue;
             if (!TargetFilters.isValidTarget(entity, true)) continue;
 
-            // Use interpolated bounding box for precise check
             double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
             double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
             double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
             Box box = entity.getBoundingBox().offset(ex - entity.getX(), ey - entity.getY(), ez - entity.getZ());
 
-            if (box.raycast(start, end).isPresent()) return true;
+            Box lockBox = box.expand(currentBorderMargin);
+            if (lockBox.raycast(start, end).isPresent()) return true;
         }
         return false;
     }
@@ -197,7 +208,6 @@ public class AimAssist {
             finalTargetPos = targetPos.add(targetVelocity.multiply(dist * predictFactor));
         }
 
-        // Project target using current camera state
         Vec3d playerPos = mc.gameRenderer.getCamera().getCameraPos();
         Vec3d diff = finalTargetPos.subtract(playerPos);
 
@@ -221,20 +231,18 @@ public class AimAssist {
         // --- HUMAN-LIKE CURVE (Acceleration/Deceleration) ---
         double angleToTarget = Math.sqrt(yawDiff * yawDiff + pitchDiff * pitchDiff);
 
-        // Linear acceleration
         float accelRate = (float) TutorialMod.CONFIG.aimAssistAcceleration * deltaTime * 5.0f;
         currentSpeedScale = Math.min(1.0f, currentSpeedScale + accelRate);
 
-        // Linear deceleration only VERY close to target center (within 3 degrees)
         double decelerationFactor = 1.0;
-        double decelStart = 3.0 * TutorialMod.CONFIG.aimAssistDeceleration;
+        double decelStart = 5.0 * TutorialMod.CONFIG.aimAssistDeceleration;
         if (angleToTarget < decelStart) {
-            decelerationFactor = Math.max(0.1, angleToTarget / decelStart);
+            decelerationFactor = Math.max(0.15, angleToTarget / decelStart);
         }
 
         double strength = baseStrength * currentSpeedScale * decelerationFactor;
 
-        double step = strength * 10.0 * deltaTime;
+        double step = strength * 8.0 * deltaTime;
         if (step > 1.0) step = 1.0;
 
         double targetYawStep = yawDiff * step;

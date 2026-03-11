@@ -186,6 +186,8 @@ public class ModConfig {
     public double aimAssistEmaAlpha = 0.2;
     public boolean aimAssistPrediction = false;
     public double aimAssistPredictionFactor = 1.0;
+    public double aimAssistBorderMin = -0.05;
+    public double aimAssistBorderMax = -0.02;
     public boolean aimAssistIncludePlayers = true;
     public boolean aimAssistExcludeTeammates = true;
     public boolean aimAssistIncludeHostiles = true;

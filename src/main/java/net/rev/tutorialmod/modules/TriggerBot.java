@@ -14,6 +14,7 @@ import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
 import net.rev.tutorialmod.TutorialMod;
 import org.lwjgl.glfw.GLFW;
 
@@ -187,9 +188,9 @@ public class TriggerBot {
     private Entity findEntityInCrosshair(double range) {
         if (mc.player == null || mc.world == null) return null;
 
-        net.minecraft.util.math.Vec3d start = mc.player.getCameraPosVec(1.0f);
-        net.minecraft.util.math.Vec3d direction = mc.player.getRotationVec(1.0f);
-        net.minecraft.util.math.Vec3d end = start.add(direction.multiply(range));
+        Vec3d start = mc.player.getCameraPosVec(1.0f);
+        Vec3d direction = mc.player.getRotationVec(1.0f);
+        Vec3d end = start.add(direction.multiply(range));
 
         Entity closest = null;
         double minDist = range;
@@ -197,14 +198,14 @@ public class TriggerBot {
         for (Entity e : mc.world.getEntities()) {
             if (e == mc.player || !e.isAlive()) continue;
 
-            // USE RAW HITBOX: No expansion or buffer to ensure manually impossible hits are blocked.
+            // USE RAW HITBOX and ACTUAL HIT POINT for range check
             net.minecraft.util.math.Box box = e.getBoundingBox();
-            java.util.Optional<net.minecraft.util.math.Vec3d> hit = box.raycast(start, end);
+            java.util.Optional<Vec3d> hit = box.raycast(start, end);
 
             if (hit.isPresent()) {
-                double dist = start.distanceTo(hit.get());
-                if (dist < minDist) {
-                    minDist = dist;
+                double distToHit = start.distanceTo(hit.get());
+                if (distToHit <= range && distToHit < minDist) {
+                    minDist = distToHit;
                     closest = e;
                 }
             }

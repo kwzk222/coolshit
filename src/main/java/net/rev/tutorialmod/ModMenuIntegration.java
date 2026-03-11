@@ -73,6 +73,11 @@ public class ModMenuIntegration implements ModMenuApi {
             predictSub.add(entryBuilder.startLongSlider(Text.literal("Prediction Factor"), (long)(TutorialMod.CONFIG.aimAssistPredictionFactor * 100), 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistPredictionFactor = newValue / 100.0).build());
             aimAssist.addEntry(predictSub.build());
 
+            SubCategoryBuilder borderSub = entryBuilder.startSubCategory(Text.literal("Randomized Border (Inward)"));
+            borderSub.add(entryBuilder.startLongSlider(Text.literal("Min (Pixels)"), (long)(TutorialMod.CONFIG.aimAssistBorderMin * -100), 0, 20).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistBorderMin = newValue / -100.0).build());
+            borderSub.add(entryBuilder.startLongSlider(Text.literal("Max (Pixels)"), (long)(TutorialMod.CONFIG.aimAssistBorderMax * -100), 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistBorderMax = newValue / -100.0).build());
+            aimAssist.addEntry(borderSub.build());
+
 
             SubCategoryBuilder aimFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             aimFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.aimAssistIncludePlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistIncludePlayers = newValue).build());
