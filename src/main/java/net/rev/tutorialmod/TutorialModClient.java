@@ -1395,6 +1395,9 @@ public class TutorialModClient implements ClientModInitializer {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled || !TutorialMod.CONFIG.autoWaterDrainMode) return;
         if (client.player == null || client.world == null) return;
 
+        // Requirement: not in water, not swimming, not in inventory
+        if (client.player.isSubmergedInWater() || client.player.isSwimming() || client.currentScreen != null) return;
+
         // Pause lava drain ONLY during active TNT minecart placement steps
         if (nextPlacementAction != PlacementAction.NONE || awaitingMinecartConfirmationCooldown > 0) {
             return;
@@ -1408,129 +1411,69 @@ public class TutorialModClient implements ClientModInitializer {
 
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
-        double range = client.player.getBlockInteractionRange();
-        Vec3d start = client.player.getCameraPosVec(1.0f);
-        Vec3d dir = client.player.getRotationVec(1.0f);
-        Vec3d end = start.add(dir.multiply(range));
+        // STRICT TARGET CHECK: only work on crosshair target
+        if (!(client.crosshairTarget instanceof BlockHitResult hitResult)) return;
 
-        Entity blocking = getEntityLookingAt(client, client.player.getEntityInteractionRange(), false);
-        if (blocking != null) return;
+        BlockPos pos = hitResult.getBlockPos();
+        var fluidState = client.world.getFluidState(pos);
 
-        // Raycast for solid surfaces through liquid
-        BlockHitResult hitNone = client.world.raycast(new RaycastContext(
-                start, end,
-                RaycastContext.ShapeType.OUTLINE,
-                RaycastContext.FluidHandling.NONE,
-                client.player
-        ));
+        if (fluidState.isStill()) {
+            boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
+            boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
 
-        // Regular Drain Check (Fluid only)
-        BlockHitResult hitFluid = client.world.raycast(new RaycastContext(
-                start, end,
-                RaycastContext.ShapeType.OUTLINE,
-                RaycastContext.FluidHandling.SOURCE_ONLY,
-                client.player
-        ));
-
-        if (hitFluid.getType() == HitResult.Type.BLOCK) {
-            BlockPos pos = hitFluid.getBlockPos();
-            var fluidState = client.world.getFluidState(pos);
-            if (fluidState.isStill()) {
-                boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
-                boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
-
-                boolean canDrainNormally = true;
-                if (isWater && isNether) canDrainNormally = false;
-                if (isLava) {
-                    if (!TutorialMod.CONFIG.waterDrainLavaEnabled) canDrainNormally = false;
-                    else {
-                        boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
-                        if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) canDrainNormally = false;
-                    }
-                }
-
-                if (canDrainNormally) {
-                    int bucketSlot = findEmptyBucketInHotbar(client.player);
-                    if (bucketSlot != -1) {
-                        boolean shouldDrain = isIsolatedFluid(client.world, pos);
-                        // Also allow if looking at a surface through it
-                        if (!shouldDrain && hitNone.getType() == HitResult.Type.BLOCK) {
-                            if (hitNone.getBlockPos().offset(hitNone.getSide()).equals(pos)) {
-                                shouldDrain = true;
-                            }
-                        }
-
-                        if (shouldDrain) {
-                            PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-                            if (inventory.getSelectedSlot() != bucketSlot) {
-                                if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
-                                    drainPendingSlot = bucketSlot;
-                                    drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
-                                    originalSlotBeforeDrain = inventory.getSelectedSlot();
-                                } else {
-                                    originalSlotBeforeDrain = inventory.getSelectedSlot();
-                                    syncSlot(bucketSlot);
-                                    if (client.interactionManager != null) {
-                                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
-                                        client.player.swingHand(Hand.MAIN_HAND);
-                                    }
-                                    drainRestoreTicks = 2 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
-                                    drainSwitchBackTimer = -1;
-                                }
-                            } else {
-                                if (client.interactionManager != null) {
-                                    client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
-                                    client.player.swingHand(Hand.MAIN_HAND);
-                                }
-                                drainRestoreTicks = 2;
-                                drainSwitchBackTimer = -1;
-                            }
-                            return; // Done
-                        }
-                    }
+            boolean canDrainNormally = true;
+            if (isWater && (isNether || isSurroundedByWaterSource(client.world, pos))) canDrainNormally = false;
+            if (isLava) {
+                if (!TutorialMod.CONFIG.waterDrainLavaEnabled) canDrainNormally = false;
+                else {
+                    boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
+                    if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) canDrainNormally = false;
                 }
             }
-        }
 
-        // Fallback Drain Check (Looking at surface through fluid)
-        if (hitNone.getType() == HitResult.Type.BLOCK) {
-            BlockPos liquidPos = hitNone.getBlockPos().offset(hitNone.getSide());
-            var fluidState = client.world.getFluidState(liquidPos);
-            if (fluidState.isStill()) {
-                boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
-                boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
-                if ((isWater && !isNether) || (isLava && TutorialMod.CONFIG.waterDrainLavaEnabled)) {
-                    if (isWater && lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) return;
-                    if (isLava) {
-                        boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
-                        if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return;
-                    }
-
-                    // Trigger fallback if NO empty buckets
-                    if (findEmptyBucketInHotbar(client.player) == -1) {
-                        handleFallbackDrainThrough(client, hitNone, isWater, isLava);
+            if (canDrainNormally) {
+                int bucketSlot = findEmptyBucketInHotbar(client.player);
+                if (bucketSlot != -1) {
+                    PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                    if (inventory.getSelectedSlot() != bucketSlot) {
+                        if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
+                            drainPendingSlot = bucketSlot;
+                            drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
+                            originalSlotBeforeDrain = inventory.getSelectedSlot();
+                        } else {
+                            originalSlotBeforeDrain = inventory.getSelectedSlot();
+                            syncSlot(bucketSlot);
+                            if (client.interactionManager != null) {
+                                client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                                client.player.swingHand(Hand.MAIN_HAND);
+                            }
+                            drainRestoreTicks = 2 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                            drainSwitchBackTimer = -1;
+                        }
+                    } else {
+                        if (client.interactionManager != null) {
+                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                            client.player.swingHand(Hand.MAIN_HAND);
+                        }
+                        drainRestoreTicks = 2;
+                        drainSwitchBackTimer = -1;
                     }
                 }
             }
         }
     }
 
-    private boolean isIsolatedFluid(World world, BlockPos pos) {
-        var state = world.getFluidState(pos);
-        if (state.isIn(net.minecraft.registry.tag.FluidTags.LAVA)) return true; // Lava is always worth picking up
+    private boolean isSurroundedByWaterSource(World world, BlockPos pos) {
+        int sources = 0;
         Direction[] horizontal = {Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
         for (Direction d : horizontal) {
-            BlockPos neighbor = pos.offset(d);
-            var neighborState = world.getFluidState(neighbor);
-            if (neighborState.isStill() && neighborState.getFluid().equals(state.getFluid())) {
-                return false;
-            }
+            if (world.getFluidState(pos.offset(d)).isStill()) sources++;
         }
-        return true;
+        return sources >= 2; // Basic ocean check
     }
 
     private void handleAutoExtinguish(MinecraftClient client) {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.autoExtinguishEnabled) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.autoExtinguishEnabled || client.currentScreen != null) {
             currentExtinguishState = ExtinguishState.NONE;
             return;
         }
@@ -1553,25 +1496,18 @@ public class TutorialModClient implements ClientModInitializer {
 
             switch (currentExtinguishState) {
                 case PUNCHING:
-                    // Punch fire if looking at it
-                    double range = client.player.getBlockInteractionRange();
-                    Vec3d start = client.player.getCameraPosVec(1.0f);
-                    Vec3d dir = client.player.getRotationVec(1.0f);
-                    Vec3d end = start.add(dir.multiply(range));
-                    BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player));
-                    if (hit.getType() == HitResult.Type.BLOCK && client.world.getBlockState(hit.getBlockPos()).isOf(Blocks.FIRE)) {
+                    // Punch fire if targeted
+                    if (client.crosshairTarget instanceof BlockHitResult bhr && client.world.getBlockState(bhr.getBlockPos()).isOf(Blocks.FIRE)) {
                         if (client.interactionManager != null) {
-                            client.interactionManager.attackBlock(hit.getBlockPos(), hit.getSide());
+                            client.interactionManager.attackBlock(bhr.getBlockPos(), bhr.getSide());
                             client.player.swingHand(Hand.MAIN_HAND);
                         }
                     }
 
                     if (isNether) {
-                        // Only punch fire in Nether
                         currentExtinguishState = ExtinguishState.NONE;
                         originalSlotBeforeExtinguish = -1;
                     } else {
-                        // Continue to water sequence
                         int waterSlot = findWaterBucketInHotbar(client.player);
                         if (waterSlot != -1) {
                             if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
@@ -1604,7 +1540,7 @@ public class TutorialModClient implements ClientModInitializer {
                         client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                         client.player.swingHand(Hand.MAIN_HAND);
                         currentExtinguishState = ExtinguishState.PICKING_UP;
-                        extinguishTimer = 1; // Wait 1 tick for placement to register
+                        extinguishTimer = 1;
                     } else {
                         currentExtinguishState = ExtinguishState.NONE;
                         originalSlotBeforeExtinguish = -1;
@@ -1665,14 +1601,14 @@ public class TutorialModClient implements ClientModInitializer {
 
         ItemStack stack = client.player.getMainHandStack();
 
-        // Track general block placement for Autojump
+        // Track block placement
         if (stack.getItem() instanceof net.minecraft.item.BlockItem) {
             lastBlockPlaceTick = client.world.getTime();
         }
         ItemStack offhandStack = client.player.getOffHandStack();
 
         if (TutorialMod.CONFIG.autoElytraFlyEnabled && (stack.isOf(Items.ELYTRA) || offhandStack.isOf(Items.ELYTRA))) {
-            elytraFlyTimer = 10; // Check for the next 10 ticks
+            elytraFlyTimer = 10;
         }
 
         // --- Lava Placement Restriction ---
@@ -1680,11 +1616,11 @@ public class TutorialModClient implements ClientModInitializer {
             if (client.crosshairTarget instanceof BlockHitResult bhr) {
                 BlockState state = client.world.getBlockState(bhr.getBlockPos());
                 if (state.getFluidState().isIn(net.minecraft.registry.tag.FluidTags.WATER) || state.isOf(Blocks.WATER)) {
-                    return true; // Cancel
+                    return true;
                 }
                 BlockPos offset = bhr.getBlockPos().offset(bhr.getSide());
                 if (client.world.getFluidState(offset).isIn(net.minecraft.registry.tag.FluidTags.WATER)) {
-                    return true; // Cancel
+                    return true;
                 }
             }
         }
@@ -1694,44 +1630,20 @@ public class TutorialModClient implements ClientModInitializer {
             lastPlacedWaterTick = client.world.getTime();
         }
 
-        if (!TutorialMod.CONFIG.waterDrainEnabled || TutorialMod.CONFIG.autoWaterDrainMode) return false;
+        // Manual Drain Check (not in inventory, not swimming)
+        if (!TutorialMod.CONFIG.waterDrainEnabled || TutorialMod.CONFIG.autoWaterDrainMode || client.currentScreen != null || client.player.isSubmergedInWater()) return false;
 
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
-        // Use attribute-based reach
-        double range = client.player.getBlockInteractionRange();
-        Vec3d start = client.player.getCameraPosVec(1.0f);
-        Vec3d dir = client.player.getRotationVec(1.0f);
-        Vec3d end = start.add(dir.multiply(range));
-
-        // Check for entities blocking
-        Entity blocking = getEntityLookingAt(client, client.player.getEntityInteractionRange(), false);
-        if (blocking != null) return false;
-
-        // Raycast for solid surfaces through liquid
-        BlockHitResult hitNone = client.world.raycast(new RaycastContext(
-                start, end,
-                RaycastContext.ShapeType.OUTLINE,
-                RaycastContext.FluidHandling.NONE,
-                client.player
-        ));
-
-        // 1. Regular Drain Check
-        BlockHitResult hitFluid = client.world.raycast(new RaycastContext(
-                start, end,
-                RaycastContext.ShapeType.OUTLINE,
-                RaycastContext.FluidHandling.SOURCE_ONLY,
-                client.player
-        ));
-
-        if (hitFluid.getType() == HitResult.Type.BLOCK) {
+        // ONLY work on crosshair target
+        if (client.crosshairTarget instanceof BlockHitResult hitFluid) {
             var fluidState = client.world.getFluidState(hitFluid.getBlockPos());
             if (fluidState.isStill()) {
                 boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
                 boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
 
                 if (isWater) {
-                    if (isNether) return false;
+                    if (isNether || isSurroundedByWaterSource(client.world, hitFluid.getBlockPos())) return false;
                     if (lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) return false;
                 }
                 if (isLava) {
@@ -1742,57 +1654,23 @@ public class TutorialModClient implements ClientModInitializer {
 
                 int bucketSlot = findEmptyBucketInHotbar(client.player);
                 if (bucketSlot != -1) {
-                    boolean shouldDrain = isIsolatedFluid(client.world, hitFluid.getBlockPos());
-                    if (!shouldDrain && hitNone.getType() == HitResult.Type.BLOCK) {
-                        if (hitNone.getBlockPos().offset(hitNone.getSide()).equals(hitFluid.getBlockPos())) {
-                            shouldDrain = true;
-                        }
-                    }
-
-                    if (shouldDrain) {
-                        PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-                        if (inventory.getSelectedSlot() != bucketSlot) {
-                            if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
-                                drainPendingSlot = bucketSlot;
-                                drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
-                                originalSlotBeforeDrain = inventory.getSelectedSlot();
-                            } else {
-                                originalSlotBeforeDrain = inventory.getSelectedSlot();
-                                syncSlot(bucketSlot);
-                                if (client.interactionManager != null) {
-                                    client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
-                                    client.player.swingHand(Hand.MAIN_HAND);
-                                }
-                                drainRestoreTicks = 2 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
-                                drainSwitchBackTimer = -1;
-                            }
+                    PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                    if (inventory.getSelectedSlot() != bucketSlot) {
+                        if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
+                            drainPendingSlot = bucketSlot;
+                            drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
+                            originalSlotBeforeDrain = inventory.getSelectedSlot();
                         } else {
-                            // Already holding empty bucket - let vanilla handle it
-                            return false;
+                            originalSlotBeforeDrain = inventory.getSelectedSlot();
+                            syncSlot(bucketSlot);
+                            if (client.interactionManager != null) {
+                                client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                                client.player.swingHand(Hand.MAIN_HAND);
+                            }
+                            drainRestoreTicks = 2 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
+                            drainSwitchBackTimer = -1;
                         }
                         return true;
-                    }
-                }
-            }
-        }
-
-        // 2. Fallback Drain Check
-        if (hitNone.getType() == HitResult.Type.BLOCK) {
-            BlockPos liquidPos = hitNone.getBlockPos().offset(hitNone.getSide());
-            var fluidState = client.world.getFluidState(liquidPos);
-            if (fluidState.isStill()) {
-                boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
-                boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
-                if ((isWater && !isNether) || (isLava && TutorialMod.CONFIG.waterDrainLavaEnabled)) {
-                    if (isWater && lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) return false;
-                    if (isLava) {
-                        boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
-                        if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return false;
-                    }
-
-                    if (findEmptyBucketInHotbar(client.player) == -1) {
-                        handleFallbackDrainThrough(client, hitNone, isWater, isLava);
-                        if (currentFallbackDrainState != FallbackDrainState.NONE) return true;
                     }
                 }
             }
@@ -1866,7 +1744,7 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handleSelfWaterWeb(MinecraftClient client) {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.selfWaterWebEnabled) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.selfWaterWebEnabled || client.currentScreen != null) {
             currentWebWaterState = WebWaterState.NONE;
             return;
         }
@@ -1874,6 +1752,7 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (currentWebWaterState == WebWaterState.NONE) {
             boolean isNether = client.world.getRegistryKey() == World.NETHER;
+            // Only trigger if TARGETING a cobweb at feet or looking straight down
             if (!client.player.isSneaking() && !isNether && client.player.getPitch() > 85.0f && (client.world.getBlockState(client.player.getBlockPos()).isOf(Blocks.COBWEB) || client.world.getBlockState(client.player.getBlockPos().up()).isOf(Blocks.COBWEB))) {
                 int waterSlot = findWaterBucketInHotbar(client.player);
                 if (waterSlot != -1) {
@@ -1910,12 +1789,19 @@ public class TutorialModClient implements ClientModInitializer {
                         client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                         client.player.swingHand(Hand.MAIN_HAND);
                         currentWebWaterState = WebWaterState.PICKING_UP;
-                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebPickDelay;
+                        webWaterStateTimer = 0; // Transition to wait state
                     } else {
                         currentWebWaterState = WebWaterState.NONE;
                     }
                     break;
                 case PICKING_UP:
+                    // WAIT FOR COBWEB TO BE DESTROYED
+                    BlockPos p1 = client.player.getBlockPos();
+                    BlockPos p2 = p1.up();
+                    if (client.world.getBlockState(p1).isOf(Blocks.COBWEB) || client.world.getBlockState(p2).isOf(Blocks.COBWEB)) {
+                        return; // Still stuck, keep water
+                    }
+
                     if (client.interactionManager != null) {
                         int bucketSlot = findEmptyBucketInHotbar(client.player);
                         if (bucketSlot != -1) {
@@ -1946,35 +1832,16 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handleCounterLavaDrain(MinecraftClient client) {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.counterLavaDrainEnabled) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.counterLavaDrainEnabled || client.currentScreen != null) {
             currentCounterLavaState = CounterLavaState.NONE;
             return;
         }
         if (client.player == null || client.world == null || client.interactionManager == null) return;
 
         if (currentCounterLavaState == CounterLavaState.NONE) {
-            // Only trigger if we are looking at lava
-            double range = client.player.getBlockInteractionRange();
-            Vec3d start = client.player.getCameraPosVec(1.0f);
-            Vec3d dir = client.player.getRotationVec(1.0f);
-            Vec3d end = start.add(dir.multiply(range));
-            BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
-
-            if (hit.getType() == HitResult.Type.BLOCK && client.world.getFluidState(hit.getBlockPos()).isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
-                // Find nearest enemy
+            // ONLY work on crosshair target
+            if (client.crosshairTarget instanceof BlockHitResult hit && client.world.getFluidState(hit.getBlockPos()).isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
                 PlayerEntity enemy = getPlayerLookingAt(client, TutorialMod.CONFIG.counterLavaDrainRange);
-                if (enemy == null) {
-                    double minDist = TutorialMod.CONFIG.counterLavaDrainRange;
-                    for (PlayerEntity p : client.world.getPlayers()) {
-                        if (p == client.player || TutorialMod.CONFIG.teamManager.isTeammate(p.getName().getString())) continue;
-                        double d = client.player.distanceTo(p);
-                        if (d < minDist) {
-                            minDist = d;
-                            enemy = p;
-                        }
-                    }
-                }
-
                 if (enemy != null) {
                     ItemStack main = enemy.getMainHandStack();
                     ItemStack off = enemy.getOffHandStack();
@@ -2030,21 +1897,18 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private void handleAntiLavaFlow(MinecraftClient client) {
-        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.antiLavaFlowEnabled) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.antiLavaFlowEnabled || client.currentScreen != null) {
             currentAntiLavaFlowState = AntiLavaFlowState.NONE;
             return;
         }
         if (client.player == null || client.world == null) return;
 
-        // Requirement: Hold bucket (empty) to trigger sequence
         if (currentAntiLavaFlowState == AntiLavaFlowState.NONE && !client.player.getMainHandStack().isOf(Items.BUCKET)) {
             return;
         }
 
-        // Requirement: Stop on attack
         if (client.options.attackKey.isPressed()) {
             if (currentAntiLavaFlowState != AntiLavaFlowState.NONE) {
-                // If we were in a state where lava is in the world (PLACING or RESTORING), try to pick it up one last time
                 if (currentAntiLavaFlowState == AntiLavaFlowState.PLACING || currentAntiLavaFlowState == AntiLavaFlowState.RESTORING) {
                     int bucketSlot = findEmptyBucketInHotbar(client.player);
                     if (bucketSlot != -1) {
@@ -2062,14 +1926,8 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         if (currentAntiLavaFlowState == AntiLavaFlowState.NONE) {
-            double range = client.player.getBlockInteractionRange();
-            Vec3d start = client.player.getCameraPosVec(1.0f);
-            Vec3d dir = client.player.getRotationVec(1.0f);
-            Vec3d end = start.add(dir.multiply(range));
-            BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
-
-            if (hit.getType() == HitResult.Type.BLOCK && client.world.getFluidState(hit.getBlockPos()).isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
-                // Check if enemy nearby the lava
+            // ONLY work on crosshair target
+            if (client.crosshairTarget instanceof BlockHitResult hit && client.world.getFluidState(hit.getBlockPos()).isIn(net.minecraft.registry.tag.FluidTags.LAVA)) {
                 boolean enemyNear = false;
                 double enemyRangeSq = TutorialMod.CONFIG.antiLavaFlowEnemyRange * TutorialMod.CONFIG.antiLavaFlowEnemyRange;
                 Vec3d lavaPos = hit.getPos();
@@ -2112,20 +1970,12 @@ public class TutorialModClient implements ClientModInitializer {
                     }
                     break;
                 case HOLDING:
-                    // Check if still looking at a safe place (not self)
                     if (client.interactionManager != null) {
-                        // Prevent placing on self: raycast check
-                        double range = client.player.getBlockInteractionRange();
-                        Vec3d start = client.player.getCameraPosVec(1.0f);
-                        Vec3d dir = client.player.getRotationVec(1.0f);
-                        Vec3d end = start.add(dir.multiply(range));
-                        BlockHitResult hit = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player));
-
-                        if (hit.getType() == HitResult.Type.BLOCK) {
+                        // RE-TARGET CHECK FOR PLACEMENT
+                        if (client.crosshairTarget instanceof BlockHitResult hit) {
                             BlockPos placePos = hit.getBlockPos().offset(hit.getSide());
                             Box playerBox = client.player.getBoundingBox();
                             if (playerBox.intersects(new Box(placePos))) {
-                                // Too close!
                                 currentAntiLavaFlowState = AntiLavaFlowState.NONE;
                                 return;
                             }
