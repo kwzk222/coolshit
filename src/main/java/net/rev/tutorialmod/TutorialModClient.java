@@ -909,7 +909,7 @@ public class TutorialModClient implements ClientModInitializer {
     private void handlePlacementSequence(MinecraftClient client) {
         if (actionTimeout > 0) {
             actionTimeout--;
-            if (client.player != null && ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot() != utilitySlot) {
+            if (client.player != null && ((PlayerInventoryMixin) client.player.getInventory()).getSelectedSlot() != utilitySlot && utilitySlot != -1) {
                 actionTimeout = 0;
             }
         }
@@ -929,25 +929,24 @@ public class TutorialModClient implements ClientModInitializer {
                 case PLACE_TNT_MINECART:
                     int minecartSlot = findTntMinecartInHotbar(client.player);
                     if (minecartSlot != -1) {
-                        // Simulated right click only if looking at a rail
-                        if (client.crosshairTarget instanceof BlockHitResult bhr) {
-                            BlockState state = client.world.getBlockState(bhr.getBlockPos());
-                            if (state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
-                                syncSlot(minecartSlot);
-                                ((MinecraftClientAccessor) client).setItemUseCooldown(0);
-                                client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
-                                client.player.swingHand(Hand.MAIN_HAND);
-                                awaitingMinecartConfirmationCooldown = 60; // Wait for server confirmation
-                                placementCooldown = -1;
-                                nextPlacementAction = PlacementAction.NONE;
-                                return;
-                            }
-                        }
+                        // CRITICAL FIX: Use stored railPos instead of crosshairTarget
+                        if (railPos != null) {
+                            syncSlot(minecartSlot);
+                            ((MinecraftClientAccessor) client).setItemUseCooldown(0);
 
-                        // Fail/Cancel if no rail found immediately
-                        placementCooldown = -1;
-                        nextPlacementAction = PlacementAction.NONE;
-                        railPos = null;
+                            // Build a synthetic hit result on the railPos
+                            BlockHitResult bhr = new BlockHitResult(
+                                new Vec3d(railPos.getX() + 0.5, railPos.getY() + 0.5, railPos.getZ() + 0.5),
+                                Direction.UP, railPos, false
+                            );
+
+                            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
+                            client.player.swingHand(Hand.MAIN_HAND);
+                            awaitingMinecartConfirmationCooldown = 60; // Wait for server confirmation
+                            placementCooldown = -1;
+                        } else {
+                            placementCooldown = -1;
+                        }
                     }
                     break;
                 case AWAITING_LAVA_PLACEMENT:
@@ -961,7 +960,9 @@ public class TutorialModClient implements ClientModInitializer {
                     }
                     break;
                 case SWITCH_TO_CROSSBOW:
-                    inventory.setSelectedSlot(crossbowSlot);
+                    if (crossbowSlot != -1) {
+                        inventory.setSelectedSlot(crossbowSlot);
+                    }
                     utilitySlot = -1;
                     crossbowSlot = -1;
                     break;
@@ -992,12 +993,6 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public static void confirmRailPlacement(BlockPos pos, BlockState state) {
-        /* NOTE: Server confirmation logic - disabled to fix "cart tech" on laggy servers
-        if (awaitingRailConfirmationCooldown > 0 && state.getBlock() instanceof net.minecraft.block.AbstractRailBlock) {
-            if (instance != null) instance.startRailPlacement(pos);
-            awaitingRailConfirmationCooldown = -1;
-        }
-        */
     }
 
     public static void confirmLavaPlacement(BlockPos pos, BlockState state) {

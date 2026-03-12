@@ -63,7 +63,7 @@ public class ESPModule {
         }
     }
 
-    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
+    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f mat1, Matrix4f mat2) {
         if (!TutorialMod.CONFIG.showESP || client.player == null || client.world == null) {
             vanishedPlayers.clear();
             xrayEntries.clear();
@@ -93,8 +93,23 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
+        // Robust matrix detection
+        Matrix4f proj, view;
+        if (Math.abs(mat1.m33()) < 0.01f) {
+            proj = mat1;
+            view = mat2;
+        } else {
+            proj = mat2;
+            view = mat1;
+        }
+
+        // Stability fix: extract exact camera position by inverting the view matrix.
+        // This is the ONLY way to be 100% in sync with the game's matrix translation.
+        Matrix4f invView = new Matrix4f(view).invert();
+        Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
+        Vec3d extractedCameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
+
         Matrix4f combinedMatrix;
-        Vec3d cameraPosFinal;
 
         if (TutorialMod.CONFIG.espManualProjection) {
             float fov = (float) TutorialMod.CONFIG.espManualFov;
@@ -108,27 +123,21 @@ public class ESPModule {
                 .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
 
             combinedMatrix = manualProj.mul(manualView);
-            cameraPosFinal = camera.getCameraPos();
         } else {
-            // Stability fix: extract exact camera position by inverting the view matrix.
-            Matrix4f invView = new Matrix4f(modelViewMatrix).invert();
-            Vector4f v = new Vector4f(0, 0, 0, 1).mul(invView);
-            cameraPosFinal = new Vec3d(v.x, v.y, v.z);
-
-            // Build a stable rotation-only matrix. Coordinates will be (pos - cameraPosFinal).
-            Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
+            // Build a stable rotation-only matrix. Coordinates will be (pos - extractedCameraPos).
+            Matrix4f rotationOnlyView = new Matrix4f(view).setTranslation(0, 0, 0);
+            combinedMatrix = new Matrix4f(proj).mul(rotationOnlyView);
         }
 
-        frustum.setPosition(cameraPosFinal.x, cameraPosFinal.y, cameraPosFinal.z);
-        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
+        frustum.setPosition(extractedCameraPos.x, extractedCameraPos.y, extractedCameraPos.z);
+        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(view, proj);
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
         if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getTrajectoriesModule() != null) {
             TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
         }
 
-        updateESP(tickCounter, cameraPosFinal, combinedMatrix);
+        updateESP(tickCounter, extractedCameraPos, combinedMatrix);
     }
 
     private final Set<String> extractedTextures = new HashSet<>();
