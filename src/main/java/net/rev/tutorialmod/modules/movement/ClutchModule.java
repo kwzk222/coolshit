@@ -1,6 +1,7 @@
 package net.rev.tutorialmod.modules.movement;
 
 import net.rev.tutorialmod.TutorialMod;
+import net.rev.tutorialmod.TutorialModClient;
 import net.rev.tutorialmod.ModConfig;
 import net.rev.tutorialmod.mixin.ClientPlayerInteractionManagerAccessor;
 import net.rev.tutorialmod.mixin.MinecraftClientAccessor;
@@ -60,7 +61,7 @@ public class ClutchModule {
 
         switch (state) {
             case IDLE -> {
-                if (!p.isOnGround() && p.getVelocity().y < -0.6 && !p.isSwimming() && !p.isClimbing()) {
+                if (!p.isOnGround() && p.getVelocity().y < -0.2 && !p.isSwimming() && !p.isClimbing()) {
                     Vec3d start = new Vec3d(p.getX(), p.getY(), p.getZ());
                     Vec3d end = start.add(0, -20.0, 0);
                     BlockHitResult hit = mc.world.raycast(new net.minecraft.world.RaycastContext(
@@ -108,6 +109,11 @@ public class ClutchModule {
                 if (p.isOnGround()) { reset(); return; }
                 tickCounter++;
                 if (tickCounter > 100) { reset(); return; }
+
+                if (tickCounter % 5 == 0) {
+                    TutorialModClient.getInstance().setOverlayStatus("Clutch ARMING...");
+                }
+
                 handleArming(p, config);
             }
 
@@ -220,7 +226,7 @@ public class ClutchModule {
                     tickCounter = 0;
                 }
             } else {
-                if (dist < 3.2 || (dist / fallVelocity <= 1.5)) {
+                if (dist < 3.5 || (dist / fallVelocity <= 2.2)) {
                     state = ClutchState.PLACING_WATER;
                     spamUse();
                     spamTickCounter = 0;

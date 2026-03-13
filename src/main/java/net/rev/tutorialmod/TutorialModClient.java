@@ -1378,7 +1378,7 @@ public class TutorialModClient implements ClientModInitializer {
 
     private void handleAutoWaterDrain(MinecraftClient client) {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled || !TutorialMod.CONFIG.autoWaterDrainMode) return;
-        if (client.player == null || client.world == null) return;
+        if (client.player == null || client.world == null || client.player.isCreative()) return;
 
         if (client.player.isSwimming() || client.currentScreen != null) return;
 
@@ -1480,7 +1480,7 @@ public class TutorialModClient implements ClientModInitializer {
             currentExtinguishState = ExtinguishState.NONE;
             return;
         }
-        if (client.player == null || client.world == null) return;
+        if (client.player == null || client.world == null || client.player.isCreative()) return;
 
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
@@ -1582,8 +1582,18 @@ public class TutorialModClient implements ClientModInitializer {
 
     public void onPostItemUse(PlayerEntity player, Hand hand) {
         if (!TutorialMod.CONFIG.masterEnabled || hand != Hand.MAIN_HAND) return;
-        ItemStack stack = player.getStackInHand(hand);
 
+        // --- Minecart Sequence manual use check ---
+        if (nextPlacementAction == PlacementAction.AWAITING_UTILITY_USE) {
+            int currentSlot = ((PlayerInventoryMixin) player.getInventory()).getSelectedSlot();
+            if (currentSlot == utilitySlot) {
+                nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
+                placementCooldown = 2; // Slight delay for server sync
+                return;
+            }
+        }
+
+        ItemStack stack = player.getStackInHand(hand);
         if (TutorialMod.CONFIG.iceGhostSwapEnabled && isIceBlock(stack)) {
             int airSlot = findAirSlot(player);
             if (airSlot != -1) {
@@ -1593,14 +1603,6 @@ public class TutorialModClient implements ClientModInitializer {
                 this.iceGhostSwapTicks = TutorialMod.CONFIG.iceGhostSwapDelay;
             }
         }
-
-        // --- Minecart Sequence manual use check ---
-        if (nextPlacementAction == PlacementAction.AWAITING_UTILITY_USE) {
-            if (stack.isOf(Items.LAVA_BUCKET) || stack.isOf(Items.FLINT_AND_STEEL) || stack.isOf(Items.FIRE_CHARGE)) {
-                nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
-                placementCooldown = 1;
-            }
-        }
     }
 
     public boolean onItemUse() {
@@ -1608,6 +1610,8 @@ public class TutorialModClient implements ClientModInitializer {
         if (ignoreNextUse) return true;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return false;
+
+        if (client.player.isCreative()) return false;
 
         ItemStack stack = client.player.getMainHandStack();
 
