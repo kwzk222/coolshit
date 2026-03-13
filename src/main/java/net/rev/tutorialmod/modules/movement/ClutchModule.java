@@ -49,7 +49,7 @@ public class ClutchModule {
         ModConfig config = TutorialMod.CONFIG;
         var p = mc.player;
 
-        if (!config.masterEnabled || !config.clutchEnabled || p.getAbilities().flying) {
+        if (!config.masterEnabled || !config.clutchEnabled || p.getAbilities().flying || p.isGliding()) {
             if (state != ClutchState.IDLE) reset();
             return;
         }
@@ -60,11 +60,9 @@ public class ClutchModule {
 
         switch (state) {
             case IDLE -> {
-                // DEFINITIVE DETECTION: check falling velocity and actual distance to ground
-                if (!p.isOnGround() && p.getVelocity().y < -0.5) {
-
-                    Vec3d start = new Vec3d(p.getX(), p.getY(), p.getZ());
-                    Vec3d end = start.add(0, -6.0, 0);
+                if (!p.isOnGround() && p.getVelocity().y < -0.6 && !p.isSwimming() && !p.isClimbing()) {
+                    Vec3d start = p.getPos();
+                    Vec3d end = start.add(0, -20.0, 0);
                     BlockHitResult hit = mc.world.raycast(new net.minecraft.world.RaycastContext(
                         start, end,
                         net.minecraft.world.RaycastContext.ShapeType.COLLIDER,
@@ -74,8 +72,7 @@ public class ClutchModule {
 
                     if (hit.getType() == HitResult.Type.BLOCK) {
                         double dist = start.y - hit.getPos().y;
-                        // Dangerous height range
-                        if (dist > 1.8 && dist < 5.0) {
+                        if (dist > config.clutchMinFallDistance && dist < 15.0) {
                             if (p.getPitch() < config.clutchActivationPitch) return;
 
                             int waterSlot = findWaterBucket();
@@ -110,6 +107,7 @@ public class ClutchModule {
             case ARMING -> {
                 if (p.isOnGround()) { reset(); return; }
                 tickCounter++;
+                if (tickCounter > 100) { reset(); return; }
                 handleArming(p, config);
             }
 
@@ -199,10 +197,13 @@ public class ClutchModule {
 
     private void handleArming(net.minecraft.client.network.ClientPlayerEntity p, ModConfig config) {
         double fallVelocity = -p.getVelocity().y;
-        if (fallVelocity < 0.1) return;
+        if (fallVelocity < 0.1) {
+            reset();
+            return;
+        }
 
-        Vec3d start = new Vec3d(p.getX(), p.getY(), p.getZ());
-        Vec3d end = start.add(0, -6.0, 0);
+        Vec3d start = p.getPos();
+        Vec3d end = start.add(0, -10.0, 0);
         BlockHitResult hit = mc.world.raycast(new net.minecraft.world.RaycastContext(
             start, end,
             net.minecraft.world.RaycastContext.ShapeType.COLLIDER,
@@ -213,20 +214,21 @@ public class ClutchModule {
         if (hit.getType() == HitResult.Type.BLOCK) {
             double dist = start.y - hit.getPos().y;
             if (isWindClutch) {
-                if (dist / fallVelocity <= 2.5) {
+                if (dist / fallVelocity <= 2.2) {
                     state = ClutchState.PLACING_WIND_CHARGE;
                     spamUse();
                     tickCounter = 0;
                 }
             } else {
-                // Trigger earlier for water to allow for bucket switch
-                if (dist < 4.5) {
+                if (dist < 3.2 || (dist / fallVelocity <= 1.5)) {
                     state = ClutchState.PLACING_WATER;
                     spamUse();
                     spamTickCounter = 0;
                     tickCounter = 0;
                 }
             }
+        } else {
+            if (tickCounter > 40) reset();
         }
     }
 

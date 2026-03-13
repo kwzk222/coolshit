@@ -93,42 +93,37 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Robust matrix detection
-        Matrix4f proj, view;
-        if (Math.abs(modelViewMatrix.m33()) < 0.01f) {
+        // Identify matrices based on properties
+        Matrix4f proj = projectionMatrix;
+        Matrix4f view = modelViewMatrix;
+
+        // View matrix usually has m33 = 1.0, Projection has m33 = 0.0 (perspective)
+        if (Math.abs(proj.m33() - 1.0f) < 0.1f) {
             proj = modelViewMatrix;
             view = projectionMatrix;
-        } else {
-            proj = projectionMatrix;
-            view = modelViewMatrix;
         }
 
-        // Stability fix: extract exact camera position by inverting the view matrix.
+        // Stability: Extract EXACT camera position from the view matrix
+        // This prevents drift between worldPos subtraction and matrix rotation.
         Matrix4f invView = new Matrix4f(view).invert();
-        Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
-        Vec3d extractedCameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
+        Vec3d cameraPos = new Vec3d(invView.m30(), invView.m31(), invView.m32());
 
         Matrix4f combinedMatrix;
-
         if (TutorialMod.CONFIG.espManualProjection) {
             float fov = (float) TutorialMod.CONFIG.espManualFov;
             float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
-            float near = 0.05f;
-            float far = 1000f;
-
-            Matrix4f manualProj = new Matrix4f().perspective((float)Math.toRadians(fov), aspect, near, far);
+            Matrix4f manualProj = new Matrix4f().perspective((float)Math.toRadians(fov), aspect, 0.05f, 1000f);
             Matrix4f manualView = new Matrix4f()
                 .rotateX((float)Math.toRadians(camera.getPitch()))
                 .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
-
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            // Build a stable rotation-only matrix. Coordinates will be (pos - extractedCameraPos).
+            // Use rotation-only view matrix with camera-relative coordinates
             Matrix4f rotationOnlyView = new Matrix4f(view).setTranslation(0, 0, 0);
             combinedMatrix = new Matrix4f(proj).mul(rotationOnlyView);
         }
 
-        frustum.setPosition(extractedCameraPos.x, extractedCameraPos.y, extractedCameraPos.z);
+        frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
         ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(view, proj);
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
@@ -136,7 +131,7 @@ public class ESPModule {
             TutorialModClient.getInstance().getTrajectoriesModule().onRender(combinedMatrix);
         }
 
-        updateESP(tickCounter, extractedCameraPos, combinedMatrix);
+        updateESP(tickCounter, cameraPos, combinedMatrix);
     }
 
     private final Set<String> extractedTextures = new HashSet<>();
@@ -374,10 +369,10 @@ public class ESPModule {
         for (Entity entity : client.world.getEntities()) {
             if (entity == client.player || !entity.isAlive()) continue;
 
-            // Proper interpolated world coordinates
-            double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
-            double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
-            double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
+            // Proper interpolated world coordinates using prev and current tick positions
+            double ex = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
+            double ey = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
+            double ez = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
             Vec3d entityPos = new Vec3d(ex, ey, ez);
 
             double dist = entityPos.distanceTo(cameraPos);
@@ -419,10 +414,11 @@ public class ESPModule {
             }
 
             if (color != -1) {
-                if (TutorialMod.CONFIG.espFrustumCulling && !frustum.isVisible(entity.getBoundingBox())) continue;
-
                 // Absolute interpolated bounding box
                 Box box = entity.getBoundingBox().offset(ex - entity.getX(), ey - entity.getY(), ez - entity.getZ());
+
+                if (TutorialMod.CONFIG.espFrustumCulling && !frustum.isVisible(box)) continue;
+
                 // Offset to camera-relative space before projecting
                 box = box.offset(cameraPos.negate());
 

@@ -130,7 +130,7 @@ public class TutorialModClient implements ClientModInitializer {
     private int iceGhostRestoreSlot = -1;
 
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
-    private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_LAVA_PLACEMENT, AWAITING_FIRE_PLACEMENT, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
+    private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_UTILITY_USE, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
     private int placementCooldown = -1;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
@@ -929,12 +929,10 @@ public class TutorialModClient implements ClientModInitializer {
                 case PLACE_TNT_MINECART:
                     int minecartSlot = findTntMinecartInHotbar(client.player);
                     if (minecartSlot != -1) {
-                        // CRITICAL FIX: Use stored railPos instead of crosshairTarget
                         if (railPos != null) {
                             syncSlot(minecartSlot);
                             ((MinecraftClientAccessor) client).setItemUseCooldown(0);
 
-                            // Build a synthetic hit result on the railPos
                             BlockHitResult bhr = new BlockHitResult(
                                 new Vec3d(railPos.getX() + 0.5, railPos.getY() + 0.5, railPos.getZ() + 0.5),
                                 Direction.UP, railPos, false
@@ -942,15 +940,14 @@ public class TutorialModClient implements ClientModInitializer {
 
                             client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
                             client.player.swingHand(Hand.MAIN_HAND);
-                            awaitingMinecartConfirmationCooldown = 60; // Wait for server confirmation
+                            awaitingMinecartConfirmationCooldown = 60;
                             placementCooldown = -1;
                         } else {
                             placementCooldown = -1;
                         }
                     }
                     break;
-                case AWAITING_LAVA_PLACEMENT:
-                case AWAITING_FIRE_PLACEMENT:
+                case AWAITING_UTILITY_USE:
                     if (actionTimeout == 0) {
                         utilitySlot = -1;
                         crossbowSlot = -1;
@@ -996,19 +993,9 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     public static void confirmLavaPlacement(BlockPos pos, BlockState state) {
-        if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_LAVA_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.LAVA) {
-            instance.placementCooldown = 1;
-            instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
-            instance.actionTimeout = -1;
-        }
     }
 
     public static void confirmFirePlacement(BlockPos pos, BlockState state) {
-        if (instance != null && instance.nextPlacementAction == PlacementAction.AWAITING_FIRE_PLACEMENT && state.getBlock() == net.minecraft.block.Blocks.FIRE) {
-            instance.placementCooldown = 1;
-            instance.nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
-            instance.actionTimeout = -1;
-        }
     }
 
     public static void recordBowUsage() {
@@ -1038,19 +1025,19 @@ public class TutorialModClient implements ClientModInitializer {
                     this.utilitySlot = lavaSlot;
                     this.crossbowSlot = crossSlot;
                     inventory.setSelectedSlot(lavaSlot);
-                    this.actionTimeout = 60;
+                    this.actionTimeout = 200; // Increased timeout
                     this.placementCooldown = 1;
-                    this.nextPlacementAction = PlacementAction.AWAITING_LAVA_PLACEMENT;
+                    this.nextPlacementAction = PlacementAction.AWAITING_UTILITY_USE;
                     return;
                 }
                 int flintSlot = findFlintAndSteelInHotbar(client.player);
-                if ( flintSlot != -1) {
+                if (flintSlot != -1) {
                     this.utilitySlot = flintSlot;
                     this.crossbowSlot = crossSlot;
                     inventory.setSelectedSlot(flintSlot);
-                    this.actionTimeout = 60;
+                    this.actionTimeout = 200;
                     this.placementCooldown = 1;
-                    this.nextPlacementAction = PlacementAction.AWAITING_FIRE_PLACEMENT;
+                    this.nextPlacementAction = PlacementAction.AWAITING_UTILITY_USE;
                     return;
                 }
             }
@@ -1322,7 +1309,8 @@ public class TutorialModClient implements ClientModInitializer {
 
     private int findFlintAndSteelInHotbar(PlayerEntity player) {
         for (int i = 0; i < 9; i++) {
-            if (player.getInventory().getStack(i).getItem() == Items.FLINT_AND_STEEL) return i;
+            ItemStack s = player.getInventory().getStack(i);
+            if (s.isOf(Items.FLINT_AND_STEEL) || s.isOf(Items.FIRE_CHARGE)) return i;
         }
         return -1;
     }
@@ -1361,7 +1349,6 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.world == null) return false;
 
         Vec3d currentStart = start;
-        // Limit iterations to prevent infinite loops in weird edge cases
         for (int i = 0; i < 10; i++) {
             if (currentStart.distanceTo(end) < 0.1) break;
 
@@ -1376,10 +1363,8 @@ public class TutorialModClient implements ClientModInitializer {
 
             BlockPos pos = hit.getBlockPos();
             if (ignoreCobwebs && client.world.getBlockState(pos).isOf(Blocks.COBWEB)) {
-                // Move start point past the cobweb
                 currentStart = hit.getPos().add(end.subtract(start).normalize().multiply(0.01));
             } else {
-                // Check if the hit position is significantly before the target
                 return hit.getPos().distanceTo(start) < end.distanceTo(start) - 0.05;
             }
         }
@@ -1395,29 +1380,29 @@ public class TutorialModClient implements ClientModInitializer {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled || !TutorialMod.CONFIG.autoWaterDrainMode) return;
         if (client.player == null || client.world == null) return;
 
-        // Requirement: not swimming, not in inventory
         if (client.player.isSwimming() || client.currentScreen != null) return;
 
-        // Pause lava drain ONLY during active TNT minecart placement steps
         if (nextPlacementAction != PlacementAction.NONE || awaitingMinecartConfirmationCooldown > 0) {
             return;
         }
 
-        // Check placement immunity
         if (lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) {
             return;
         }
-        if (drainRestoreTicks != -1 || drainSwitchToTicks != -1 || currentFallbackDrainState != FallbackDrainState.NONE) return; // Busy
+        if (drainRestoreTicks != -1 || drainSwitchToTicks != -1 || currentFallbackDrainState != FallbackDrainState.NONE) return;
 
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
-        // Custom Raycast for fluids
         double range = client.player.getBlockInteractionRange();
         Vec3d start = client.player.getCameraPosVec(1.0f);
         Vec3d dir = client.player.getRotationVec(1.0f);
         Vec3d end = start.add(dir.multiply(range));
-        BlockHitResult hitFluid = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
 
+        // Dual Raycast System
+        BlockHitResult hitFluid = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
+        BlockHitResult hitNone = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player));
+
+        // 1. Normal Drain (Empty Bucket)
         if (hitFluid.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = hitFluid.getBlockPos();
             var fluidState = client.world.getFluidState(pos);
@@ -1439,13 +1424,12 @@ public class TutorialModClient implements ClientModInitializer {
                     int bucketSlot = findEmptyBucketInHotbar(client.player);
                     if (bucketSlot != -1) {
                         PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                        originalSlotBeforeDrain = inventory.getSelectedSlot();
                         if (inventory.getSelectedSlot() != bucketSlot) {
                             if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
                                 drainPendingSlot = bucketSlot;
                                 drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
-                                originalSlotBeforeDrain = inventory.getSelectedSlot();
                             } else {
-                                originalSlotBeforeDrain = inventory.getSelectedSlot();
                                 syncSlot(bucketSlot);
                                 if (client.interactionManager != null) {
                                     client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
@@ -1462,7 +1446,21 @@ public class TutorialModClient implements ClientModInitializer {
                             drainRestoreTicks = 2;
                             drainSwitchBackTimer = -1;
                         }
+                        return;
                     }
+                }
+            }
+        }
+
+        // 2. Fallback Drain (Displacement)
+        if (hitNone.getType() == HitResult.Type.BLOCK) {
+            BlockPos liquidPos = hitNone.getBlockPos().offset(hitNone.getSide());
+            var fluidState = client.world.getFluidState(liquidPos);
+            if (fluidState.isStill()) {
+                boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
+                boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
+                if ((isWater && !isNether && !isSurroundedByWaterSource(client.world, liquidPos)) || (isLava && TutorialMod.CONFIG.waterDrainLavaEnabled)) {
+                    handleFallbackDrainThrough(client, hitNone, isWater, isLava);
                 }
             }
         }
@@ -1595,6 +1593,14 @@ public class TutorialModClient implements ClientModInitializer {
                 this.iceGhostSwapTicks = TutorialMod.CONFIG.iceGhostSwapDelay;
             }
         }
+
+        // --- Minecart Sequence manual use check ---
+        if (nextPlacementAction == PlacementAction.AWAITING_UTILITY_USE) {
+            if (stack.isOf(Items.LAVA_BUCKET) || stack.isOf(Items.FLINT_AND_STEEL) || stack.isOf(Items.FIRE_CHARGE)) {
+                nextPlacementAction = PlacementAction.SWITCH_TO_CROSSBOW;
+                placementCooldown = 1;
+            }
+        }
     }
 
     public boolean onItemUse() {
@@ -1605,7 +1611,6 @@ public class TutorialModClient implements ClientModInitializer {
 
         ItemStack stack = client.player.getMainHandStack();
 
-        // Track block placement
         if (stack.getItem() instanceof net.minecraft.item.BlockItem) {
             lastBlockPlaceTick = client.world.getTime();
         }
@@ -1615,7 +1620,6 @@ public class TutorialModClient implements ClientModInitializer {
             elytraFlyTimer = 10;
         }
 
-        // --- Lava Placement Restriction ---
         if (TutorialMod.CONFIG.lavaPlacementRestriction && stack.isOf(Items.LAVA_BUCKET)) {
             if (client.crosshairTarget instanceof BlockHitResult bhr) {
                 BlockState state = client.world.getBlockState(bhr.getBlockPos());
@@ -1629,7 +1633,6 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
 
-        // Record water placement
         if (stack.isOf(Items.WATER_BUCKET)) {
             lastPlacedWaterTick = client.world.getTime();
         }
@@ -1639,12 +1642,12 @@ public class TutorialModClient implements ClientModInitializer {
 
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
-        // Use custom raycast for fluid targeting
         double range = client.player.getBlockInteractionRange();
         Vec3d start = client.player.getCameraPosVec(1.0f);
         Vec3d dir = client.player.getRotationVec(1.0f);
         Vec3d end = start.add(dir.multiply(range));
         BlockHitResult hitFluid = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.SOURCE_ONLY, client.player));
+        BlockHitResult hitNone = client.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, client.player));
 
         if (hitFluid.getType() == HitResult.Type.BLOCK) {
             var fluidState = client.world.getFluidState(hitFluid.getBlockPos());
@@ -1665,13 +1668,12 @@ public class TutorialModClient implements ClientModInitializer {
                 int bucketSlot = findEmptyBucketInHotbar(client.player);
                 if (bucketSlot != -1) {
                     PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                    originalSlotBeforeDrain = inventory.getSelectedSlot();
                     if (inventory.getSelectedSlot() != bucketSlot) {
                         if (TutorialMod.CONFIG.waterDrainSwitchToDelay > 0) {
                             drainPendingSlot = bucketSlot;
                             drainSwitchToTicks = TutorialMod.CONFIG.waterDrainSwitchToDelay;
-                            originalSlotBeforeDrain = inventory.getSelectedSlot();
                         } else {
-                            originalSlotBeforeDrain = inventory.getSelectedSlot();
                             syncSlot(bucketSlot);
                             if (client.interactionManager != null) {
                                 client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
@@ -1680,8 +1682,28 @@ public class TutorialModClient implements ClientModInitializer {
                             drainRestoreTicks = 2 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
                             drainSwitchBackTimer = -1;
                         }
-                        return true;
+                    } else {
+                        if (client.interactionManager != null) {
+                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                            client.player.swingHand(Hand.MAIN_HAND);
+                        }
+                        drainRestoreTicks = 2;
+                        drainSwitchBackTimer = -1;
                     }
+                    return true;
+                }
+            }
+        }
+
+        if (hitNone.getType() == HitResult.Type.BLOCK) {
+            BlockPos liquidPos = hitNone.getBlockPos().offset(hitNone.getSide());
+            var fluidState = client.world.getFluidState(liquidPos);
+            if (fluidState.isStill()) {
+                boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
+                boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
+                if ((isWater && !isNether && !isSurroundedByWaterSource(client.world, liquidPos)) || (isLava && TutorialMod.CONFIG.waterDrainLavaEnabled)) {
+                    handleFallbackDrainThrough(client, hitNone, isWater, isLava);
+                    if (currentFallbackDrainState != FallbackDrainState.NONE) return true;
                 }
             }
         }
@@ -1805,16 +1827,10 @@ public class TutorialModClient implements ClientModInitializer {
                     break;
                 case PICKING_UP:
                     if (client.interactionManager != null) {
-                        int bucketSlot = findEmptyBucketInHotbar(client.player);
-                        if (bucketSlot != -1) {
-                            syncSlot(bucketSlot);
-                            client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
-                            client.player.swingHand(Hand.MAIN_HAND);
-                            currentWebWaterState = WebWaterState.RESTORING;
-                            webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebRestoreDelay;
-                        } else {
-                            currentWebWaterState = WebWaterState.NONE;
-                        }
+                        client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
+                        client.player.swingHand(Hand.MAIN_HAND);
+                        currentWebWaterState = WebWaterState.RESTORING;
+                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebRestoreDelay;
                     } else {
                         currentWebWaterState = WebWaterState.NONE;
                     }
@@ -1841,7 +1857,6 @@ public class TutorialModClient implements ClientModInitializer {
         if (client.player == null || client.world == null || client.interactionManager == null) return;
 
         if (currentCounterLavaState == CounterLavaState.NONE) {
-            // Target fluid check
             double range = client.player.getBlockInteractionRange();
             Vec3d start = client.player.getCameraPosVec(1.0f);
             Vec3d dir = client.player.getRotationVec(1.0f);
@@ -1934,7 +1949,6 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         if (currentAntiLavaFlowState == AntiLavaFlowState.NONE) {
-            // Target fluid check
             double range = client.player.getBlockInteractionRange();
             Vec3d start = client.player.getCameraPosVec(1.0f);
             Vec3d dir = client.player.getRotationVec(1.0f);
@@ -1985,7 +1999,6 @@ public class TutorialModClient implements ClientModInitializer {
                     break;
                 case HOLDING:
                     if (client.interactionManager != null) {
-                        // Re-target check for placement
                         double range = client.player.getBlockInteractionRange();
                         Vec3d start = client.player.getCameraPosVec(1.0f);
                         Vec3d dir = client.player.getRotationVec(1.0f);
@@ -2039,7 +2052,6 @@ public class TutorialModClient implements ClientModInitializer {
     }
 
     private int findAirSlot(PlayerEntity player) {
-        // Find a slot that is effectively empty (air)
         for (int i = 0; i < 9; i++) {
             if (player.getInventory().getStack(i).isEmpty()) return i;
         }
@@ -2058,7 +2070,6 @@ public class TutorialModClient implements ClientModInitializer {
             ItemStack stack = player.getInventory().getStack(i);
             if (stack.getItem() instanceof net.minecraft.item.BlockItem bi) {
                 if (bi.getBlock().getDefaultState().isFullCube(player.getEntityWorld(), targetPos)) {
-                    // Check if an entity is blocking
                     if (!player.getEntityWorld().canPlace(bi.getBlock().getDefaultState(), targetPos, net.minecraft.block.ShapeContext.of(player))) {
                         continue;
                     }
@@ -2072,7 +2083,7 @@ public class TutorialModClient implements ClientModInitializer {
     private void handleFallbackDrainThrough(MinecraftClient client, BlockHitResult hitNone, boolean isWater, boolean isLava) {
         if (!TutorialMod.CONFIG.bucketDrainFallbackEnabled && !TutorialMod.CONFIG.blockDrainFallbackEnabled) return;
         BlockPos liquidPos = hitNone.getBlockPos().offset(hitNone.getSide());
-        Direction targetSide = hitNone.getSide(); // We are looking AT this side
+        Direction targetSide = hitNone.getSide();
         BlockPos surfacePos = hitNone.getBlockPos();
 
         initiateFallback(client, liquidPos, surfacePos, targetSide, isWater, isLava);
@@ -2085,8 +2096,6 @@ public class TutorialModClient implements ClientModInitializer {
         if (TutorialMod.CONFIG.bucketDrainFallbackEnabled) {
             slot = findWaterBucketInHotbar(client.player);
             if (slot == -1 && isLava) {
-                // Priority to water, but can use lava if no water and target is lava
-                // Must check for flowing water if using lava bucket
                 boolean hasFlowingWater = false;
                 for (Direction d : Direction.values()) {
                     if (client.world.getFluidState(liquidPos.offset(d)).isIn(net.minecraft.registry.tag.FluidTags.WATER)) {
@@ -2128,7 +2137,7 @@ public class TutorialModClient implements ClientModInitializer {
             case START:
                 syncSlot(fallbackDrainPendingSlot);
                 currentFallbackDrainState = FallbackDrainState.PLACING;
-                fallbackDrainTimer = 3; // Even more delay
+                fallbackDrainTimer = 3;
                 break;
             case PLACING:
                 if (client.interactionManager != null && client.player != null) {
@@ -2142,7 +2151,7 @@ public class TutorialModClient implements ClientModInitializer {
                         fallbackDrainTimer = 3 + TutorialMod.CONFIG.waterDrainSwitchBackDelay;
                     } else {
                         currentFallbackDrainState = FallbackDrainState.PICKING_UP;
-                        fallbackDrainTimer = 3; // Even more delay
+                        fallbackDrainTimer = 3;
                     }
                 } else {
                     currentFallbackDrainState = FallbackDrainState.NONE;
@@ -2150,8 +2159,6 @@ public class TutorialModClient implements ClientModInitializer {
                 break;
             case PICKING_UP:
                 if (client.interactionManager != null && client.player != null) {
-                    // When picking up fluid after placing water/lava, we can use interactItem or interactBlock on the same spot.
-                    // interactItem is generally safer for fluids.
                     client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                     client.player.swingHand(Hand.MAIN_HAND);
                     currentFallbackDrainState = FallbackDrainState.RESTORING;
@@ -2223,7 +2230,6 @@ public class TutorialModClient implements ClientModInitializer {
         String sy = String.format("%.2f", y);
         String sz = String.format("%.2f", z);
 
-        // Dimension identifier
         String dim = "";
         try {
             RegistryKey<World> key = client.world.getRegistryKey();
@@ -2235,7 +2241,6 @@ public class TutorialModClient implements ClientModInitializer {
         } catch (Exception ignored) {
         }
 
-        // Facing (cardinal)
         String facing = "";
         try {
             Direction d = player.getHorizontalFacing();
@@ -2243,7 +2248,6 @@ public class TutorialModClient implements ClientModInitializer {
         } catch (Exception ignored) {
         }
 
-        // Compose replacements
         String out = cfg.format;
         out = out.replace("{x}", sx).replace("{y}", sy).replace("{z}", sz);
         out = out.replace("{bx}", Long.toString(bx)).replace("{by}", Long.toString(by)).replace("{bz}", Long.toString(bz));
@@ -2269,7 +2273,6 @@ public class TutorialModClient implements ClientModInitializer {
                 if (TutorialMod.CONFIG.showDetailedCardinals) {
                     facing = getDetailedFacing(client.player);
                 } else {
-                    // Capitalize first letter
                     facing = d.toString().substring(0, 1).toUpperCase() + d.toString().substring(1).toLowerCase();
                 }
             }
@@ -2346,7 +2349,6 @@ public class TutorialModClient implements ClientModInitializer {
         Vec3d direction = client.player.getRotationVec(1.0f);
         double maxDist = TutorialMod.CONFIG.longCoordsMaxDistance;
 
-        // Check entities first
         Entity closestEntity = null;
         double minEntityDist = maxDist;
 
@@ -2363,7 +2365,6 @@ public class TutorialModClient implements ClientModInitializer {
             }
         }
 
-        // March the ray for blocks
         BlockPos hitPos = null;
         double step = 0.25;
         double blockDist = -1;
@@ -2372,7 +2373,6 @@ public class TutorialModClient implements ClientModInitializer {
             Vec3d point = origin.add(direction.multiply(d));
             BlockPos pos = BlockPos.ofFloored(point);
 
-            // Manual check for unloaded chunks to avoid lag/ghost blocks
             if (!client.world.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) {
                 break;
             }
@@ -2506,7 +2506,6 @@ public class TutorialModClient implements ClientModInitializer {
         if (autoCritTimer > 0) {
             autoCritTimer--;
             net.minecraft.util.PlayerInput old = input.playerInput;
-            // Force stop forward movement
             input.playerInput = new net.minecraft.util.PlayerInput(false, old.backward(), old.left(), old.right(), old.jump(), old.sneak(), old.sprint());
 
             float leftImpulse = 0.0f;

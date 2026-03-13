@@ -84,9 +84,9 @@ public class AimAssist {
 
         // Targeting closest point on hitbox
         Vec3d cameraPos = mc.gameRenderer.getCamera().getCameraPos();
-        double ex = MathHelper.lerp(tickDelta, target.lastRenderX, target.getX());
-        double ey = MathHelper.lerp(tickDelta, target.lastRenderY, target.getY());
-        double ez = MathHelper.lerp(tickDelta, target.lastRenderZ, target.getZ());
+        double ex = MathHelper.lerp(tickDelta, target.prevX, target.getX());
+        double ey = MathHelper.lerp(tickDelta, target.prevY, target.getY());
+        double ez = MathHelper.lerp(tickDelta, target.prevZ, target.getZ());
         Box targetBox = target.getBoundingBox().offset(ex - target.getX(), ey - target.getY(), ez - target.getZ());
 
         double tx = MathHelper.clamp(cameraPos.x, targetBox.minX, targetBox.maxX);
@@ -176,9 +176,9 @@ public class AimAssist {
             if (entity == mc.player || !entity.isAlive()) continue;
             if (!TargetFilters.isValidTarget(entity, true)) continue;
 
-            double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
-            double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
-            double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
+            double ex = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
+            double ey = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
+            double ez = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
             Box box = entity.getBoundingBox().offset(ex - entity.getX(), ey - entity.getY(), ez - entity.getZ());
 
             Box lockBox = box.expand(currentBorderMargin);
