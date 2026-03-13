@@ -61,7 +61,7 @@ public class ClutchModule {
         switch (state) {
             case IDLE -> {
                 if (!p.isOnGround() && p.getVelocity().y < -0.6 && !p.isSwimming() && !p.isClimbing()) {
-                    Vec3d start = p.getPos();
+                    Vec3d start = new Vec3d(p.getX(), p.getY(), p.getZ());
                     Vec3d end = start.add(0, -20.0, 0);
                     BlockHitResult hit = mc.world.raycast(new net.minecraft.world.RaycastContext(
                         start, end,
@@ -202,7 +202,7 @@ public class ClutchModule {
             return;
         }
 
-        Vec3d start = p.getPos();
+        Vec3d start = new Vec3d(p.getX(), p.getY(), p.getZ());
         Vec3d end = start.add(0, -10.0, 0);
         BlockHitResult hit = mc.world.raycast(new net.minecraft.world.RaycastContext(
             start, end,

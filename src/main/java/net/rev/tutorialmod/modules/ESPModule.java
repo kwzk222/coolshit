@@ -370,9 +370,9 @@ public class ESPModule {
             if (entity == client.player || !entity.isAlive()) continue;
 
             // Proper interpolated world coordinates using prev and current tick positions
-            double ex = MathHelper.lerp(tickDelta, entity.prevX, entity.getX());
-            double ey = MathHelper.lerp(tickDelta, entity.prevY, entity.getY());
-            double ez = MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ());
+            double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
+            double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
+            double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
             Vec3d entityPos = new Vec3d(ex, ey, ez);
 
             double dist = entityPos.distanceTo(cameraPos);
