@@ -60,10 +60,9 @@ public class ClutchModule {
 
         switch (state) {
             case IDLE -> {
-                // ROBUST DETECTION: Trigger if falling fast enough, regardless of fallDistance
-                if (!p.isOnGround() && p.getVelocity().y < -0.6) {
+                // DEFINITIVE DETECTION: check falling velocity and actual distance to ground
+                if (!p.isOnGround() && p.getVelocity().y < -0.5) {
 
-                    // Raycast downward from feet to check distance to impact
                     Vec3d start = new Vec3d(p.getX(), p.getY(), p.getZ());
                     Vec3d end = start.add(0, -6.0, 0);
                     BlockHitResult hit = mc.world.raycast(new net.minecraft.world.RaycastContext(
@@ -75,9 +74,8 @@ public class ClutchModule {
 
                     if (hit.getType() == HitResult.Type.BLOCK) {
                         double dist = start.y - hit.getPos().y;
-                        // Dangerous height check (approx 3 blocks)
-                        if (dist > 2.0 && dist < 5.5) {
-                            // Check pitch ONLY if we aren't already arming
+                        // Dangerous height range
+                        if (dist > 1.8 && dist < 5.0) {
                             if (p.getPitch() < config.clutchActivationPitch) return;
 
                             int waterSlot = findWaterBucket();
@@ -215,14 +213,14 @@ public class ClutchModule {
         if (hit.getType() == HitResult.Type.BLOCK) {
             double dist = start.y - hit.getPos().y;
             if (isWindClutch) {
-                // Refined timing: trigger earlier to ensure projectile hits ground before player
                 if (dist / fallVelocity <= 2.5) {
                     state = ClutchState.PLACING_WIND_CHARGE;
                     spamUse();
                     tickCounter = 0;
                 }
             } else {
-                if (dist < 4.8) {
+                // Trigger earlier for water to allow for bucket switch
+                if (dist < 4.5) {
                     state = ClutchState.PLACING_WATER;
                     spamUse();
                     spamTickCounter = 0;

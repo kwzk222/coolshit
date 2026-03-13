@@ -63,7 +63,7 @@ public class ESPModule {
         }
     }
 
-    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f mat1, Matrix4f mat2) {
+    public void onRender(RenderTickCounter tickCounter, Camera camera, Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
         if (!TutorialMod.CONFIG.showESP || client.player == null || client.world == null) {
             vanishedPlayers.clear();
             xrayEntries.clear();
@@ -95,16 +95,15 @@ public class ESPModule {
 
         // Robust matrix detection
         Matrix4f proj, view;
-        if (Math.abs(mat1.m33()) < 0.01f) {
-            proj = mat1;
-            view = mat2;
+        if (Math.abs(modelViewMatrix.m33()) < 0.01f) {
+            proj = modelViewMatrix;
+            view = projectionMatrix;
         } else {
-            proj = mat2;
-            view = mat1;
+            proj = projectionMatrix;
+            view = modelViewMatrix;
         }
 
         // Stability fix: extract exact camera position by inverting the view matrix.
-        // This is the ONLY way to be 100% in sync with the game's matrix translation.
         Matrix4f invView = new Matrix4f(view).invert();
         Vector4f camPosVec = new Vector4f(0, 0, 0, 1).mul(invView);
         Vec3d extractedCameraPos = new Vec3d(camPosVec.x, camPosVec.y, camPosVec.z);
