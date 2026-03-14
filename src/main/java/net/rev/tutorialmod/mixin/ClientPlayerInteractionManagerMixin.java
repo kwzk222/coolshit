@@ -93,6 +93,16 @@ public abstract class ClientPlayerInteractionManagerMixin {
         }
     }
 
+    @Inject(method = "cancelBlockBreaking", at = @At("HEAD"))
+    private void onCancelBlockBreaking(CallbackInfo ci) {
+        TutorialMod.getAutoToolSwitch().onStoppedMining();
+    }
+
+    @Inject(method = "breakBlock", at = @At("HEAD"))
+    private void onBreakBlock(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
+        TutorialMod.getAutoToolSwitch().onStoppedMining();
+    }
+
     @Inject(method = "updateBlockBreakingProgress", at = @At("HEAD"), cancellable = true, require = 0)
     private void onUpdateBlockBreakingProgress(BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
         TutorialMod.getAutoToolSwitch().onBlockBreak(pos);

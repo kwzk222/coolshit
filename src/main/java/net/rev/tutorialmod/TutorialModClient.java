@@ -170,6 +170,7 @@ public class TutorialModClient implements ClientModInitializer {
     private WebWaterState currentWebWaterState = WebWaterState.NONE;
     private int webWaterStateTimer = -1;
     private int originalSlotBeforeWebWater = -1;
+    private int selfWaterWebCooldown = -1;
 
     private enum AntiLavaFlowState { NONE, SWITCH_TO_EMPTY, PICKING_UP, HOLDING, PLACING, RESTORING }
     private AntiLavaFlowState currentAntiLavaFlowState = AntiLavaFlowState.NONE;
@@ -1485,11 +1486,14 @@ public class TutorialModClient implements ClientModInitializer {
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
         if (currentExtinguishState == ExtinguishState.NONE) {
-            if (client.player.isOnFire() && client.player.getPitch() >= TutorialMod.CONFIG.autoExtinguishPitch) {
-                PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
-                originalSlotBeforeExtinguish = inventory.getSelectedSlot();
-                currentExtinguishState = ExtinguishState.PUNCHING;
-                extinguishTimer = 0;
+            if (client.player.isOnFire() && client.player.getFireTicks() > 20 && client.player.getPitch() >= TutorialMod.CONFIG.autoExtinguishPitch) {
+                // Ensure crosshair is actually on fire if not in nether (where we need water)
+                if (client.crosshairTarget instanceof BlockHitResult bhr && client.world.getBlockState(bhr.getBlockPos()).isOf(Blocks.FIRE)) {
+                    PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                    originalSlotBeforeExtinguish = inventory.getSelectedSlot();
+                    currentExtinguishState = ExtinguishState.PUNCHING;
+                    extinguishTimer = 0;
+                }
             }
         } else {
             if (extinguishTimer > 0) {
@@ -1786,7 +1790,12 @@ public class TutorialModClient implements ClientModInitializer {
         }
         if (client.player == null || client.world == null) return;
 
+        if (selfWaterWebCooldown > 0) {
+            selfWaterWebCooldown--;
+        }
+
         if (currentWebWaterState == WebWaterState.NONE) {
+            if (selfWaterWebCooldown > 0) return;
             boolean isNether = client.world.getRegistryKey() == World.NETHER;
             if (!client.player.isSneaking() && !isNether && client.player.getPitch() > 85.0f && (client.world.getBlockState(client.player.getBlockPos()).isOf(Blocks.COBWEB) || client.world.getBlockState(client.player.getBlockPos().up()).isOf(Blocks.COBWEB))) {
                 int waterSlot = findWaterBucketInHotbar(client.player);
@@ -1798,7 +1807,7 @@ public class TutorialModClient implements ClientModInitializer {
                     } else {
                         syncSlot(waterSlot);
                         currentWebWaterState = WebWaterState.PLACING;
-                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebPlaceDelay;
+                        webWaterStateTimer = Math.max(2, TutorialMod.CONFIG.selfWaterWebPlaceDelay);
                     }
                 }
             }
@@ -1814,7 +1823,7 @@ public class TutorialModClient implements ClientModInitializer {
                     if (waterSlot != -1) {
                         syncSlot(waterSlot);
                         currentWebWaterState = WebWaterState.PLACING;
-                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebPlaceDelay;
+                        webWaterStateTimer = Math.max(2, TutorialMod.CONFIG.selfWaterWebPlaceDelay);
                     } else {
                         currentWebWaterState = WebWaterState.NONE;
                     }
@@ -1824,7 +1833,7 @@ public class TutorialModClient implements ClientModInitializer {
                         client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                         client.player.swingHand(Hand.MAIN_HAND);
                         currentWebWaterState = WebWaterState.PICKING_UP;
-                        webWaterStateTimer = TutorialMod.CONFIG.selfWaterWebPickDelay;
+                        webWaterStateTimer = Math.max(5, TutorialMod.CONFIG.selfWaterWebPickDelay);
                     } else {
                         currentWebWaterState = WebWaterState.NONE;
                     }
@@ -1845,6 +1854,7 @@ public class TutorialModClient implements ClientModInitializer {
                     }
                     currentWebWaterState = WebWaterState.NONE;
                     originalSlotBeforeWebWater = -1;
+                    selfWaterWebCooldown = 20;
                     break;
                 default:
                     currentWebWaterState = WebWaterState.NONE;

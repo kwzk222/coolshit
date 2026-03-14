@@ -118,6 +118,7 @@ public class AutoToolSwitch {
         miningDelayTicks = -1;
         switchBackDelayTicks = -1;
         bestSlotToSwitch = -1;
+        currentMiningPos = null;
     }
 
     private int findBestTool(BlockPos pos) {
