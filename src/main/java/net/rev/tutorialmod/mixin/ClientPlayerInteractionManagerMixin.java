@@ -74,22 +74,24 @@ public abstract class ClientPlayerInteractionManagerMixin {
     private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
         if (cir.getReturnValue().isAccepted()) {
             TutorialModClient.getInstance().onPostItemUse(player, hand);
-        }
-        if (TutorialMod.CONFIG.tntMinecartPlacementEnabled && cir.getReturnValue().isAccepted()) {
-            ItemStack stack = player.getStackInHand(hand);
-            if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {
-                // Calculate the likely placed block position
-                BlockPos placedPos = hitResult.getBlockPos();
-                MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc.world != null && !mc.world.getBlockState(placedPos).canReplace(new net.minecraft.item.ItemPlacementContext(player, hand, stack, hitResult))) {
-                    placedPos = placedPos.offset(hitResult.getSide());
+
+            if (TutorialMod.CONFIG.tntMinecartPlacementEnabled) {
+                ItemStack stack = player.getStackInHand(hand);
+                if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {
+                    BlockPos placedPos = hitResult.getBlockPos();
+                    if (!player.getEntityWorld().getBlockState(placedPos).canReplace(new net.minecraft.item.ItemPlacementContext(player, hand, stack, hitResult))) {
+                        placedPos = placedPos.offset(hitResult.getSide());
+                    }
+                    TutorialModClient.triggerImmediateRailPlacement(placedPos);
                 }
-
-                TutorialModClient.triggerImmediateRailPlacement(placedPos);
-
-                // NOTE: Old server confirmation logic - disabled to fix "cart tech" on laggy servers
-                // TutorialModClient.setAwaitingRailConfirmation();
             }
+        }
+    }
+
+    @Inject(method = "interactItem", at = @At("TAIL"))
+    private void onInteractItem(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
+        if (cir.getReturnValue().isAccepted()) {
+            TutorialModClient.getInstance().onPostItemUse(player, hand);
         }
     }
 

@@ -959,7 +959,7 @@ public class TutorialModClient implements ClientModInitializer {
                     break;
                 case SWITCH_TO_CROSSBOW:
                     if (crossbowSlot != -1) {
-                        inventory.setSelectedSlot(crossbowSlot);
+                        syncSlot(crossbowSlot);
                     }
                     utilitySlot = -1;
                     crossbowSlot = -1;
@@ -1381,7 +1381,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.waterDrainEnabled || !TutorialMod.CONFIG.autoWaterDrainMode) return;
         if (client.player == null || client.world == null || client.player.isCreative()) return;
 
-        if (client.player.isSwimming() || client.currentScreen != null) return;
+        if (currentWebWaterState != WebWaterState.NONE || client.player.isSwimming() || client.currentScreen != null) return;
 
         if (nextPlacementAction != PlacementAction.NONE || awaitingMinecartConfirmationCooldown > 0) {
             return;
@@ -1422,6 +1422,7 @@ public class TutorialModClient implements ClientModInitializer {
                 }
 
                 if (canDrainNormally) {
+                    if (isLava && !client.player.isInLava()) return;
                     int bucketSlot = findEmptyBucketInHotbar(client.player);
                     if (bucketSlot != -1) {
                         PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
@@ -1487,12 +1488,24 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (currentExtinguishState == ExtinguishState.NONE) {
             if (client.player.isOnFire() && client.player.getFireTicks() > 20 && client.player.getPitch() >= TutorialMod.CONFIG.autoExtinguishPitch) {
-                // Ensure crosshair is actually on fire if not in nether (where we need water)
-                if (client.crosshairTarget instanceof BlockHitResult bhr && client.world.getBlockState(bhr.getBlockPos()).isOf(Blocks.FIRE)) {
+                boolean lookingAtFire = client.crosshairTarget instanceof BlockHitResult bhr && client.world.getBlockState(bhr.getBlockPos()).isOf(Blocks.FIRE);
+
+                if (lookingAtFire) {
                     PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
                     originalSlotBeforeExtinguish = inventory.getSelectedSlot();
                     currentExtinguishState = ExtinguishState.PUNCHING;
                     extinguishTimer = 0;
+                } else if (!isNether && TutorialMod.CONFIG.waterDrainEnabled && findWaterBucketInHotbar(client.player) != -1) {
+                    // Only use water if looking at a non-lava/non-water block or air
+                    if (client.crosshairTarget instanceof BlockHitResult bhr) {
+                        BlockState state = client.world.getBlockState(bhr.getBlockPos());
+                        if (state.getFluidState().isEmpty() && !state.isOf(Blocks.LAVA) && !state.isOf(Blocks.WATER)) {
+                            PlayerInventoryMixin inventory = (PlayerInventoryMixin) client.player.getInventory();
+                            originalSlotBeforeExtinguish = inventory.getSelectedSlot();
+                            currentExtinguishState = ExtinguishState.PUNCHING; // Still go through PUNCHING first
+                            extinguishTimer = 0;
+                        }
+                    }
                 }
             }
         } else {
@@ -1646,7 +1659,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         // Manual Drain Check
-        if (!TutorialMod.CONFIG.waterDrainEnabled || TutorialMod.CONFIG.autoWaterDrainMode || client.currentScreen != null || client.player.isSwimming()) return false;
+        if (currentWebWaterState != WebWaterState.NONE || !TutorialMod.CONFIG.waterDrainEnabled || TutorialMod.CONFIG.autoWaterDrainMode || client.currentScreen != null || client.player.isSwimming()) return false;
 
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
@@ -1668,9 +1681,7 @@ public class TutorialModClient implements ClientModInitializer {
                     if (lastPlacedWaterTick != -1 && client.world.getTime() - lastPlacedWaterTick < TutorialMod.CONFIG.bucketDrainPlaceDelay) return false;
                 }
                 if (isLava) {
-                    if (!TutorialMod.CONFIG.waterDrainLavaEnabled) return false;
-                    boolean isSubmerged = client.player.isSubmergedIn(net.minecraft.registry.tag.FluidTags.LAVA);
-                    if (!isSubmerged && client.player.getPitch() < TutorialMod.CONFIG.lavaDrainMinPitch) return false;
+                    if (!TutorialMod.CONFIG.waterDrainLavaEnabled || !client.player.isInLava()) return false;
                 }
 
                 int bucketSlot = findEmptyBucketInHotbar(client.player);
@@ -1833,7 +1844,7 @@ public class TutorialModClient implements ClientModInitializer {
                         client.interactionManager.interactItem(client.player, Hand.MAIN_HAND);
                         client.player.swingHand(Hand.MAIN_HAND);
                         currentWebWaterState = WebWaterState.PICKING_UP;
-                        webWaterStateTimer = Math.max(5, TutorialMod.CONFIG.selfWaterWebPickDelay);
+                        webWaterStateTimer = Math.max(10, TutorialMod.CONFIG.selfWaterWebPickDelay);
                     } else {
                         currentWebWaterState = WebWaterState.NONE;
                     }
