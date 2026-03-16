@@ -1025,7 +1025,7 @@ public class TutorialModClient implements ClientModInitializer {
                 if (lavaSlot != -1) {
                     this.utilitySlot = lavaSlot;
                     this.crossbowSlot = crossSlot;
-                    inventory.setSelectedSlot(lavaSlot);
+                    syncSlot(lavaSlot);
                     this.actionTimeout = 200; // Increased timeout
                     this.placementCooldown = 1;
                     this.nextPlacementAction = PlacementAction.AWAITING_UTILITY_USE;
@@ -1035,7 +1035,7 @@ public class TutorialModClient implements ClientModInitializer {
                 if (flintSlot != -1) {
                     this.utilitySlot = flintSlot;
                     this.crossbowSlot = crossSlot;
-                    inventory.setSelectedSlot(flintSlot);
+                    syncSlot(flintSlot);
                     this.actionTimeout = 200;
                     this.placementCooldown = 1;
                     this.nextPlacementAction = PlacementAction.AWAITING_UTILITY_USE;
@@ -1474,7 +1474,7 @@ public class TutorialModClient implements ClientModInitializer {
         for (Direction d : horizontal) {
             if (world.getFluidState(pos.offset(d)).isStill()) sources++;
         }
-        return sources >= 2;
+        return sources >= 1;
     }
 
     private void handleAutoExtinguish(MinecraftClient client) {
@@ -1721,8 +1721,10 @@ public class TutorialModClient implements ClientModInitializer {
                 boolean isWater = fluidState.isIn(net.minecraft.registry.tag.FluidTags.WATER);
                 boolean isLava = fluidState.isIn(net.minecraft.registry.tag.FluidTags.LAVA);
                 if ((isWater && !isNether && !isSurroundedByWaterSource(client.world, liquidPos)) || (isLava && TutorialMod.CONFIG.waterDrainLavaEnabled)) {
-                    handleFallbackDrainThrough(client, hitNone, isWater, isLava);
-                    if (currentFallbackDrainState != FallbackDrainState.NONE) return true;
+                    if (findEmptyBucketInHotbar(client.player) == -1) {
+                        handleFallbackDrainThrough(client, hitNone, isWater, isLava);
+                        if (currentFallbackDrainState != FallbackDrainState.NONE) return true;
+                    }
                 }
             }
         }
