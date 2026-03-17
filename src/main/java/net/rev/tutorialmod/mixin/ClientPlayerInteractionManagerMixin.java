@@ -70,13 +70,20 @@ public abstract class ClientPlayerInteractionManagerMixin {
 
 
 
+    private ItemStack tutorialmod$interactStack = ItemStack.EMPTY;
+
+    @Inject(method = "interactBlock", at = @At("HEAD"))
+    private void onInteractBlockHead(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
+        tutorialmod$interactStack = player.getStackInHand(hand).copy();
+    }
+
     @Inject(method = "interactBlock", at = @At("TAIL"))
     private void onInteractBlock(ClientPlayerEntity player, Hand hand, BlockHitResult hitResult, CallbackInfoReturnable<ActionResult> cir) {
         if (cir.getReturnValue().isAccepted()) {
             TutorialModClient.getInstance().onPostItemUse(player, hand);
 
             if (TutorialMod.CONFIG.tntMinecartPlacementEnabled) {
-                ItemStack stack = player.getStackInHand(hand);
+                ItemStack stack = tutorialmod$interactStack;
                 if (stack.getItem() instanceof BlockItem && ((BlockItem) stack.getItem()).getBlock() instanceof AbstractRailBlock) {
                     BlockPos placedPos = hitResult.getBlockPos();
                     if (!player.getEntityWorld().getBlockState(placedPos).canReplace(new net.minecraft.item.ItemPlacementContext(player, hand, stack, hitResult))) {
@@ -86,6 +93,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
                 }
             }
         }
+        tutorialmod$interactStack = ItemStack.EMPTY;
     }
 
     @Inject(method = "interactItem", at = @At("TAIL"))

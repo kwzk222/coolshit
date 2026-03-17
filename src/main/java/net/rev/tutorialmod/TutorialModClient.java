@@ -133,6 +133,7 @@ public class TutorialModClient implements ClientModInitializer {
     // --- State: Placement Sequence (TNT Minecart, etc.) ---
     private enum PlacementAction { NONE, PLACE_TNT_MINECART, AWAITING_UTILITY_USE, SWITCH_TO_CROSSBOW, SWITCH_TO_BOW }
     private int placementCooldown = -1;
+    private boolean isMinecartSynced = false;
     private PlacementAction nextPlacementAction = PlacementAction.NONE;
     private BlockPos railPos = null;
     private int utilitySlot = -1;
@@ -975,7 +976,7 @@ public class TutorialModClient implements ClientModInitializer {
                         if (railPos != null) {
                             // Survival Fix: Wait until rail is actually present in the client world
                             if (!(client.world.getBlockState(railPos).getBlock() instanceof AbstractRailBlock)) {
-                                if (actionTimeout == -1) actionTimeout = 20;
+                                if (actionTimeout == -1) actionTimeout = 40; // Increased timeout for slower servers
                                 if (actionTimeout > 0) {
                                     actionTimeout--;
                                     placementCooldown = 1;
@@ -985,11 +986,20 @@ public class TutorialModClient implements ClientModInitializer {
                                 railPos = null;
                                 placementCooldown = -1;
                                 actionTimeout = -1;
+                                isMinecartSynced = false;
                                 return;
                             }
                             actionTimeout = -1;
 
-                            syncSlot(minecartSlot);
+                            if (!isMinecartSynced) {
+                                syncSlot(minecartSlot);
+                                isMinecartSynced = true;
+                                placementCooldown = 1; // Wait 1 tick for sync
+                                nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
+                                return;
+                            }
+
+                            isMinecartSynced = false;
                             ((MinecraftClientAccessor) client).setItemUseCooldown(0);
 
                             BlockHitResult bhr = new BlockHitResult(
@@ -997,12 +1007,18 @@ public class TutorialModClient implements ClientModInitializer {
                                 Direction.UP, railPos, false
                             );
 
-                            client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr);
-                            client.player.swingHand(Hand.MAIN_HAND);
-                            awaitingMinecartConfirmationCooldown = 60;
-                            placementCooldown = -1;
+                            if (client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, bhr).isAccepted()) {
+                                client.player.swingHand(Hand.MAIN_HAND);
+                                awaitingMinecartConfirmationCooldown = 60;
+                                placementCooldown = -1;
+                            } else {
+                                // Retry next tick if interaction failed for some reason (e.g. cooldown)
+                                placementCooldown = 1;
+                                nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
+                            }
                         } else {
                             placementCooldown = -1;
+                            isMinecartSynced = false;
                         }
                     }
                     break;
@@ -1068,9 +1084,10 @@ public class TutorialModClient implements ClientModInitializer {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || findTntMinecartInHotbar(client.player) == -1) return;
         this.railPos = pos;
-        this.placementCooldown = 2; // Initial delay to allow world sync
+        this.placementCooldown = 1;
         this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
         this.actionTimeout = -1;
+        this.isMinecartSynced = false;
     }
 
     public void startPostMinecartSequence(MinecraftClient client) {
