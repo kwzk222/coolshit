@@ -28,6 +28,8 @@ public class AimAssist {
     private double smoothPitchStep = 0;
     private float currentSpeedScale = 0;
 
+    private long offTargetStartTime = -1;
+
     public void onTick() {
         if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialModClient.isKeyDown(TutorialMod.CONFIG.aimAssistHotkey)) {
             isAssisting = false;
@@ -60,7 +62,20 @@ public class AimAssist {
         if (isCrosshairOnAnyTarget(tickDelta)) {
             isAssisting = false;
             lastFrameTime = 0;
+            offTargetStartTime = -1;
             return;
+        }
+
+        if (TutorialMod.CONFIG.aimAssistDelay > 0) {
+            if (offTargetStartTime == -1) {
+                offTargetStartTime = System.currentTimeMillis();
+            }
+
+            long elapsed = System.currentTimeMillis() - offTargetStartTime;
+            if (elapsed < TutorialMod.CONFIG.aimAssistDelay) {
+                reset();
+                return;
+            }
         }
 
         Entity target = findTarget();

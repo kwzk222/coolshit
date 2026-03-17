@@ -66,6 +66,7 @@ public class ModMenuIntegration implements ModMenuApi {
             humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Acceleration"), (long)(TutorialMod.CONFIG.aimAssistAcceleration * 100), 1, 100).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistAcceleration = newValue / 100.0).build());
             humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Deceleration"), (long)(TutorialMod.CONFIG.aimAssistDeceleration * 100), 1, 100).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDeceleration = newValue / 100.0).build());
             humanizeSub.add(entryBuilder.startLongSlider(Text.literal("EMA Smoothing (Alpha)"), (long)(TutorialMod.CONFIG.aimAssistEmaAlpha * 100), 1, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEmaAlpha = newValue / 100.0).build());
+            humanizeSub.add(entryBuilder.startIntSlider(Text.literal("Activation Delay (ms)"), TutorialMod.CONFIG.aimAssistDelay, 0, 1000).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDelay = newValue).build());
             aimAssist.addEntry(humanizeSub.build());
 
             SubCategoryBuilder predictSub = entryBuilder.startSubCategory(Text.literal("Prediction"));
@@ -313,6 +314,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             SubCategoryBuilder sequencesSub = entryBuilder.startSubCategory(Text.literal("Placement Sequences"));
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement"), TutorialMod.CONFIG.tntMinecartPlacementEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue).build());
+            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Pickblock TNT Minecart After Place"), TutorialMod.CONFIG.tntMinecartPickblockAfterPlace).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPickblockAfterPlace = newValue).build());
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence"), TutorialMod.CONFIG.bowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startIntSlider(Text.literal("Bow Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());

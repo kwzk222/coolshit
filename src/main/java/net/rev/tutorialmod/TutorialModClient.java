@@ -3,6 +3,7 @@ package net.rev.tutorialmod;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
+import net.minecraft.block.AbstractRailBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.registry.RegistryKey;
@@ -765,6 +766,47 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
+    public void pickblockTntMinecart(MinecraftClient client) {
+        if (client.player == null || client.interactionManager == null) return;
+        int tntSlot = -1;
+        // Search hotbar first
+        for (int i = 0; i < 9; i++) {
+            if (client.player.getInventory().getStack(i).isOf(Items.TNT_MINECART)) {
+                tntSlot = i;
+                break;
+            }
+        }
+        if (tntSlot != -1) {
+            syncSlot(tntSlot);
+            return;
+        }
+        // Search main inventory
+        for (int i = 9; i < 36; i++) {
+            if (client.player.getInventory().getStack(i).isOf(Items.TNT_MINECART)) {
+                tntSlot = i;
+                break;
+            }
+        }
+        if (tntSlot != -1) {
+            int emptyHotbar = -1;
+            for (int i = 0; i < 9; i++) {
+                if (client.player.getInventory().getStack(i).isEmpty()) {
+                    emptyHotbar = i;
+                    break;
+                }
+            }
+
+            if (emptyHotbar != -1) {
+                client.interactionManager.clickSlot(0, tntSlot, emptyHotbar, net.minecraft.screen.slot.SlotActionType.SWAP, client.player);
+                syncSlot(emptyHotbar);
+            } else {
+                int current = ((PlayerInventoryMixin)client.player.getInventory()).getSelectedSlot();
+                client.interactionManager.clickSlot(0, tntSlot, current, net.minecraft.screen.slot.SlotActionType.SWAP, client.player);
+                syncSlot(current);
+            }
+        }
+    }
+
     private void handleKeybinds(MinecraftClient client) {
         if (client.player == null) return;
 
@@ -931,6 +973,22 @@ public class TutorialModClient implements ClientModInitializer {
                     int minecartSlot = findTntMinecartInHotbar(client.player);
                     if (minecartSlot != -1) {
                         if (railPos != null) {
+                            // Survival Fix: Wait until rail is actually present in the client world
+                            if (!(client.world.getBlockState(railPos).getBlock() instanceof AbstractRailBlock)) {
+                                if (actionTimeout == -1) actionTimeout = 20;
+                                if (actionTimeout > 0) {
+                                    actionTimeout--;
+                                    placementCooldown = 1;
+                                    nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
+                                    return;
+                                }
+                                railPos = null;
+                                placementCooldown = -1;
+                                actionTimeout = -1;
+                                return;
+                            }
+                            actionTimeout = -1;
+
                             syncSlot(minecartSlot);
                             ((MinecraftClientAccessor) client).setItemUseCooldown(0);
 
@@ -1010,8 +1068,9 @@ public class TutorialModClient implements ClientModInitializer {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || findTntMinecartInHotbar(client.player) == -1) return;
         this.railPos = pos;
-        this.placementCooldown = 1;
+        this.placementCooldown = 2; // Initial delay to allow world sync
         this.nextPlacementAction = PlacementAction.PLACE_TNT_MINECART;
+        this.actionTimeout = -1;
     }
 
     public void startPostMinecartSequence(MinecraftClient client) {

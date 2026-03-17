@@ -40,6 +40,9 @@ public class ClientPlayNetworkHandlerMixin {
                 if (packet.getEntityType() == net.minecraft.entity.EntityType.TNT_MINECART) {
                     double distSq = client.player.squaredDistanceTo(packet.getX(), packet.getY(), packet.getZ());
                     if (distSq <= 25.0) {
+                        if (TutorialMod.CONFIG.tntMinecartPickblockAfterPlace) {
+                            TutorialModClient.getInstance().pickblockTntMinecart(client);
+                        }
                         TutorialModClient.getInstance().startPostMinecartSequence(client);
                         TutorialModClient.awaitingMinecartConfirmationCooldown = -1;
                     }

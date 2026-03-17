@@ -75,6 +75,7 @@ public class ModConfig {
 
     // --- Minecart Tech ---
     public boolean tntMinecartPlacementEnabled = true;
+    public boolean tntMinecartPickblockAfterPlace = false;
     public boolean lavaCrossbowSequenceEnabled = true;
     public boolean bowSequenceEnabled = true;
     public int minFallDistance = 3;
@@ -184,6 +185,7 @@ public class ModConfig {
     public double aimAssistAcceleration = 0.5;
     public double aimAssistDeceleration = 0.5;
     public double aimAssistEmaAlpha = 0.2;
+    public int aimAssistDelay = 0;
     public boolean aimAssistPrediction = false;
     public double aimAssistPredictionFactor = 1.0;
     public double aimAssistBorderMin = -0.05;
