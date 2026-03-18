@@ -325,6 +325,7 @@ public class ModMenuIntegration implements ModMenuApi {
             SubCategoryBuilder extinguishSub = entryBuilder.startSubCategory(Text.literal("Auto Extinguish"));
             extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue).build());
             extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
+            extinguishSub.add(entryBuilder.startIntSlider(Text.literal("Fire Ticks Threshold"), TutorialMod.CONFIG.autoExtinguishFireTicksThreshold, 0, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishFireTicksThreshold = newValue).build());
             minecartTech.addEntry(extinguishSub.build());
 
 

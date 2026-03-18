@@ -122,6 +122,7 @@ public class ModConfig {
     public boolean blockDrainFallbackEnabled = false;
     public boolean autoExtinguishEnabled = false;
     public double autoExtinguishPitch = 60.0;
+    public int autoExtinguishFireTicksThreshold = 20;
 
     // --- General ---
     public boolean masterEnabled = true;

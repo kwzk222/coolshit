@@ -769,6 +769,12 @@ public class TutorialModClient implements ClientModInitializer {
 
     public void pickblockTntMinecart(MinecraftClient client) {
         if (client.player == null || client.interactionManager == null) return;
+
+        // Requirement: Only pickblock if looking at a minecart and in range
+        if (!(client.crosshairTarget instanceof net.minecraft.util.hit.EntityHitResult ehr)) return;
+        if (ehr.getEntity().getType() != net.minecraft.entity.EntityType.TNT_MINECART) return;
+        if (client.player.squaredDistanceTo(ehr.getEntity()) > 25.0) return;
+
         int tntSlot = -1;
         // Search hotbar first
         for (int i = 0; i < 9; i++) {
@@ -1563,7 +1569,7 @@ public class TutorialModClient implements ClientModInitializer {
         boolean isNether = client.world.getRegistryKey() == World.NETHER;
 
         if (currentExtinguishState == ExtinguishState.NONE) {
-            if (client.player.isOnFire() && client.player.getFireTicks() > 20 && client.player.getPitch() >= TutorialMod.CONFIG.autoExtinguishPitch) {
+            if (client.player.isOnFire() && client.player.getFireTicks() > TutorialMod.CONFIG.autoExtinguishFireTicksThreshold && client.player.getPitch() >= TutorialMod.CONFIG.autoExtinguishPitch) {
                 boolean lookingAtFire = client.crosshairTarget instanceof BlockHitResult bhr && client.world.getBlockState(bhr.getBlockPos()).isOf(Blocks.FIRE);
 
                 if (lookingAtFire) {

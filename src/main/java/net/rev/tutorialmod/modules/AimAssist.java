@@ -197,7 +197,24 @@ public class AimAssist {
             Box box = entity.getBoundingBox().offset(ex - entity.getX(), ey - entity.getY(), ez - entity.getZ());
 
             Box lockBox = box.expand(currentBorderMargin);
-            if (lockBox.raycast(start, end).isPresent()) return true;
+
+            if (TutorialMod.CONFIG.aimAssistHorizontalOnly) {
+                // If horizontal only, check if yaw matches but ignore pitch
+                Vec3d diff = box.getCenter().subtract(start);
+                double targetYaw = Math.toDegrees(Math.atan2(diff.z, diff.x)) - 90.0;
+                double yawDiff = Math.abs(MathHelper.wrapDegrees(targetYaw - mc.player.getYaw()));
+
+                // Estimate horizontal angle width of the box
+                double dist = start.distanceTo(box.getCenter());
+                double widthX = box.maxX - box.minX;
+                double widthZ = box.maxZ - box.minZ;
+                double width = Math.max(widthX, widthZ) + (currentBorderMargin * 2);
+                double angleWidth = Math.toDegrees(Math.atan2(width / 2.0, dist));
+
+                if (yawDiff <= angleWidth) return true;
+            } else {
+                if (lockBox.raycast(start, end).isPresent()) return true;
+            }
         }
         return false;
     }
