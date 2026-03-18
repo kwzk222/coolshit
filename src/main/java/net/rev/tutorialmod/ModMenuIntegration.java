@@ -318,7 +318,6 @@ public class ModMenuIntegration implements ModMenuApi {
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence"), TutorialMod.CONFIG.bowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startIntSlider(Text.literal("Bow Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());
-            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Prevent Lava Placement in Water"), TutorialMod.CONFIG.lavaPlacementRestriction).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaPlacementRestriction = newValue).build());
             minecartTech.addEntry(sequencesSub.build());
 
 

@@ -1723,19 +1723,6 @@ public class TutorialModClient implements ClientModInitializer {
             elytraFlyTimer = 10;
         }
 
-        if (TutorialMod.CONFIG.lavaPlacementRestriction && stack.isOf(Items.LAVA_BUCKET)) {
-            if (client.crosshairTarget instanceof BlockHitResult bhr) {
-                BlockState state = client.world.getBlockState(bhr.getBlockPos());
-                if (state.getFluidState().isIn(net.minecraft.registry.tag.FluidTags.WATER) || state.isOf(Blocks.WATER)) {
-                    return true;
-                }
-                BlockPos offset = bhr.getBlockPos().offset(bhr.getSide());
-                if (client.world.getFluidState(offset).isIn(net.minecraft.registry.tag.FluidTags.WATER)) {
-                    return true;
-                }
-            }
-        }
-
         if (stack.isOf(Items.WATER_BUCKET)) {
             lastPlacedWaterTick = client.world.getTime();
         }

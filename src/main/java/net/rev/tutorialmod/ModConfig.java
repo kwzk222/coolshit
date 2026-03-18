@@ -149,8 +149,6 @@ public class ModConfig {
     public int antiLavaFlowPlaceDelay = 0;
     public int antiLavaFlowRestoreDelay = 2;
 
-    public boolean lavaPlacementRestriction = true;
-
     // --- Auto Tool ---
     public boolean autoToolSwitchEnabled = true;
     public boolean toolDurabilitySafetyEnabled = true;
