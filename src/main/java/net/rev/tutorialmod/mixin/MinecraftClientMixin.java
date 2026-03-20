@@ -31,4 +31,18 @@ public abstract class MinecraftClientMixin {
             ci.cancel();
         }
     }
+
+    @Inject(method = "handleInputEvents", at = @At("HEAD"))
+    private void onHandleInputEvents(CallbackInfo ci) {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.hotbarHoldCombat) return;
+        TutorialModClient instance = TutorialModClient.getInstance();
+        if (instance != null && instance.isAnyHotbarMeleeKeyHeld()) {
+            // Block normal slot switching while holding hotbar keys if combat hold is enabled
+            for (int i = 0; i < 9; i++) {
+                while (((MinecraftClient)(Object)this).options.hotbarKeys[i].wasPressed()) {
+                    // Consume the events
+                }
+            }
+        }
+    }
 }

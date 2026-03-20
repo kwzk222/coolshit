@@ -364,6 +364,7 @@ public class ModMenuIntegration implements ModMenuApi {
             misc.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintModeHotkey = newValue).build());
             misc.addEntry(entryBuilder.startStrField(Text.literal("Sneak Mode Toggle Hotkey"), TutorialMod.CONFIG.sneakModeHotkey).setDefaultValue("key.keyboard.b").setSaveConsumer(newValue -> TutorialMod.CONFIG.sneakModeHotkey = newValue).build());
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Hotkeys Active in Inventory"), TutorialMod.CONFIG.activeInInventory).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.activeInInventory = newValue).build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Hold Hotbar Key for Combat"), TutorialMod.CONFIG.hotbarHoldCombat).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.hotbarHoldCombat = newValue).build());
 
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue).build());
             misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());

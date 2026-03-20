@@ -51,7 +51,12 @@ public class TriggerBot {
             }
         } catch (Exception ignored) {}
 
-        if (!net.rev.tutorialmod.TutorialModClient.isKeyDown(TutorialMod.CONFIG.triggerBotHotkey)) {
+        boolean keyHeld = net.rev.tutorialmod.TutorialModClient.isKeyDown(TutorialMod.CONFIG.triggerBotHotkey);
+        if (TutorialMod.CONFIG.hotbarHoldCombat && !keyHeld) {
+            keyHeld = net.rev.tutorialmod.TutorialModClient.getInstance().isAnyHotbarMeleeKeyHeld();
+        }
+
+        if (!keyHeld) {
             reset();
             return;
         }

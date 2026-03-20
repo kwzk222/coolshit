@@ -31,13 +31,21 @@ public class AimAssist {
     private long offTargetStartTime = -1;
 
     public void onTick() {
-        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialModClient.isKeyDown(TutorialMod.CONFIG.aimAssistHotkey)) {
+        boolean keyHeld = TutorialModClient.isKeyDown(TutorialMod.CONFIG.aimAssistHotkey);
+        if (TutorialMod.CONFIG.hotbarHoldCombat && !keyHeld) {
+            keyHeld = TutorialModClient.getInstance().isAnyHotbarMeleeKeyHeld();
+        }
+        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !keyHeld) {
             isAssisting = false;
         }
     }
 
     public void onRender(RenderTickCounter tickCounter) {
-        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !TutorialModClient.isKeyDown(TutorialMod.CONFIG.aimAssistHotkey)) {
+        boolean keyHeld = TutorialModClient.isKeyDown(TutorialMod.CONFIG.aimAssistHotkey);
+        if (TutorialMod.CONFIG.hotbarHoldCombat && !keyHeld) {
+            keyHeld = TutorialModClient.getInstance().isAnyHotbarMeleeKeyHeld();
+        }
+        if (mc.player == null || mc.world == null || !TutorialMod.CONFIG.masterEnabled || !keyHeld) {
             reset();
             return;
         }

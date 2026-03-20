@@ -165,6 +165,9 @@ public class TutorialModClient implements ClientModInitializer {
     private int autoCritDelay = -1;
     private boolean isAutoCritAttacking = false;
 
+    private int secondAxeHitTimer = -1;
+    private Entity secondAxeHitTarget = null;
+
     private boolean isLungeSwapping = false;
     private long lastPlacedWaterTick = -1;
 
@@ -379,6 +382,7 @@ public class TutorialModClient implements ClientModInitializer {
             aimAssist.onTick();
         }
 
+        handleSecondAxeHit(client);
         handleComboRestore(client);
         handleIceGhostSwapTick(client);
 
@@ -711,9 +715,10 @@ public class TutorialModClient implements ClientModInitializer {
                         client.interactionManager.attackEntity(player, target);
                         player.swingHand(Hand.MAIN_HAND);
 
-                        // Second Axe Hit (requested: hit again really fast with axe)
-                        client.interactionManager.attackEntity(player, target);
-                        player.swingHand(Hand.MAIN_HAND);
+                        // Second Axe Hit (Double Click simulation)
+                        // Setting a 1-tick delay for the second hit to ensure it registers properly on most servers
+                        this.secondAxeHitTarget = target;
+                        this.secondAxeHitTimer = 1;
                         alreadyAttackedInCombo = true;
                     }
                 }
@@ -734,14 +739,37 @@ public class TutorialModClient implements ClientModInitializer {
 
             // Restore original slot with delay to ensure visual animation
             delay = Math.max(TutorialMod.CONFIG.axeToOriginalDelay, TutorialMod.CONFIG.maceToOriginalDelay);
-            if (delay <= 0) {
-                syncSlot(originalSlot);
+            // If we have a pending second axe hit, we must not restore yet
+            if (secondAxeHitTimer > 0) {
+                 this.comboRestoreSlot = originalSlot;
+                 this.comboRestoreTicks = delay + secondAxeHitTimer;
             } else {
-                this.comboRestoreSlot = originalSlot;
-                this.comboRestoreTicks = delay;
+                if (delay <= 0) {
+                    syncSlot(originalSlot);
+                } else {
+                    this.comboRestoreSlot = originalSlot;
+                    this.comboRestoreTicks = delay;
+                }
             }
         } finally {
             isExecutingCombo = false;
+        }
+    }
+
+    private void handleSecondAxeHit(MinecraftClient client) {
+        if (secondAxeHitTimer > 0) {
+            secondAxeHitTimer--;
+            if (secondAxeHitTimer == 0) {
+                if (secondAxeHitTarget != null && client.player != null && client.interactionManager != null) {
+                    // Verify we are still holding an axe
+                    if (client.player.getMainHandStack().getItem() instanceof AxeItem) {
+                        client.interactionManager.attackEntity(client.player, secondAxeHitTarget);
+                        client.player.swingHand(Hand.MAIN_HAND);
+                    }
+                }
+                secondAxeHitTarget = null;
+                secondAxeHitTimer = -1;
+            }
         }
     }
 
@@ -2570,6 +2598,18 @@ public class TutorialModClient implements ClientModInitializer {
                 return org.lwjgl.glfw.GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), key.getCode()) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
             }
         } catch (Exception ignored) {}
+        return false;
+    }
+
+    public boolean isAnyHotbarMeleeKeyHeld() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null) return false;
+        for (int i = 0; i < 9; i++) {
+            if (isKeyDown(mc.options.hotbarKeys[i].getBoundKeyTranslationKey())) {
+                ItemStack stack = mc.player.getInventory().getStack(i);
+                if (isMeleeWeapon(stack)) return true;
+            }
+        }
         return false;
     }
 

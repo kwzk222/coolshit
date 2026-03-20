@@ -224,6 +224,7 @@ public class ModConfig {
     public String sprintModeHotkey = "key.keyboard.n";
     public String sneakModeHotkey = "key.keyboard.b";
     public boolean activeInInventory = false;
+    public boolean hotbarHoldCombat = false;
     public boolean creativeReachMatchSurvival = false;
 
     // --- Chat ---
