@@ -207,12 +207,19 @@ public class TutorialModClient implements ClientModInitializer {
     private String overlayStatusMessage = null;
     private long overlayStatusTime = 0;
 
+    private final long[] hotbarKeyHoldStartTimes = new long[9];
+
     private boolean isWaitingForBowRelease = false;
     private boolean isAutoReleasingBow = false;
     private int elytraFlyTimer = -1;
     private boolean wasEating = false;
     private boolean ignoreNextUse = false;
     private long lastBlockPlaceTick = -1;
+
+    public long getHotbarKeyHoldStartTime(int index) {
+        if (index < 0 || index >= 9) return 0;
+        return hotbarKeyHoldStartTimes[index];
+    }
 
     public void setPendingBowRelease(boolean val) {
         this.isWaitingForBowRelease = val;
@@ -372,6 +379,7 @@ public class TutorialModClient implements ClientModInitializer {
         }
 
         handleChatMacros(client);
+        handleHotbarKeyTracking(client);
 
         // Handle TriggerBot separately, as it may have its own master toggle.
         if (triggerBot != null) {
@@ -2307,6 +2315,19 @@ public class TutorialModClient implements ClientModInitializer {
         }
     }
 
+    private void handleHotbarKeyTracking(MinecraftClient client) {
+        if (client.player == null) return;
+        for (int i = 0; i < 9; i++) {
+            if (isKeyDown(client.options.hotbarKeys[i].getBoundKeyTranslationKey())) {
+                if (hotbarKeyHoldStartTimes[i] == 0) {
+                    hotbarKeyHoldStartTimes[i] = System.currentTimeMillis();
+                }
+            } else {
+                hotbarKeyHoldStartTimes[i] = 0;
+            }
+        }
+    }
+
     private void handleChatMacros(MinecraftClient client) {
         if (client.player == null) return;
 
@@ -2604,10 +2625,16 @@ public class TutorialModClient implements ClientModInitializer {
     public boolean isAnyHotbarMeleeKeyHeld() {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return false;
+        long now = System.currentTimeMillis();
         for (int i = 0; i < 9; i++) {
-            if (isKeyDown(mc.options.hotbarKeys[i].getBoundKeyTranslationKey())) {
+            if (hotbarKeyHoldStartTimes[i] != 0) {
                 ItemStack stack = mc.player.getInventory().getStack(i);
-                if (isMeleeWeapon(stack)) return true;
+                if (isMeleeWeapon(stack)) {
+                    // Check if held for more than 200ms
+                    if (now - hotbarKeyHoldStartTimes[i] > 200) {
+                        return true;
+                    }
+                }
             }
         }
         return false;

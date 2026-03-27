@@ -70,65 +70,65 @@ public class ModConfig {
     public boolean lungeSwapEnabled = true;
     public int lungeSwapBackDelay = 1;
 
-    public boolean iceGhostSwapEnabled = true;
-    public int iceGhostSwapDelay = 5;
+    public boolean iceGhostSwapEnabled = false;
+    public int iceGhostSwapDelay = 0;
 
     // --- Minecart Tech ---
     public boolean tntMinecartPlacementEnabled = true;
-    public boolean tntMinecartPickblockAfterPlace = false;
+    public boolean tntMinecartPickblockAfterPlace = true;
     public boolean lavaCrossbowSequenceEnabled = true;
     public boolean bowSequenceEnabled = true;
     public int minFallDistance = 3;
 
     // --- Movement ---
-    public boolean autoJumpEnabled = false;
+    public boolean autoJumpEnabled = true;
     public boolean autoElytraFlyEnabled = true;
     public boolean parkourEnabled = false;
-    public double parkourPredict = 0.12;
-    public double parkourMaxDropHeight = 0.6;
+    public double parkourPredict = 0.0;
+    public double parkourMaxDropHeight = 0.61;
 
     // --- Clutch ---
-    public boolean clutchEnabled = false;
+    public boolean clutchEnabled = true;
     public boolean waterClutchEnabled = true;
     public boolean windChargeClutchEnabled = true;
     public String clutchPriority = "Water"; // "Water" or "Wind Charge"
     public double clutchMinFallDistance = 3.0;
-    public double clutchActivationPitch = 60.0;
-    public int clutchRecoveryDelay = 20;
+    public double clutchActivationPitch = 76.0;
+    public int clutchRecoveryDelay = 5;
     public int clutchSwitchDelay = 0;
-    public int clutchRestoreDelay = 5;
+    public int clutchRestoreDelay = 0;
     public boolean clutchRestoreOriginalSlot = true;
     public boolean clutchAutoSwitch = true;
 
     // --- Click Spam ---
-    public boolean clickSpamEnabled = false;
-    public int clickSpamCps = 12;
-    public String clickSpamModifierKey = "key.keyboard.apostrophe";
-    public boolean miningResetEnabled = false;
+    public boolean clickSpamEnabled = true;
+    public int clickSpamCps = 20;
+    public String clickSpamModifierKey = "key.keyboard.6";
+    public boolean miningResetEnabled = true;
     public int miningResetChance = 100;
-    public boolean miningResetSimulateStops = false;
+    public boolean miningResetSimulateStops = true;
     public double miningResetThreshold = 0.92;
     public int miningResetDelay = 0;
-    public boolean waterDrainEnabled = false;
+    public boolean waterDrainEnabled = true;
     public boolean waterDrainLavaEnabled = false;
     public double lavaDrainMinPitch = 40.0;
-    public boolean autoWaterDrainMode = false;
+    public boolean autoWaterDrainMode = true;
     public String autoWaterDrainHotkey = "key.keyboard.n";
     public int waterDrainSwitchToDelay = 0;
     public int waterDrainSwitchBackDelay = 0;
     public int bucketDrainPlaceDelay = 10;
     public int bucketDrainRestoreDelay = 2;
-    public boolean bucketDrainFallbackEnabled = false;
-    public boolean blockDrainFallbackEnabled = false;
-    public boolean autoExtinguishEnabled = false;
-    public double autoExtinguishPitch = 60.0;
+    public boolean bucketDrainFallbackEnabled = true;
+    public boolean blockDrainFallbackEnabled = true;
+    public boolean autoExtinguishEnabled = true;
+    public double autoExtinguishPitch = 81.0;
     public int autoExtinguishFireTicksThreshold = 20;
 
     // --- General ---
     public boolean masterEnabled = true;
     public boolean bowReleaseBlockEnabled = true;
     public double bowAutoFireThreshold = 0.1;
-    public int bowCooldown = 100;
+    public int bowCooldown = 0;
 
     public boolean counterLavaDrainEnabled = true;
     public double counterLavaDrainRange = 5.0;
@@ -142,7 +142,7 @@ public class ModConfig {
     public int selfWaterWebPickDelay = 5;
     public int selfWaterWebRestoreDelay = 2;
 
-    public boolean antiLavaFlowEnabled = false;
+    public boolean antiLavaFlowEnabled = true;
     public double antiLavaFlowEnemyRange = 6.0;
     public int antiLavaFlowPickDelay = 0;
     public int antiLavaFlowHoldDelay = 5;
@@ -154,12 +154,12 @@ public class ModConfig {
     public boolean toolDurabilitySafetyEnabled = true;
     public boolean autoToolSwitchBackEnabled = true;
     public int autoToolSwitchBackMinDelay = 0;
-    public int autoToolSwitchBackMaxDelay = 5;
+    public int autoToolSwitchBackMaxDelay = 0;
     public int autoToolSwitchMineMinDelay = 0;
-    public int autoToolSwitchMineMaxDelay = 2;
+    public int autoToolSwitchMineMaxDelay = 0;
 
     // --- Auto Totem ---
-    public boolean autoTotemEnabled = true;
+    public boolean autoTotemEnabled = false;
     public boolean autoTotemSurvivalOnly = true;
     public boolean autoTotemRefillOnPop = true;
     public List<Integer> autoTotemHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
@@ -170,21 +170,21 @@ public class ModConfig {
 
     // --- Aim Assist ---
     public boolean aimAssistEnabled = false;
-    public String aimAssistHotkey = "key.keyboard.apostrophe";
-    public double aimAssistStrength = 1.0; // Slider will be adjusted to allow lower
-    public double aimAssistFov = 40.0;
-    public boolean aimAssistHorizontalOnly = false;
-    public double aimAssistMaxRange = 4.0;
-    public double aimAssistMinRange = 0.0;
+    public String aimAssistHotkey = "key.keyboard.1";
+    public double aimAssistStrength = 2.14; // Slider will be adjusted to allow lower
+    public double aimAssistFov = 113.0;
+    public boolean aimAssistHorizontalOnly = true;
+    public double aimAssistMaxRange = 4.3;
+    public double aimAssistMinRange = 0.9;
     public boolean aimAssistWeaponOnly = true;
-    public double aimAssistChargeThreshold = 0.9;
-    public double aimAssistShieldStrength = 1.0;
-    public double aimAssistShieldFov = 40.0;
+    public double aimAssistChargeThreshold = 0.85;
+    public double aimAssistShieldStrength = 5.05;
+    public double aimAssistShieldFov = 360.0;
     public double aimAssistShieldArc = 180.0;
-    public double aimAssistAcceleration = 0.5;
-    public double aimAssistDeceleration = 0.5;
-    public double aimAssistEmaAlpha = 0.2;
-    public int aimAssistDelay = 0;
+    public double aimAssistAcceleration = 1.0;
+    public double aimAssistDeceleration = 0.9;
+    public double aimAssistEmaAlpha = 0.24;
+    public int aimAssistDelay = 15;
     public boolean aimAssistPrediction = false;
     public double aimAssistPredictionFactor = 1.0;
     public double aimAssistBorderMin = -0.05;
@@ -196,7 +196,7 @@ public class ModConfig {
     public boolean aimAssistExcludeVillagers = true;
 
     public boolean triggerBotWeaponOnly = true;
-    public boolean attackOnCrit = false;
+    public boolean attackOnCrit = true;
     public boolean triggerBotEnabled = true;
     public boolean triggerBotIncludePlayers = true;
     public boolean triggerBotExcludeTeammates = true;
@@ -213,19 +213,19 @@ public class ModConfig {
     // --- Hotkeys ---
     public String openSettingsHotkey = "key.keyboard.right.shift";
     public String lastCategory = "Attribute Swapping";
-    public String masterToggleHotkey = "key.keyboard.m";
-    public String teammateHotkey = "key.keyboard.g";
-    public String triggerBotHotkey = "key.keyboard.k";
+    public String masterToggleHotkey = "";
+    public String teammateHotkey = "key.keyboard.l";
+    public String triggerBotHotkey = "key.keyboard.1";
     public String toggleOverlayHotkey = "key.keyboard.h";
     public String toggleESPHotkey = "key.keyboard.y";
-    public String parkourHotkey = "key.keyboard.p";
+    public String parkourHotkey = "key.keyboard.u";
     public String clutchHotkey = "key.keyboard.j";
-    public String miningResetHotkey = "key.keyboard.unknown";
-    public String sprintModeHotkey = "key.keyboard.n";
-    public String sneakModeHotkey = "key.keyboard.b";
+    public String miningResetHotkey = "key.keyboard.6";
+    public String sprintModeHotkey = "";
+    public String sneakModeHotkey = "key.keyboard.n";
     public boolean activeInInventory = false;
     public boolean hotbarHoldCombat = false;
-    public boolean creativeReachMatchSurvival = false;
+    public boolean creativeReachMatchSurvival = true;
 
     // --- Chat ---
     public boolean disableModChatUpdates = false;
@@ -294,7 +294,7 @@ public class ModConfig {
     // ESP Filters
     public boolean espPlayers = true;
     public boolean espVillagers = false;
-    public boolean espHostiles = false;
+    public boolean espHostiles = true;
     public boolean espPassives = false;
     public boolean espTamed = false;
     public double espMaxRange = 64.0;
@@ -321,7 +321,7 @@ public class ModConfig {
     public int espArmorBarColorEmpty = 0x000000;
     public boolean espShowStatusEffects = true;
     public double espDistanceHideThreshold = 0.0;
-    public double espBoxWidthFactor = 0.45;
+    public double espBoxWidthFactor = 0.22;
     public int espColorTeammate = 0x00FF00;
     public int espColorEnemy = 0xFF0000;
     public int espColorVillager = 0xFF00FF;
@@ -331,7 +331,7 @@ public class ModConfig {
 
     // X-Ray
     public boolean xrayEnabled = true;
-    public boolean xrayFrustumCulling = true;
+    public boolean xrayFrustumCulling = false;
     public List<String> xrayBlocks = new ArrayList<>(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore"));
     public int xrayColor = 0x00FFFF;
     public int xrayRange = 32;

@@ -47,26 +47,26 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // 1.0 Aim Assist
             ConfigCategory aimAssist = builder.getOrCreateCategory(Text.literal("Aim Assist"));
-            aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Hold to Activate)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 100), 1, 1000).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 100.0).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistFov, 1, 180).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistFov = newValue.doubleValue()).build());
-            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Horizontal Only"), TutorialMod.CONFIG.aimAssistHorizontalOnly).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHorizontalOnly = newValue).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range"), (long)(TutorialMod.CONFIG.aimAssistMaxRange * 10), 0, 100).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMaxRange = newValue / 10.0).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.aimAssistMinRange * 10), 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMinRange = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Hold to Activate)"), TutorialMod.CONFIG.aimAssistHotkey).setDefaultValue("key.keyboard.1").setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHotkey = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Assist Strength"), (long)(TutorialMod.CONFIG.aimAssistStrength * 100), 1, 1000).setDefaultValue(214).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistStrength = newValue / 100.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistFov, 1, 180).setDefaultValue(113).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistFov = newValue.doubleValue()).build());
+            aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Horizontal Only"), TutorialMod.CONFIG.aimAssistHorizontalOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistHorizontalOnly = newValue).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Max Range"), (long)(TutorialMod.CONFIG.aimAssistMaxRange * 10), 0, 100).setDefaultValue(43).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMaxRange = newValue / 10.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Min Range"), (long)(TutorialMod.CONFIG.aimAssistMinRange * 10), 0, 100).setDefaultValue(9).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistMinRange = newValue / 10.0).build());
             aimAssist.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.aimAssistWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistWeaponOnly = newValue).build());
-            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
+            aimAssist.addEntry(entryBuilder.startLongSlider(Text.literal("Charge Threshold"), (long)(TutorialMod.CONFIG.aimAssistChargeThreshold * 100), 0, 100).setDefaultValue(85).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistChargeThreshold = newValue / 100.0).build());
 
             SubCategoryBuilder shieldAimSub = entryBuilder.startSubCategory(Text.literal("Shield Settings"));
-            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Strength"), (long)(TutorialMod.CONFIG.aimAssistShieldStrength * 100), 1, 1000).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldStrength = newValue / 100.0).build());
-            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistShieldFov, 1, 360).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldFov = newValue.doubleValue()).build());
+            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Strength"), (long)(TutorialMod.CONFIG.aimAssistShieldStrength * 100), 1, 1000).setDefaultValue(505).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldStrength = newValue / 100.0).build());
+            shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("FOV"), (long)TutorialMod.CONFIG.aimAssistShieldFov, 1, 360).setDefaultValue(360).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldFov = newValue.doubleValue()).build());
             shieldAimSub.add(entryBuilder.startLongSlider(Text.literal("Blocking Arc"), (long)TutorialMod.CONFIG.aimAssistShieldArc, 1, 360).setDefaultValue(180).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistShieldArc = newValue.doubleValue()).build());
             aimAssist.addEntry(shieldAimSub.build());
 
             SubCategoryBuilder humanizeSub = entryBuilder.startSubCategory(Text.literal("Humanization & Smoothing"));
-            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Acceleration"), (long)(TutorialMod.CONFIG.aimAssistAcceleration * 100), 1, 100).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistAcceleration = newValue / 100.0).build());
-            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Deceleration"), (long)(TutorialMod.CONFIG.aimAssistDeceleration * 100), 1, 100).setDefaultValue(50).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDeceleration = newValue / 100.0).build());
-            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("EMA Smoothing (Alpha)"), (long)(TutorialMod.CONFIG.aimAssistEmaAlpha * 100), 1, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEmaAlpha = newValue / 100.0).build());
-            humanizeSub.add(entryBuilder.startIntSlider(Text.literal("Activation Delay (ms)"), TutorialMod.CONFIG.aimAssistDelay, 0, 1000).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDelay = newValue).build());
+            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Acceleration"), (long)(TutorialMod.CONFIG.aimAssistAcceleration * 100), 1, 100).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistAcceleration = newValue / 100.0).build());
+            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Deceleration"), (long)(TutorialMod.CONFIG.aimAssistDeceleration * 100), 1, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDeceleration = newValue / 100.0).build());
+            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("EMA Smoothing (Alpha)"), (long)(TutorialMod.CONFIG.aimAssistEmaAlpha * 100), 1, 100).setDefaultValue(24).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEmaAlpha = newValue / 100.0).build());
+            humanizeSub.add(entryBuilder.startIntSlider(Text.literal("Activation Delay (ms)"), TutorialMod.CONFIG.aimAssistDelay, 0, 1000).setDefaultValue(15).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDelay = newValue).build());
             aimAssist.addEntry(humanizeSub.build());
 
             SubCategoryBuilder predictSub = entryBuilder.startSubCategory(Text.literal("Prediction"));
@@ -103,8 +103,8 @@ public class ModMenuIntegration implements ModMenuApi {
             autoStun.addEntry(lungeSwapSub.build());
 
             SubCategoryBuilder iceGhostSub = entryBuilder.startSubCategory(Text.literal("Ice Ghost Swap"));
-            iceGhostSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.iceGhostSwapEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.iceGhostSwapEnabled = newValue).build());
-            iceGhostSub.add(entryBuilder.startIntSlider(Text.literal("Wait Delay (Ticks)"), TutorialMod.CONFIG.iceGhostSwapDelay, 0, 40).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.iceGhostSwapDelay = newValue).build());
+            iceGhostSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.iceGhostSwapEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.iceGhostSwapEnabled = newValue).build());
+            iceGhostSub.add(entryBuilder.startIntSlider(Text.literal("Wait Delay (Ticks)"), TutorialMod.CONFIG.iceGhostSwapDelay, 0, 40).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.iceGhostSwapDelay = newValue).build());
             autoStun.addEntry(iceGhostSub.build());
 
             autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Facing Check Enabled"), TutorialMod.CONFIG.autoStunFacingCheck).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoStunFacingCheck = newValue).build());
@@ -168,7 +168,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // 1.2 Crystal/Mace (Auto Totem)
             ConfigCategory autoTotem = builder.getOrCreateCategory(Text.literal("Crystal/Mace"));
-            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Totem Enabled"), TutorialMod.CONFIG.autoTotemEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnabled = newValue).build());
+            autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Totem Enabled"), TutorialMod.CONFIG.autoTotemEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemEnabled = newValue).build());
             autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Survival Mode Only"), TutorialMod.CONFIG.autoTotemSurvivalOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemSurvivalOnly = newValue).build());
             autoTotem.addEntry(entryBuilder.startBooleanToggle(Text.literal("Refill on Totem Pop"), TutorialMod.CONFIG.autoTotemRefillOnPop).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoTotemRefillOnPop = newValue).build());
             autoTotem.addEntry(entryBuilder.startStrField(Text.literal("Totem Hotbar Slots"), TutorialMod.CONFIG.autoTotemHotbarSlots.stream().map(s -> String.valueOf(s + 1)).collect(Collectors.joining(","))).setDefaultValue("1,2,3,4,5,6,7,8,9").setSaveConsumer(newValue -> {
@@ -177,7 +177,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
             // 1.3 Movement
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
-            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Jump"), TutorialMod.CONFIG.autoJumpEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoJumpEnabled = newValue).build());
+            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Jump"), TutorialMod.CONFIG.autoJumpEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoJumpEnabled = newValue).build());
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Elytra Fly"), TutorialMod.CONFIG.autoElytraFlyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoElytraFlyEnabled = newValue).build());
 
             SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water/Wind Charge)"));
@@ -186,22 +186,22 @@ public class ModMenuIntegration implements ModMenuApi {
             waterClutchSub.add(entryBuilder.startStringDropdownMenu(Text.literal("Clutch Priority"), TutorialMod.CONFIG.clutchPriority, s -> Text.literal(s)).setSelections(Arrays.asList("Water", "Wind Charge")).setDefaultValue("Water").setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchPriority = newValue).build());
             waterClutchSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.clutchHotkey).setDefaultValue("key.keyboard.j").setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchHotkey = newValue).build());
             waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.clutchMinFallDistance), 0, 100).setDefaultValue(3).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue.doubleValue()).build());
-            waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue()).build());
+            waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.clutchActivationPitch, -90, 90).setDefaultValue(76).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchActivationPitch = newValue.floatValue()).build());
             waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Switch Delay"), TutorialMod.CONFIG.clutchSwitchDelay, 0, 40).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchSwitchDelay = newValue).build());
-            waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Recovery Delay"), TutorialMod.CONFIG.clutchRecoveryDelay, 0, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRecoveryDelay = newValue).build());
-            waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay"), TutorialMod.CONFIG.clutchRestoreDelay, 0, 100).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreDelay = newValue).build());
+            waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Recovery Delay"), TutorialMod.CONFIG.clutchRecoveryDelay, 0, 100).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRecoveryDelay = newValue).build());
+            waterClutchSub.add(entryBuilder.startIntSlider(Text.literal("Restore Delay"), TutorialMod.CONFIG.clutchRestoreDelay, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreDelay = newValue).build());
             waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Restore Original Slot"), TutorialMod.CONFIG.clutchRestoreOriginalSlot).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchRestoreOriginalSlot = newValue).build());
             waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Clutch Switch"), TutorialMod.CONFIG.clutchAutoSwitch).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchAutoSwitch = newValue).build());
             movement.addEntry(waterClutchSub.build());
 
 
-            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Clutch Module Toggle"), TutorialMod.CONFIG.clutchEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue).build());
+            movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Clutch Module Toggle"), TutorialMod.CONFIG.clutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue).build());
 
             SubCategoryBuilder parkourSub = entryBuilder.startSubCategory(Text.literal("Parkour"));
             parkourSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.parkourEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourEnabled = newValue).build());
-            parkourSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.parkourHotkey).setDefaultValue("key.keyboard.p").setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue).build());
-            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourPredict = newValue / 100.0).build());
-            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0).build());
+            parkourSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.parkourHotkey).setDefaultValue("key.keyboard.u").setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue).build());
+            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourPredict = newValue / 100.0).build());
+            parkourSub.add(entryBuilder.startLongSlider(Text.literal("Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150).setDefaultValue(61).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0).build());
             movement.addEntry(parkourSub.build());
 
             // 1.4 Potions
@@ -230,15 +230,15 @@ public class ModMenuIntegration implements ModMenuApi {
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Durability Safety Enabled"), TutorialMod.CONFIG.toolDurabilitySafetyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.toolDurabilitySafetyEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startBooleanToggle(Text.literal("Restore Original Item"), TutorialMod.CONFIG.autoToolSwitchBackEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackEnabled = newValue).build());
             toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Min Restore Delay"), TutorialMod.CONFIG.autoToolSwitchBackMinDelay, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackMinDelay = newValue).build());
-            toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Max Restore Delay"), TutorialMod.CONFIG.autoToolSwitchBackMaxDelay, 0, 100).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackMaxDelay = newValue).build());
+            toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Max Restore Delay"), TutorialMod.CONFIG.autoToolSwitchBackMaxDelay, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchBackMaxDelay = newValue).build());
             toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Min Mining Duration"), TutorialMod.CONFIG.autoToolSwitchMineMinDelay, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchMineMinDelay = newValue).build());
-            toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Max Mining Duration"), TutorialMod.CONFIG.autoToolSwitchMineMaxDelay, 0, 100).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchMineMaxDelay = newValue).build());
+            toolSwitch.addEntry(entryBuilder.startIntSlider(Text.literal("Max Mining Duration"), TutorialMod.CONFIG.autoToolSwitchMineMaxDelay, 0, 100).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoToolSwitchMineMaxDelay = newValue).build());
 
             SubCategoryBuilder miningResetSub = entryBuilder.startSubCategory(Text.literal("Mining Reset"));
-            miningResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.miningResetEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetEnabled = newValue).build());
-            miningResetSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.miningResetHotkey).setDefaultValue("key.keyboard.unknown").setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetHotkey = newValue).build());
+            miningResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.miningResetEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetEnabled = newValue).build());
+            miningResetSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.miningResetHotkey).setDefaultValue("key.keyboard.6").setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetHotkey = newValue).build());
             miningResetSub.add(entryBuilder.startIntSlider(Text.literal("Chance"), TutorialMod.CONFIG.miningResetChance, 0, 100).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetChance = newValue).build());
-            miningResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Simulate Mining Stops"), TutorialMod.CONFIG.miningResetSimulateStops).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetSimulateStops = newValue).build());
+            miningResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Simulate Mining Stops"), TutorialMod.CONFIG.miningResetSimulateStops).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetSimulateStops = newValue).build());
             miningResetSub.add(entryBuilder.startLongSlider(Text.literal("Early Release Threshold"), (long)(TutorialMod.CONFIG.miningResetThreshold * 100), 50, 99).setDefaultValue(92).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetThreshold = newValue / 100.0).build());
             miningResetSub.add(entryBuilder.startIntSlider(Text.literal("Mining Reset Delay"), TutorialMod.CONFIG.miningResetDelay, 0, 5).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.miningResetDelay = newValue).build());
             toolSwitch.addEntry(miningResetSub.build());
@@ -246,7 +246,7 @@ public class ModMenuIntegration implements ModMenuApi {
             // 1.6 Trigger Bot
             ConfigCategory triggerBot = builder.getOrCreateCategory(Text.literal("Trigger Bot"));
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Trigger Bot Enabled"), TutorialMod.CONFIG.triggerBotEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotEnabled = newValue).build());
-            triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Hold)"), TutorialMod.CONFIG.triggerBotHotkey).setDefaultValue("key.keyboard.k").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotHotkey = newValue).build());
+            triggerBot.addEntry(entryBuilder.startStrField(Text.literal("Hotkey (Hold)"), TutorialMod.CONFIG.triggerBotHotkey).setDefaultValue("key.keyboard.1").setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotHotkey = newValue).build());
 
             SubCategoryBuilder triggerBotFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             triggerBotFilters.add(entryBuilder.startBooleanToggle(Text.literal("Include Players"), TutorialMod.CONFIG.triggerBotIncludePlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotIncludePlayers = newValue).build());
@@ -268,23 +268,23 @@ public class ModMenuIntegration implements ModMenuApi {
             triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Min Reaction Delay"), TutorialMod.CONFIG.triggerBotReactionMinDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotReactionMinDelay = newValue).build());
             triggerBot.addEntry(entryBuilder.startIntSlider(Text.literal("Max Reaction Delay"), TutorialMod.CONFIG.triggerBotReactionMaxDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotReactionMaxDelay = newValue).build());
             triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Melee Weapons Only"), TutorialMod.CONFIG.triggerBotWeaponOnly).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.triggerBotWeaponOnly = newValue).build());
-            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit Only"), TutorialMod.CONFIG.attackOnCrit).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue).build());
+            triggerBot.addEntry(entryBuilder.startBooleanToggle(Text.literal("Attack on Crit Only"), TutorialMod.CONFIG.attackOnCrit).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.attackOnCrit = newValue).build());
 
             // 1.8 UHC/Cart
             ConfigCategory minecartTech = builder.getOrCreateCategory(Text.literal("UHC/Cart"));
 
             SubCategoryBuilder waterDrainSub = entryBuilder.startSubCategory(Text.literal("Bucket Drain"));
-            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Water Drain"), TutorialMod.CONFIG.waterDrainEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue).build());
+            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Water Drain"), TutorialMod.CONFIG.waterDrainEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainEnabled = newValue).build());
             waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Lava Drain"), TutorialMod.CONFIG.waterDrainLavaEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainLavaEnabled = newValue).build());
             waterDrainSub.add(entryBuilder.startLongSlider(Text.literal("Lava Drain Min Pitch"), (long)TutorialMod.CONFIG.lavaDrainMinPitch, 0, 90).setDefaultValue(40).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaDrainMinPitch = newValue.doubleValue()).build());
-            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Mode"), TutorialMod.CONFIG.autoWaterDrainMode).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoWaterDrainMode = newValue).build());
+            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Auto Mode"), TutorialMod.CONFIG.autoWaterDrainMode).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoWaterDrainMode = newValue).build());
             waterDrainSub.add(entryBuilder.startStrField(Text.literal("Auto Mode Hotkey"), TutorialMod.CONFIG.autoWaterDrainHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.autoWaterDrainHotkey = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Switch To Delay"), TutorialMod.CONFIG.waterDrainSwitchToDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchToDelay = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Switch Back Delay"), TutorialMod.CONFIG.waterDrainSwitchBackDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterDrainSwitchBackDelay = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Placed Water Immunity (Ticks)"), TutorialMod.CONFIG.bucketDrainPlaceDelay, 0, 40).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainPlaceDelay = newValue).build());
             waterDrainSub.add(entryBuilder.startIntSlider(Text.literal("Hotbar Restore Delay"), TutorialMod.CONFIG.bucketDrainRestoreDelay, 0, 20).setDefaultValue(2).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainRestoreDelay = newValue).build());
-            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Bucket Drain Fallback"), TutorialMod.CONFIG.bucketDrainFallbackEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainFallbackEnabled = newValue).build());
-            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Block Drain Fallback"), TutorialMod.CONFIG.blockDrainFallbackEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.blockDrainFallbackEnabled = newValue).build());
+            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Bucket Drain Fallback"), TutorialMod.CONFIG.bucketDrainFallbackEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bucketDrainFallbackEnabled = newValue).build());
+            waterDrainSub.add(entryBuilder.startBooleanToggle(Text.literal("Enable Block Drain Fallback"), TutorialMod.CONFIG.blockDrainFallbackEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.blockDrainFallbackEnabled = newValue).build());
             minecartTech.addEntry(waterDrainSub.build());
 
             SubCategoryBuilder counterLavaSub = entryBuilder.startSubCategory(Text.literal("Counter Lava Drain"));
@@ -304,7 +304,7 @@ public class ModMenuIntegration implements ModMenuApi {
             minecartTech.addEntry(selfWaterWebSub.build());
 
             SubCategoryBuilder antiLavaFlowSub = entryBuilder.startSubCategory(Text.literal("Anti Lava Flow"));
-            antiLavaFlowSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.antiLavaFlowEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowEnabled = newValue).build());
+            antiLavaFlowSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.antiLavaFlowEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowEnabled = newValue).build());
             antiLavaFlowSub.add(entryBuilder.startLongSlider(Text.literal("Enemy Range"), (long)(TutorialMod.CONFIG.antiLavaFlowEnemyRange * 10), 0, 200).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowEnemyRange = newValue / 10.0).build());
             antiLavaFlowSub.add(entryBuilder.startIntSlider(Text.literal("Pick Delay"), TutorialMod.CONFIG.antiLavaFlowPickDelay, 0, 20).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowPickDelay = newValue).build());
             antiLavaFlowSub.add(entryBuilder.startIntSlider(Text.literal("Hold Delay"), TutorialMod.CONFIG.antiLavaFlowHoldDelay, 0, 40).setDefaultValue(5).setSaveConsumer(newValue -> TutorialMod.CONFIG.antiLavaFlowHoldDelay = newValue).build());
@@ -314,16 +314,16 @@ public class ModMenuIntegration implements ModMenuApi {
 
             SubCategoryBuilder sequencesSub = entryBuilder.startSubCategory(Text.literal("Placement Sequences"));
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("TNT Minecart Placement"), TutorialMod.CONFIG.tntMinecartPlacementEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPlacementEnabled = newValue).build());
-            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Pickblock TNT Minecart After Place"), TutorialMod.CONFIG.tntMinecartPickblockAfterPlace).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPickblockAfterPlace = newValue).build());
+            sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Pickblock TNT Minecart After Place"), TutorialMod.CONFIG.tntMinecartPickblockAfterPlace).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.tntMinecartPickblockAfterPlace = newValue).build());
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Lava/Crossbow Sequence"), TutorialMod.CONFIG.lavaCrossbowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lavaCrossbowSequenceEnabled = newValue).build());
             sequencesSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Sequence"), TutorialMod.CONFIG.bowSequenceEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowSequenceEnabled = newValue).build());
-            sequencesSub.add(entryBuilder.startIntSlider(Text.literal("Bow Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());
+            sequencesSub.add(entryBuilder.startIntSlider(Text.literal("Bow Cooldown"), TutorialMod.CONFIG.bowCooldown, 0, 200).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowCooldown = newValue).build());
             minecartTech.addEntry(sequencesSub.build());
 
 
             SubCategoryBuilder extinguishSub = entryBuilder.startSubCategory(Text.literal("Auto Extinguish"));
-            extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue).build());
-            extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
+            extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue).build());
+            extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(81).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
             extinguishSub.add(entryBuilder.startIntSlider(Text.literal("Fire Ticks Threshold"), TutorialMod.CONFIG.autoExtinguishFireTicksThreshold, 0, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishFireTicksThreshold = newValue).build());
             minecartTech.addEntry(extinguishSub.build());
 
@@ -359,17 +359,17 @@ public class ModMenuIntegration implements ModMenuApi {
             // 2.2 Misc
             ConfigCategory misc = builder.getOrCreateCategory(Text.literal("Misc"));
             misc.addEntry(entryBuilder.startStrField(Text.literal("Open Settings Hotkey"), TutorialMod.CONFIG.openSettingsHotkey).setDefaultValue("key.keyboard.right.shift").setSaveConsumer(newValue -> TutorialMod.CONFIG.openSettingsHotkey = newValue).build());
-            misc.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey).setDefaultValue("key.keyboard.m").setSaveConsumer(newValue -> TutorialMod.CONFIG.masterToggleHotkey = newValue).build());
-            misc.addEntry(entryBuilder.startStrField(Text.literal("Teammate Toggle Hotkey"), TutorialMod.CONFIG.teammateHotkey).setDefaultValue("key.keyboard.g").setSaveConsumer(newValue -> TutorialMod.CONFIG.teammateHotkey = newValue).build());
-            misc.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintModeHotkey = newValue).build());
-            misc.addEntry(entryBuilder.startStrField(Text.literal("Sneak Mode Toggle Hotkey"), TutorialMod.CONFIG.sneakModeHotkey).setDefaultValue("key.keyboard.b").setSaveConsumer(newValue -> TutorialMod.CONFIG.sneakModeHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Master Toggle Hotkey"), TutorialMod.CONFIG.masterToggleHotkey).setDefaultValue("").setSaveConsumer(newValue -> TutorialMod.CONFIG.masterToggleHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Teammate Toggle Hotkey"), TutorialMod.CONFIG.teammateHotkey).setDefaultValue("key.keyboard.l").setSaveConsumer(newValue -> TutorialMod.CONFIG.teammateHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Sprint Mode Toggle Hotkey"), TutorialMod.CONFIG.sprintModeHotkey).setDefaultValue("").setSaveConsumer(newValue -> TutorialMod.CONFIG.sprintModeHotkey = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Sneak Mode Toggle Hotkey"), TutorialMod.CONFIG.sneakModeHotkey).setDefaultValue("key.keyboard.n").setSaveConsumer(newValue -> TutorialMod.CONFIG.sneakModeHotkey = newValue).build());
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Hotkeys Active in Inventory"), TutorialMod.CONFIG.activeInInventory).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.activeInInventory = newValue).build());
             misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Hold Hotbar Key for Combat"), TutorialMod.CONFIG.hotbarHoldCombat).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.hotbarHoldCombat = newValue).build());
 
-            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue).build());
-            misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(12).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());
-            misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey).setDefaultValue("key.keyboard.apostrophe").setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue).build());
-            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Creative Reach Match Survival"), TutorialMod.CONFIG.creativeReachMatchSurvival).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.creativeReachMatchSurvival = newValue).build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Click Spam Enabled"), TutorialMod.CONFIG.clickSpamEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamEnabled = newValue).build());
+            misc.addEntry(entryBuilder.startIntSlider(Text.literal("Click Spam Rate"), TutorialMod.CONFIG.clickSpamCps, 1, 20).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamCps = newValue).build());
+            misc.addEntry(entryBuilder.startStrField(Text.literal("Click Spam Modifier Hotkey"), TutorialMod.CONFIG.clickSpamModifierKey).setDefaultValue("key.keyboard.6").setSaveConsumer(newValue -> TutorialMod.CONFIG.clickSpamModifierKey = newValue).build());
+            misc.addEntry(entryBuilder.startBooleanToggle(Text.literal("Creative Reach Match Survival"), TutorialMod.CONFIG.creativeReachMatchSurvival).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.creativeReachMatchSurvival = newValue).build());
 
 
             // 2.3 O-ESP (Moved here, renamed)
@@ -383,7 +383,7 @@ public class ModMenuIntegration implements ModMenuApi {
             espGeneral.add(entryBuilder.startBooleanToggle(Text.literal("Hide in Menus"), TutorialMod.CONFIG.espHideInMenus).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHideInMenus = newValue).build());
             espGeneral.add(entryBuilder.startColorField(Text.literal("Trajectory Color"), TutorialMod.CONFIG.trajectoriesColor).setDefaultValue(0xFFFFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.trajectoriesColor = newValue).build());
             espGeneral.add(entryBuilder.startColorField(Text.literal("Trajectory Hit Color"), TutorialMod.CONFIG.trajectoriesHitColor).setDefaultValue(0xFF0000).setSaveConsumer(newValue -> TutorialMod.CONFIG.trajectoriesHitColor = newValue).build());
-            espGeneral.add(entryBuilder.startIntSlider(Text.literal("Refresh Rate"), TutorialMod.CONFIG.espRefreshRate, 1, 60).setTooltip(Text.literal("Units: FPS")).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRefreshRate = newValue).build());
+            espGeneral.add(entryBuilder.startIntSlider(Text.literal("Refresh Rate"), TutorialMod.CONFIG.espRefreshRate, 1, 60).setTooltip(Text.literal("Units: FPS")).setDefaultValue(60).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRefreshRate = newValue).build());
             espGeneral.add(entryBuilder.startStrField(Text.literal("Toggle Hotkey"), TutorialMod.CONFIG.toggleESPHotkey).setDefaultValue("key.keyboard.y").setSaveConsumer(newValue -> TutorialMod.CONFIG.toggleESPHotkey = newValue).build());
             espOverlay.addEntry(espGeneral.build());
 
@@ -391,16 +391,16 @@ public class ModMenuIntegration implements ModMenuApi {
             SubCategoryBuilder espFilters = entryBuilder.startSubCategory(Text.literal("Filters"));
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Players"), TutorialMod.CONFIG.espPlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espPlayers = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Villagers"), TutorialMod.CONFIG.espVillagers).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espVillagers = newValue).build());
-            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Hostile Mobs"), TutorialMod.CONFIG.espHostiles).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHostiles = newValue).build());
+            espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Hostile Mobs"), TutorialMod.CONFIG.espHostiles).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espHostiles = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Passive Mobs"), TutorialMod.CONFIG.espPassives).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espPassives = newValue).build());
             espFilters.add(entryBuilder.startBooleanToggle(Text.literal("Show Tamed Mobs"), TutorialMod.CONFIG.espTamed).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.espTamed = newValue).build());
             espFilters.add(entryBuilder.startLongSlider(Text.literal("Min Range (Blocks)"), (long)(TutorialMod.CONFIG.espMinRange), 0, maxBlocks).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMinRange = newValue.doubleValue()).build());
-            espFilters.add(entryBuilder.startLongSlider(Text.literal("Max Range (Blocks)"), (long)(TutorialMod.CONFIG.espMaxRange), 0, maxBlocks).setDefaultValue(maxBlocks).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMaxRange = newValue.doubleValue()).build());
+            espFilters.add(entryBuilder.startLongSlider(Text.literal("Max Range (Blocks)"), (long)(TutorialMod.CONFIG.espMaxRange), 0, maxBlocks).setDefaultValue(64).setSaveConsumer(newValue -> TutorialMod.CONFIG.espMaxRange = newValue.doubleValue()).build());
             espOverlay.addEntry(espFilters.build());
 
             SubCategoryBuilder xraySub = entryBuilder.startSubCategory(Text.literal("X-Ray"));
             xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.xrayEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayEnabled = newValue).build());
-            xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Frustum Culling"), TutorialMod.CONFIG.xrayFrustumCulling).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayFrustumCulling = newValue).build());
+            xraySub.add(entryBuilder.startBooleanToggle(Text.literal("Frustum Culling"), TutorialMod.CONFIG.xrayFrustumCulling).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayFrustumCulling = newValue).build());
             xraySub.add(entryBuilder.startStrList(Text.literal("Target Blocks"), TutorialMod.CONFIG.xrayBlocks).setDefaultValue(Arrays.asList("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore")).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayBlocks = newValue).build());
             xraySub.add(entryBuilder.startColorField(Text.literal("X-Ray Color"), TutorialMod.CONFIG.xrayColor).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayColor = newValue).build());
             xraySub.add(entryBuilder.startIntSlider(Text.literal("Scan Range (Blocks)"), TutorialMod.CONFIG.xrayRange, 8, 64).setDefaultValue(32).setSaveConsumer(newValue -> TutorialMod.CONFIG.xrayRange = newValue).build());
@@ -480,7 +480,7 @@ public class ModMenuIntegration implements ModMenuApi {
             }).build());
             espVisuals.add(espHealthSub.build());
 
-            espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Width Factor"), (long)(TutorialMod.CONFIG.espBoxWidthFactor * 100), 5, 100).setTooltip(Text.literal("Adjusts how 'fat' the boxes are. Default is 45.")).setDefaultValue(45).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxWidthFactor = newValue / 100.0).build());
+            espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Width Factor"), (long)(TutorialMod.CONFIG.espBoxWidthFactor * 100), 5, 100).setTooltip(Text.literal("Adjusts how 'fat' the boxes are. Default is 45.")).setDefaultValue(22).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxWidthFactor = newValue / 100.0).build());
             espVisuals.add(entryBuilder.startLongSlider(Text.literal("Box Scale"), (long)(TutorialMod.CONFIG.espBoxScale * 100), 10, 300).setTooltip(Text.literal("Units: %")).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxScale = newValue / 100.0).build());
             espVisuals.add(entryBuilder.startColorField(Text.literal("Teammate Color"), TutorialMod.CONFIG.espColorTeammate).setDefaultValue(0x00FF00).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorTeammate = newValue).build());
             espVisuals.add(entryBuilder.startColorField(Text.literal("Enemy Color"), TutorialMod.CONFIG.espColorEnemy).setDefaultValue(0xFF0000).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorEnemy = newValue).build());
@@ -511,25 +511,25 @@ public class ModMenuIntegration implements ModMenuApi {
             espExtra.add(entryBuilder.startBooleanToggle(Text.literal("Show Armor Bars"), TutorialMod.CONFIG.espShowArmor).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowArmor = newValue).build());
 
             SubCategoryBuilder armorColorSub = entryBuilder.startSubCategory(Text.literal("Armor Bar Colors"));
-            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Full)"), TutorialMod.CONFIG.espArmorBarColorFull).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> {
+            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Full)"), TutorialMod.CONFIG.espArmorBarColorFull).setDefaultValue(65535).setSaveConsumer(newValue -> {
                 TutorialMod.CONFIG.espArmorBarColorFull = newValue;
                 if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
                     TutorialModClient.getInstance().getESPModule().syncWindowBounds();
                 }
             }).build());
-            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Medium)"), TutorialMod.CONFIG.espArmorBarColorMedium).setDefaultValue(0x55FFFF).setSaveConsumer(newValue -> {
+            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Medium)"), TutorialMod.CONFIG.espArmorBarColorMedium).setDefaultValue(5636095).setSaveConsumer(newValue -> {
                 TutorialMod.CONFIG.espArmorBarColorMedium = newValue;
                 if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
                     TutorialModClient.getInstance().getESPModule().syncWindowBounds();
                 }
             }).build());
-            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Low)"), TutorialMod.CONFIG.espArmorBarColorLow).setDefaultValue(0x00AAAA).setSaveConsumer(newValue -> {
+            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Low)"), TutorialMod.CONFIG.espArmorBarColorLow).setDefaultValue(43690).setSaveConsumer(newValue -> {
                 TutorialMod.CONFIG.espArmorBarColorLow = newValue;
                 if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
                     TutorialModClient.getInstance().getESPModule().syncWindowBounds();
                 }
             }).build());
-            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Empty)"), TutorialMod.CONFIG.espArmorBarColorEmpty).setDefaultValue(0x000000).setSaveConsumer(newValue -> {
+            armorColorSub.add(entryBuilder.startColorField(Text.literal("Color (Empty)"), TutorialMod.CONFIG.espArmorBarColorEmpty).setDefaultValue(0).setSaveConsumer(newValue -> {
                 TutorialMod.CONFIG.espArmorBarColorEmpty = newValue;
                 if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getESPModule() != null) {
                     TutorialModClient.getInstance().getESPModule().syncWindowBounds();
@@ -540,8 +540,8 @@ public class ModMenuIntegration implements ModMenuApi {
             espExtra.add(entryBuilder.startBooleanToggle(Text.literal("Show Status Effects"), TutorialMod.CONFIG.espShowStatusEffects).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowStatusEffects = newValue).build());
 
             espExtra.add(entryBuilder.startBooleanToggle(Text.literal("Relative Health Color"), TutorialMod.CONFIG.espRelativeHealthColor).setTooltip(Text.literal("Colors the health bar based on your health vs target.")).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espRelativeHealthColor = newValue).build());
-            espExtra.add(entryBuilder.startColorField(Text.literal("Color (More Health)"), TutorialMod.CONFIG.espColorHealthMore).setDefaultValue(0x00FFFF).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHealthMore = newValue).build());
-            espExtra.add(entryBuilder.startColorField(Text.literal("Color (Less Health)"), TutorialMod.CONFIG.espColorHealthLess).setDefaultValue(0xFFA500).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHealthLess = newValue).build());
+            espExtra.add(entryBuilder.startColorField(Text.literal("Color (More Health)"), TutorialMod.CONFIG.espColorHealthMore).setDefaultValue(65535).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHealthMore = newValue).build());
+            espExtra.add(entryBuilder.startColorField(Text.literal("Color (Less Health)"), TutorialMod.CONFIG.espColorHealthLess).setDefaultValue(16753920).setSaveConsumer(newValue -> TutorialMod.CONFIG.espColorHealthLess = newValue).build());
             espOverlay.addEntry(espExtra.build());
             espOverlay.addEntry(espCalibration.build());
 

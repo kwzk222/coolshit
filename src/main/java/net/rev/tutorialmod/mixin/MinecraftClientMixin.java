@@ -36,11 +36,18 @@ public abstract class MinecraftClientMixin {
     private void onHandleInputEvents(CallbackInfo ci) {
         if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.hotbarHoldCombat) return;
         TutorialModClient instance = TutorialModClient.getInstance();
-        if (instance != null && instance.isAnyHotbarMeleeKeyHeld()) {
-            // Block normal slot switching while holding hotbar keys if combat hold is enabled
+        if (instance != null && player != null) {
+            long now = System.currentTimeMillis();
             for (int i = 0; i < 9; i++) {
-                while (((MinecraftClient)(Object)this).options.hotbarKeys[i].wasPressed()) {
-                    // Consume the events
+                // If the key is held longer than 200ms, it's a combat activation.
+                // We consume the 'wasPressed' state so the vanilla code doesn't switch slots AGAIN.
+                if (instance.getHotbarKeyHoldStartTime(i) != 0 && (now - instance.getHotbarKeyHoldStartTime(i) > 200)) {
+                    ItemStack stack = player.getInventory().getStack(i);
+                    if (instance.isMeleeWeapon(stack)) {
+                        while (((MinecraftClient)(Object)this).options.hotbarKeys[i].wasPressed()) {
+                            // Consume the events
+                        }
+                    }
                 }
             }
         }
