@@ -458,7 +458,7 @@ public class ESPModule {
                     extraData = sb.toString();
                 }
 
-                projectAndAppend(boxesData, box, combinedMatrix, label, color, distLabel, true, health, extraData, cameraPos);
+                projectAndAppend(boxesData, box, combinedMatrix, label, color, distLabel, true, health, extraData, cameraPos, false);
             }
         }
 
@@ -467,7 +467,8 @@ public class ESPModule {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
                                   entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
                 box = box.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos);
+                render3DBoxLines(box, combinedMatrix, TutorialMod.CONFIG.espColorEnemy);
+                projectAndAppend(boxesData, box, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos, false);
             }
         }
 
@@ -480,9 +481,10 @@ public class ESPModule {
                 Box box = worldBox.offset(cameraPos.negate());
 
                 if (TutorialMod.CONFIG.xrayTextureMode) {
-                    projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
+                    projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos, true);
                 } else {
                     render3DBoxLines(box, combinedMatrix, color);
+                    projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "", cameraPos, false);
                 }
             }
         }
@@ -498,19 +500,21 @@ public class ESPModule {
         Vector4f[] corners = new Vector4f[]{
                 new Vector4f((float)box.minX, (float)box.minY, (float)box.minZ, 1.0f),
                 new Vector4f((float)box.maxX, (float)box.minY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.minY, (float)box.maxZ, 1.0f),
+                new Vector4f((float)box.minX, (float)box.minY, (float)box.maxZ, 1.0f),
                 new Vector4f((float)box.minX, (float)box.maxY, (float)box.minZ, 1.0f),
                 new Vector4f((float)box.maxX, (float)box.maxY, (float)box.minZ, 1.0f),
-                new Vector4f((float)box.minX, (float)box.minY, (float)box.maxZ, 1.0f),
-                new Vector4f((float)box.maxX, (float)box.minY, (float)box.maxZ, 1.0f),
-                new Vector4f((float)box.minX, (float)box.maxY, (float)box.maxZ, 1.0f),
-                new Vector4f((float)box.maxX, (float)box.maxY, (float)box.maxZ, 1.0f)
+                new Vector4f((float)box.maxX, (float)box.maxY, (float)box.maxZ, 1.0f),
+                new Vector4f((float)box.minX, (float)box.maxY, (float)box.maxZ, 1.0f)
         };
 
-        int[][] edges = {{0,1}, {2,3}, {4,5}, {6,7}, {0,2}, {1,3}, {4,6}, {5,7}, {0,4}, {1,5}, {2,6}, {3,7}};
+        // Path covering all 12 edges with 16 points (back-tracing as needed)
+        int[] pathIdx = {0, 1, 2, 3, 0, 4, 5, 1, 5, 6, 2, 6, 7, 3, 7, 4};
 
-        for (int[] edge : edges) {
-            Vector4f v1 = new Vector4f(corners[edge[0]]);
-            Vector4f v2 = new Vector4f(corners[edge[1]]);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < pathIdx.length - 1; i++) {
+            Vector4f v1 = new Vector4f(corners[pathIdx[i]]);
+            Vector4f v2 = new Vector4f(corners[pathIdx[i+1]]);
 
             combinedMatrix.transform(v1);
             combinedMatrix.transform(v2);
@@ -528,13 +532,17 @@ public class ESPModule {
                 float x2 = ((v2.x / v2.w) * fovScale * aspectScale + 1.0f) * 0.5f;
                 float y2 = (1.0f - (v2.y / v2.w) * fovScale) * 0.5f;
 
-                String line = String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f", x1, y1, x2, y2);
-                TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "TRAJECTORY %s|%d", line, color));
+                if (sb.length() > 0) sb.append(",");
+                sb.append(String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f", x1, y1, x2, y2));
             }
+        }
+
+        if (sb.length() > 0) {
+            TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "TRAJECTORY %s|%d", sb.toString(), color));
         }
     }
 
-    private void projectAndAppend(StringBuilder data, Box box, Matrix4f combinedMatrix, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
+    private void projectAndAppend(StringBuilder data, Box box, Matrix4f combinedMatrix, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos, boolean draw2DBox) {
         Vector4f[] corners = new Vector4f[]{
                 new Vector4f((float)box.minX, (float)box.minY, (float)box.minZ, 1.0f),
                 new Vector4f((float)box.maxX, (float)box.minY, (float)box.minZ, 1.0f),
@@ -593,7 +601,13 @@ public class ESPModule {
         float boxX;
         float boxY;
 
-        if (useWidthFactor) {
+        if (!draw2DBox) {
+            // Floating label mode: set box size to zero at top-middle of projected box
+            boxWidth = 0.0001f;
+            boxHeight = 0.0001f;
+            boxX = (minX + maxX) / 2f;
+            boxY = minY - 0.02f; // Slight offset above the 3D hitbox
+        } else if (useWidthFactor) {
             boxWidth = boxHeight * (float)TutorialMod.CONFIG.espBoxWidthFactor;
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
             boxY = minY;
