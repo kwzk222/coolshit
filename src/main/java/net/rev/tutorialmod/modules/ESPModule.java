@@ -105,9 +105,10 @@ public class ESPModule {
                 .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            // In 1.21.1, modelViewMatrix is already rotation-only or camera-relative.
-            // We combine it with projectionMatrix to get the full world-to-screen matrix.
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
+            // Stability: use a rotation-only view matrix with camera-relative positions.
+            // This prevents misalignment when the camera position itself moves within a tick.
+            Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
         }
 
         frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
@@ -419,6 +420,8 @@ public class ESPModule {
                     }
                 }
 
+                render3DBoxLines(box, combinedMatrix, color);
+
                 String extraData = "";
                 if (entity instanceof PlayerEntity player) {
                     StringBuilder sb = new StringBuilder();
@@ -475,11 +478,60 @@ public class ESPModule {
                 if (TutorialMod.CONFIG.xrayFrustumCulling && !frustum.isVisible(worldBox)) continue;
 
                 Box box = worldBox.offset(cameraPos.negate());
-                projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
+
+                if (TutorialMod.CONFIG.xrayTextureMode) {
+                    projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos);
+                } else {
+                    render3DBoxLines(box, combinedMatrix, color);
+                }
             }
         }
 
         net.rev.tutorialmod.TutorialModClient.getESPOverlayManager().updateBoxes(boxesData.toString());
+    }
+
+    private void render3DBoxLines(Box box, Matrix4f combinedMatrix, int color) {
+        float fovScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espFovScale : 1.0f;
+        float aspectScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espAspectRatioScale : 1.0f;
+        float epsilon = 0.01f;
+
+        Vector4f[] corners = new Vector4f[]{
+                new Vector4f((float)box.minX, (float)box.minY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.minY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.minX, (float)box.maxY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.maxY, (float)box.minZ, 1.0f),
+                new Vector4f((float)box.minX, (float)box.minY, (float)box.maxZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.minY, (float)box.maxZ, 1.0f),
+                new Vector4f((float)box.minX, (float)box.maxY, (float)box.maxZ, 1.0f),
+                new Vector4f((float)box.maxX, (float)box.maxY, (float)box.maxZ, 1.0f)
+        };
+
+        int[][] edges = {{0,1}, {2,3}, {4,5}, {6,7}, {0,2}, {1,3}, {4,6}, {5,7}, {0,4}, {1,5}, {2,6}, {3,7}};
+
+        for (int[] edge : edges) {
+            Vector4f v1 = new Vector4f(corners[edge[0]]);
+            Vector4f v2 = new Vector4f(corners[edge[1]]);
+
+            combinedMatrix.transform(v1);
+            combinedMatrix.transform(v2);
+
+            if (v1.w > epsilon || v2.w > epsilon) {
+                if (v1.w <= epsilon || v2.w <= epsilon) {
+                    float t = (epsilon - v1.w) / (v2.w - v1.w);
+                    Vector4f intersect = new Vector4f(v1).lerp(v2, t);
+                    if (v1.w <= epsilon) v1 = intersect;
+                    else v2 = intersect;
+                }
+
+                float x1 = ((v1.x / v1.w) * fovScale * aspectScale + 1.0f) * 0.5f;
+                float y1 = (1.0f - (v1.y / v1.w) * fovScale) * 0.5f;
+                float x2 = ((v2.x / v2.w) * fovScale * aspectScale + 1.0f) * 0.5f;
+                float y2 = (1.0f - (v2.y / v2.w) * fovScale) * 0.5f;
+
+                String line = String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f", x1, y1, x2, y2);
+                TutorialModClient.getESPOverlayManager().sendCommand(String.format(Locale.ROOT, "TRAJECTORY %s|%d", line, color));
+            }
+        }
     }
 
     private void projectAndAppend(StringBuilder data, Box box, Matrix4f combinedMatrix, String label, int color, String distLabel, boolean useWidthFactor, float health, String extraInfo, Vec3d cameraPos) {
