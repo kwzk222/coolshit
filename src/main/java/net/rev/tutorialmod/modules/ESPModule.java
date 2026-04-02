@@ -93,20 +93,7 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Identify matrices based on properties
-        Matrix4f proj = projectionMatrix;
-        Matrix4f view = modelViewMatrix;
-
-        // View matrix usually has m33 = 1.0, Projection has m33 = 0.0 (perspective)
-        if (Math.abs(proj.m33() - 1.0f) < 0.1f) {
-            proj = modelViewMatrix;
-            view = projectionMatrix;
-        }
-
-        // Stability: Extract EXACT camera position from the view matrix
-        // This prevents drift between worldPos subtraction and matrix rotation.
-        Matrix4f invView = new Matrix4f(view).invert();
-        Vec3d cameraPos = new Vec3d(invView.m30(), invView.m31(), invView.m32());
+        Vec3d cameraPos = camera.getCameraPos();
 
         Matrix4f combinedMatrix;
         if (TutorialMod.CONFIG.espManualProjection) {
@@ -118,13 +105,13 @@ public class ESPModule {
                 .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            // Use rotation-only view matrix with camera-relative coordinates
-            Matrix4f rotationOnlyView = new Matrix4f(view).setTranslation(0, 0, 0);
-            combinedMatrix = new Matrix4f(proj).mul(rotationOnlyView);
+            // In 1.21.1, modelViewMatrix is already rotation-only or camera-relative.
+            // We combine it with projectionMatrix to get the full world-to-screen matrix.
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
         }
 
         frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
-        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(view, proj);
+        ((net.rev.tutorialmod.mixin.FrustumAccessor) frustum).invokeInit(modelViewMatrix, projectionMatrix);
 
         TutorialModClient.getESPOverlayManager().sendCommand("CLEAR_TRAJECTORIES");
         if (TutorialModClient.getInstance() != null && TutorialModClient.getInstance().getTrajectoriesModule() != null) {
@@ -369,7 +356,7 @@ public class ESPModule {
         for (Entity entity : client.world.getEntities()) {
             if (entity == client.player || !entity.isAlive()) continue;
 
-            // Proper interpolated world coordinates using prev and current tick positions
+            // Correct interpolation using lastRender and current positions
             double ex = MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
             double ey = MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
             double ez = MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
@@ -414,12 +401,12 @@ public class ESPModule {
             }
 
             if (color != -1) {
-                // Absolute interpolated bounding box
+                // World-space interpolated bounding box
                 Box box = entity.getBoundingBox().offset(ex - entity.getX(), ey - entity.getY(), ez - entity.getZ());
 
                 if (TutorialMod.CONFIG.espFrustumCulling && !frustum.isVisible(box)) continue;
 
-                // Offset to camera-relative space before projecting
+                // Shift to camera-relative space
                 box = box.offset(cameraPos.negate());
 
                 if (entity instanceof PlayerEntity player && TutorialMod.CONFIG.espRelativeHealthColor && client.player != null) {
@@ -507,32 +494,6 @@ public class ESPModule {
                 new Vector4f((float)box.maxX, (float)box.maxY, (float)box.maxZ, 1.0f)
         };
 
-        for (Vector4f corner : corners) {
-            combinedMatrix.transform(corner);
-        }
-
-        List<Vector4f> points = new ArrayList<>();
-        float epsilon = 0.01f;
-
-        for (Vector4f corner : corners) {
-            if (corner.w > epsilon) points.add(corner);
-        }
-
-        int[][] edges = {{0,1}, {2,3}, {4,5}, {6,7}, {0,2}, {1,3}, {4,6}, {5,7}, {0,4}, {1,5}, {2,6}, {3,7}};
-        for (int[] edge : edges) {
-            Vector4f v1 = corners[edge[0]];
-            Vector4f v2 = corners[edge[1]];
-
-            if ((v1.w > epsilon) != (v2.w > epsilon)) {
-                float t = (epsilon - v1.w) / (v2.w - v1.w);
-                Vector4f intersect = new Vector4f(v1).lerp(v2, t);
-                intersect.w = epsilon;
-                points.add(intersect);
-            }
-        }
-
-        if (points.isEmpty()) return;
-
         float minX = Float.POSITIVE_INFINITY;
         float maxX = Float.NEGATIVE_INFINITY;
         float minY = Float.POSITIVE_INFINITY;
@@ -540,6 +501,31 @@ public class ESPModule {
 
         float fovScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espFovScale : 1.0f;
         float aspectScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espAspectRatioScale : 1.0f;
+
+        List<Vector4f> points = new ArrayList<>();
+        float epsilon = 0.01f;
+
+        // Clip edges against the near plane
+        int[][] edges = {{0,1}, {2,3}, {4,5}, {6,7}, {0,2}, {1,3}, {4,6}, {5,7}, {0,4}, {1,5}, {2,6}, {3,7}};
+        for (int[] edge : edges) {
+            Vector4f v1 = new Vector4f(corners[edge[0]]);
+            Vector4f v2 = new Vector4f(corners[edge[1]]);
+
+            combinedMatrix.transform(v1);
+            combinedMatrix.transform(v2);
+
+            if (v1.w > epsilon && v2.w > epsilon) {
+                points.add(v1);
+                points.add(v2);
+            } else if (v1.w > epsilon || v2.w > epsilon) {
+                float t = (epsilon - v1.w) / (v2.w - v1.w);
+                Vector4f intersect = new Vector4f(v1).lerp(v2, t);
+                points.add(v1.w > epsilon ? v1 : v2);
+                points.add(intersect);
+            }
+        }
+
+        if (points.isEmpty()) return;
 
         for (Vector4f p : points) {
             float x = ((p.x / p.w) * fovScale * aspectScale + 1.0f) * 0.5f;
@@ -560,17 +546,20 @@ public class ESPModule {
             boxX = (minX + maxX) / 2f - boxWidth / 2f;
             boxY = minY;
         } else if (!extraInfo.isEmpty() && extraInfo.startsWith("TX_")) {
-            String texture = extraInfo.substring(3);
             float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
 
+            // Texture stability: use center point distance to adjust scale
             double cx = (box.minX + box.maxX) / 2.0;
             double cy = (box.minY + box.maxY) / 2.0;
             double cz = (box.minZ + box.maxZ) / 2.0;
+            Vector4f center = new Vector4f((float)cx, (float)cy, (float)cz, 1.0f);
+            combinedMatrix.transform(center);
+
             float euclideanDist = (float)Math.sqrt(cx * cx + cy * cy + cz * cz);
-            float planeDist = Math.max(0.1f, points.get(0).w);
+            float planeDist = Math.max(0.1f, center.w);
             float stabilityFactor = planeDist / euclideanDist;
 
-            float sizeH = Math.abs(maxY - minY) * stabilityFactor * (float)TutorialMod.CONFIG.xrayTextureScale;
+            float sizeH = (maxY - minY) * stabilityFactor * (float)TutorialMod.CONFIG.xrayTextureScale;
             float sizeW = sizeH / aspect;
 
             boxWidth = sizeW;
@@ -579,8 +568,8 @@ public class ESPModule {
             boxY = (minY + maxY) / 2f - sizeH / 2f;
         } else {
             boxWidth = (maxX - minX) * (float)TutorialMod.CONFIG.espBoxScale;
-            boxX = (minX + maxX) / 2f - boxWidth / 2f;
-            boxY = (minY + maxY) / 2f - boxHeight / 2f;
+            boxX = minX + (maxX - minX) * 0.5f - boxWidth * 0.5f;
+            boxY = minY + (maxY - minY) * 0.5f - boxHeight * 0.5f;
         }
 
         if (data.length() > 0) data.append(";");
