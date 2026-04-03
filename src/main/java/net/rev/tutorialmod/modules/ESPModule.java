@@ -93,22 +93,29 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Absolute stability: use camera.getCameraPos() for translation and reconstructed rotation.
-        // This ensures the projection is perfectly synchronized with the camera's orientation.
-        Vec3d cameraPos = camera.getCameraPos();
+        // Absolute stability: extract camera translation from the game's modelViewMatrix
+        Matrix4f invView = new Matrix4f(modelViewMatrix).invert();
+        Vec3d cameraPos = new Vec3d(invView.m30(), invView.m31(), invView.m32());
 
-        Matrix4f stableRotationMatrix = new Matrix4f()
-                .rotateX((float)Math.toRadians(camera.getPitch()))
-                .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
+        // Fallback for rotation-only or identity matrices
+        if (cameraPos.lengthSquared() < 0.0001) {
+            cameraPos = camera.getCameraPos();
+        }
+
+        // Use rotation-only matrix for camera-relative projection
+        Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
 
         Matrix4f combinedMatrix;
         if (TutorialMod.CONFIG.espManualProjection) {
             float fov = (float) TutorialMod.CONFIG.espManualFov;
             float aspect = (float) client.getWindow().getWidth() / (float) client.getWindow().getHeight();
             Matrix4f manualProj = new Matrix4f().perspective((float)Math.toRadians(fov), aspect, 0.05f, 1000f);
-            combinedMatrix = manualProj.mul(stableRotationMatrix);
+            Matrix4f manualView = new Matrix4f()
+                .rotateX((float)Math.toRadians(camera.getPitch()))
+                .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
+            combinedMatrix = manualProj.mul(manualView);
         } else {
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(stableRotationMatrix);
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
         }
 
         frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
@@ -495,7 +502,7 @@ public class ESPModule {
     private void render3DBoxLines(Box box, Matrix4f combinedMatrix, int color) {
         float fovScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espFovScale : 1.0f;
         float aspectScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espAspectRatioScale : 1.0f;
-        float epsilon = 0.01f;
+        float epsilon = 0.05f;
 
         Vector4f[] corners = new Vector4f[]{
                 new Vector4f((float)box.minX, (float)box.minY, (float)box.minZ, 1.0f),
@@ -508,7 +515,6 @@ public class ESPModule {
                 new Vector4f((float)box.minX, (float)box.maxY, (float)box.maxZ, 1.0f)
         };
 
-        // Path covering all 12 edges with 16 points (back-tracing as needed)
         int[] pathIdx = {0, 1, 2, 3, 0, 4, 5, 1, 5, 6, 2, 6, 7, 3, 7, 4};
 
         StringBuilder sb = new StringBuilder();
@@ -563,8 +569,16 @@ public class ESPModule {
         float aspectScale = TutorialMod.CONFIG.espManualProjection ? (float)TutorialMod.CONFIG.espAspectRatioScale : 1.0f;
 
         List<Vector4f> points = new ArrayList<>();
-        float epsilon = 0.01f;
+        float epsilon = 0.05f;
 
+        // Add transformed corners
+        for (Vector4f c : corners) {
+            Vector4f p = new Vector4f(c);
+            combinedMatrix.transform(p);
+            if (p.w > epsilon) points.add(p);
+        }
+
+        // Add edge intersections
         int[][] edges = {{0,1}, {2,3}, {4,5}, {6,7}, {0,2}, {1,3}, {4,6}, {5,7}, {0,4}, {1,5}, {2,6}, {3,7}};
         for (int[] edge : edges) {
             Vector4f v1 = new Vector4f(corners[edge[0]]);
@@ -572,20 +586,11 @@ public class ESPModule {
             combinedMatrix.transform(v1);
             combinedMatrix.transform(v2);
 
-            if (v1.w > epsilon && v2.w > epsilon) {
-                points.add(v1); points.add(v2);
-            } else if (v1.w > epsilon || v2.w > epsilon) {
+            if ((v1.w > epsilon) != (v2.w > epsilon)) {
                 float t = (epsilon - v1.w) / (v2.w - v1.w);
                 Vector4f intersect = new Vector4f(v1).lerp(v2, t);
-                points.add(v1.w > epsilon ? v1 : v2);
                 points.add(intersect);
             }
-        }
-
-        for (Vector4f c : corners) {
-            Vector4f p = new Vector4f(c);
-            combinedMatrix.transform(p);
-            if (p.w > epsilon) points.add(p);
         }
 
         if (points.isEmpty()) return;
@@ -603,12 +608,15 @@ public class ESPModule {
         float boxY;
 
         if (!draw2DBox) {
-            // "Ghost" box: make it a very thin horizontal line at the top for labels and health bars
+            // Restore dimensions for labels/health bars but make the box invisible (alpha 0x01)
             boxWidth = (maxX - minX) * (float)TutorialMod.CONFIG.espBoxScale;
-            boxHeight = 0.0001f;
+            boxHeight = (maxY - minY) * (float)TutorialMod.CONFIG.espBoxScale;
             boxX = minX + (maxX - minX) * 0.5f - boxWidth * 0.5f;
-            boxY = minY;
-            // Use 0x01 as alpha so it's practically invisible but not skipped by color filters
+            boxY = minY + (maxY - minY) * 0.5f - boxHeight * 0.5f;
+
+            // Padding above the 3D box
+            boxY -= 0.01f;
+
             color = (color & 0x00FFFFFF) | 0x01000000;
         } else if (useWidthFactor) {
             boxWidth = boxHeight * (float)TutorialMod.CONFIG.espBoxWidthFactor;
