@@ -376,28 +376,32 @@ public class ESPOverlayApp {
 
                     Color c = new Color(box.color | 0xFF000000, true);
 
-                    if (!box.texture.isEmpty() && box.texture.startsWith("TX_")) {
-                        String textureName = box.texture.substring(3);
-                        BufferedImage img = getTexture(textureName);
-                        if (img != null) {
-                            Composite old = g2d.getComposite();
-                            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
-                            g2d.drawImage(img, bx, by, bw, bh, null);
-                            g2d.setComposite(old);
+                    boolean isInvisibleBox = (box.color >>> 24) == 0x01;
+
+                    if (!isInvisibleBox) {
+                        if (!box.texture.isEmpty() && box.texture.startsWith("TX_")) {
+                            String textureName = box.texture.substring(3);
+                            BufferedImage img = getTexture(textureName);
+                            if (img != null) {
+                                Composite old = g2d.getComposite();
+                                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, textureOpacity));
+                                g2d.drawImage(img, bx, by, bw, bh, null);
+                                g2d.setComposite(old);
+                            } else {
+                                // Fallback to outline if texture missing
+                                g2d.setStroke(new BasicStroke(2.0f));
+                                g2d.setColor(Color.BLACK);
+                                g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
+                                g2d.setColor(c);
+                                g2d.drawRect(bx, by, bw, bh);
+                            }
                         } else {
-                            // Fallback to outline if texture missing
                             g2d.setStroke(new BasicStroke(2.0f));
                             g2d.setColor(Color.BLACK);
                             g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
                             g2d.setColor(c);
                             g2d.drawRect(bx, by, bw, bh);
                         }
-                    } else {
-                        g2d.setStroke(new BasicStroke(2.0f));
-                        g2d.setColor(Color.BLACK);
-                        g2d.drawRect(bx - 1, by - 1, bw + 2, bh + 2);
-                        g2d.setColor(c);
-                        g2d.drawRect(bx, by, bw, bh);
                     }
 
                     // Health Bar

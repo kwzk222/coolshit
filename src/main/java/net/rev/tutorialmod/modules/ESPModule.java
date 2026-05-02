@@ -93,17 +93,7 @@ public class ESPModule {
 
         vanishedPlayers.entrySet().removeIf(entry -> now - entry.getValue().lastUpdate > 5000);
 
-        // Absolute stability: extract camera translation from the game's modelViewMatrix
-        Matrix4f invView = new Matrix4f(modelViewMatrix).invert();
-        Vec3d cameraPos = new Vec3d(invView.m30(), invView.m31(), invView.m32());
-
-        // Fallback for rotation-only or identity matrices
-        if (cameraPos.lengthSquared() < 0.0001) {
-            cameraPos = camera.getCameraPos();
-        }
-
-        // Use rotation-only matrix for camera-relative projection
-        Matrix4f rotationOnlyView = new Matrix4f(modelViewMatrix).setTranslation(0, 0, 0);
+        Vec3d cameraPos = camera.getCameraPos();
 
         Matrix4f combinedMatrix;
         if (TutorialMod.CONFIG.espManualProjection) {
@@ -115,7 +105,7 @@ public class ESPModule {
                 .rotateY((float)Math.toRadians(camera.getYaw() + 180.0f));
             combinedMatrix = manualProj.mul(manualView);
         } else {
-            combinedMatrix = new Matrix4f(projectionMatrix).mul(rotationOnlyView);
+            combinedMatrix = new Matrix4f(projectionMatrix).mul(modelViewMatrix);
         }
 
         frustum.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
@@ -427,7 +417,11 @@ public class ESPModule {
                     }
                 }
 
-                render3DBoxLines(box, combinedMatrix, color);
+                boolean is2D = "2D".equals(TutorialMod.CONFIG.espBoxMode);
+
+                if (!is2D) {
+                    render3DBoxLines(box, combinedMatrix, color);
+                }
 
                 String extraData = "";
                 if (entity instanceof PlayerEntity player) {
@@ -465,17 +459,21 @@ public class ESPModule {
                     extraData = sb.toString();
                 }
 
-                projectAndAppend(boxesData, box, combinedMatrix, label, color, distLabel, true, health, extraData, cameraPos, false);
+                projectAndAppend(boxesData, box, combinedMatrix, label, color, distLabel, true, health, extraData, cameraPos, is2D);
             }
         }
+
+        boolean is2D = "2D".equals(TutorialMod.CONFIG.espBoxMode);
 
         if (TutorialMod.CONFIG.espAntiVanish) {
             for (Map.Entry<Integer, VanishedPlayerData> entry : vanishedPlayers.entrySet()) {
                 Box box = new Box(entry.getValue().pos.x - 0.3, entry.getValue().pos.y, entry.getValue().pos.z - 0.3,
                                   entry.getValue().pos.x + 0.3, entry.getValue().pos.y + 1.8, entry.getValue().pos.z + 0.3);
                 box = box.offset(cameraPos.negate());
-                render3DBoxLines(box, combinedMatrix, TutorialMod.CONFIG.espColorEnemy);
-                projectAndAppend(boxesData, box, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos, false);
+                if (!is2D) {
+                    render3DBoxLines(box, combinedMatrix, TutorialMod.CONFIG.espColorEnemy);
+                }
+                projectAndAppend(boxesData, box, combinedMatrix, "Vanished", TutorialMod.CONFIG.espColorEnemy, "", true, -1f, "", cameraPos, is2D);
             }
         }
 
@@ -490,8 +488,10 @@ public class ESPModule {
                 if (TutorialMod.CONFIG.xrayTextureMode) {
                     projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "TX_" + entry.texture, cameraPos, true);
                 } else {
-                    render3DBoxLines(box, combinedMatrix, color);
-                    projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "", cameraPos, false);
+                    if (!is2D) {
+                        render3DBoxLines(box, combinedMatrix, color);
+                    }
+                    projectAndAppend(boxesData, box, combinedMatrix, entry.label, color, "", false, -1f, "", cameraPos, is2D);
                 }
             }
         }
