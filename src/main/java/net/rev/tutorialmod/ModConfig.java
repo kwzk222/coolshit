@@ -322,6 +322,7 @@ public class ModConfig {
     public boolean espShowStatusEffects = true;
     public double espDistanceHideThreshold = 0.0;
     public double espBoxWidthFactor = 0.22;
+    public String espBoxMode = "3D";
     public int espColorTeammate = 0x00FF00;
     public int espColorEnemy = 0xFF0000;
     public int espColorVillager = 0xFF00FF;

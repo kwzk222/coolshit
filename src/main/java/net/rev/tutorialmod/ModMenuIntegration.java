@@ -418,6 +418,8 @@ public class ModMenuIntegration implements ModMenuApi {
             espOverlay.addEntry(xraySub.build());
 
             SubCategoryBuilder espVisuals = entryBuilder.startSubCategory(Text.literal("Visuals"));
+            espVisuals.add(entryBuilder.startStringDropdownMenu(Text.literal("Box Mode"), TutorialMod.CONFIG.espBoxMode, s -> Text.literal(s)).setSelections(Arrays.asList("2D", "3D")).setDefaultValue("3D").setSaveConsumer(newValue -> TutorialMod.CONFIG.espBoxMode = newValue).build());
+
             SubCategoryBuilder espNameSub = entryBuilder.startSubCategory(Text.literal("Show Names"));
             espNameSub.add(entryBuilder.startBooleanToggle(Text.literal("Players"), TutorialMod.CONFIG.espShowNamesPlayers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNamesPlayers = newValue).build());
             espNameSub.add(entryBuilder.startBooleanToggle(Text.literal("Villagers"), TutorialMod.CONFIG.espShowNamesVillagers).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.espShowNamesVillagers = newValue).build());
