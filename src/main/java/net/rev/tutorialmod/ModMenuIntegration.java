@@ -179,6 +179,12 @@ public class ModMenuIntegration implements ModMenuApi {
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Jump"), TutorialMod.CONFIG.autoJumpEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoJumpEnabled = newValue).build());
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Elytra Fly"), TutorialMod.CONFIG.autoElytraFlyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoElytraFlyEnabled = newValue).build());
+            SubCategoryBuilder jumpResetSub = entryBuilder.startSubCategory(Text.literal("Jump Reset"));
+            jumpResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.jumpResetEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetEnabled = newValue).build());
+            jumpResetSub.add(entryBuilder.startIntSlider(Text.literal("Chance (%)"), TutorialMod.CONFIG.jumpResetChance, 0, 100).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetChance = newValue).build());
+            jumpResetSub.add(entryBuilder.startIntSlider(Text.literal("Delay (ms)"), TutorialMod.CONFIG.jumpResetDelay, 0, 1000).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetDelay = newValue).build());
+            movement.addEntry(jumpResetSub.build());
+
 
             SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water/Wind Charge)"));
             waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Water Clutch Enabled"), TutorialMod.CONFIG.waterClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue).build());

@@ -123,7 +123,12 @@ public class TutorialModClient implements ClientModInitializer {
     // --- State: Combat Swap ---
     private boolean isExecutingCombo = false;
     private int sprintResetTimer = -1;
+
     private int sprintResetCooldownTimer = -1;
+
+    // Jump Reset variables
+    private long jumpResetArmTime = -1;
+
     private int comboRestoreTicks = -1;
     private int comboRestoreSlot = -1;
 
@@ -2640,7 +2645,19 @@ public class TutorialModClient implements ClientModInitializer {
         return false;
     }
 
+
+    public void triggerJumpReset() {
+        if (!TutorialMod.CONFIG.masterEnabled || !TutorialMod.CONFIG.jumpResetEnabled) return;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.options.forwardKey.isPressed() && !mc.options.jumpKey.isPressed()) {
+            if (new java.util.Random().nextInt(100) < TutorialMod.CONFIG.jumpResetChance) {
+                jumpResetArmTime = System.currentTimeMillis() + TutorialMod.CONFIG.jumpResetDelay;
+            }
+        }
+    }
+
     public void triggerSprintReset() {
+
         if (!TutorialMod.CONFIG.sprintResetEnabled || sprintResetCooldownTimer > 0) return;
         sprintResetTimer = TutorialMod.CONFIG.sprintResetDelay;
         sprintResetCooldownTimer = TutorialMod.CONFIG.sprintResetCooldown;
@@ -2678,6 +2695,7 @@ public class TutorialModClient implements ClientModInitializer {
             ((net.rev.tutorialmod.mixin.InputAccessor) input).setMovementVector(new net.minecraft.util.math.Vec2f(leftImpulse, 0.0f));
         }
 
+
         if (sprintResetTimer > 0) {
             net.minecraft.util.PlayerInput old = input.playerInput;
             boolean forward = false;
@@ -2699,5 +2717,15 @@ public class TutorialModClient implements ClientModInitializer {
 
             ((net.rev.tutorialmod.mixin.InputAccessor) input).setMovementVector(new net.minecraft.util.math.Vec2f(leftImpulse, forwardImpulse));
         }
+
+        if (jumpResetArmTime > 0 && System.currentTimeMillis() >= jumpResetArmTime) {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc.options.forwardKey.isPressed() && !mc.options.jumpKey.isPressed()) {
+                net.minecraft.util.PlayerInput old = input.playerInput;
+                input.playerInput = new net.minecraft.util.PlayerInput(old.forward(), old.backward(), old.left(), old.right(), true, old.sneak(), old.sprint());
+            }
+            jumpResetArmTime = -1;
+        }
     }
+
 }

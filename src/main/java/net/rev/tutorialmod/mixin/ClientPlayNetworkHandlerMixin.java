@@ -12,6 +12,7 @@ import net.rev.tutorialmod.TutorialModClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import net.minecraft.network.packet.s2c.play.EntityAttributesS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityPositionS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityS2CPacket;
 import net.rev.tutorialmod.mixin.EntityS2CPacketAccessor;
@@ -22,6 +23,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public class ClientPlayNetworkHandlerMixin {
+    @Inject(method = "onEntityDamage", at = @At("HEAD"))
+    private void onEntityDamage(EntityDamageS2CPacket packet, CallbackInfo ci) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null) return;
+
+        if (packet.entityId() == client.player.getId()) {
+            if (packet.sourceCauseId() > 0 || packet.sourceDirectId() > 0) {
+                if (TutorialModClient.getInstance() != null) {
+                    TutorialModClient.getInstance().triggerJumpReset();
+                }
+            }
+        }
+    }
+
     @Inject(method = "onBlockUpdate", at = @At("TAIL"))
     private void onBlockUpdate(BlockUpdateS2CPacket packet, CallbackInfo info) {
         TutorialModClient.confirmRailPlacement(packet.getPos(), packet.getState());
