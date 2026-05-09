@@ -82,6 +82,11 @@ public class ModConfig {
 
     // --- Movement ---
     public boolean autoJumpEnabled = true;
+
+    // Jump Reset
+    public boolean jumpResetEnabled = true;
+    public int jumpResetChance = 100;
+    public int jumpResetDelay = 0;
     public boolean autoElytraFlyEnabled = true;
     public boolean parkourEnabled = false;
     public double parkourPredict = 0.0;

@@ -65,12 +65,12 @@ public class ModMenuIntegration implements ModMenuApi {
             SubCategoryBuilder humanizeSub = entryBuilder.startSubCategory(Text.literal("Humanization & Smoothing"));
             humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Acceleration"), (long)(TutorialMod.CONFIG.aimAssistAcceleration * 100), 1, 100).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistAcceleration = newValue / 100.0).build());
             humanizeSub.add(entryBuilder.startLongSlider(Text.literal("Deceleration"), (long)(TutorialMod.CONFIG.aimAssistDeceleration * 100), 1, 100).setDefaultValue(90).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDeceleration = newValue / 100.0).build());
-            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("EMA Smoothing (Alpha)"), (long)(TutorialMod.CONFIG.aimAssistEmaAlpha * 100), 1, 100).setDefaultValue(24).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEmaAlpha = newValue / 100.0).build());
+            humanizeSub.add(entryBuilder.startLongSlider(Text.literal("EMA Smoothing (Alpha)"), (long)(TutorialMod.CONFIG.aimAssistEmaAlpha * 100), 1, 100).setDefaultValue(24).setTooltip(Text.literal("Smooths out aiming movements to reduce jitter.")).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistEmaAlpha = newValue / 100.0).build());
             humanizeSub.add(entryBuilder.startIntSlider(Text.literal("Activation Delay (ms)"), TutorialMod.CONFIG.aimAssistDelay, 0, 1000).setDefaultValue(15).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistDelay = newValue).build());
             aimAssist.addEntry(humanizeSub.build());
 
             SubCategoryBuilder predictSub = entryBuilder.startSubCategory(Text.literal("Prediction"));
-            predictSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.aimAssistPrediction).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistPrediction = newValue).build());
+            predictSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.aimAssistPrediction).setDefaultValue(false).setTooltip(Text.literal("Calculates the target's velocity to aim slightly ahead of them.")).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistPrediction = newValue).build());
             predictSub.add(entryBuilder.startLongSlider(Text.literal("Prediction Factor"), (long)(TutorialMod.CONFIG.aimAssistPredictionFactor * 100), 0, 200).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.aimAssistPredictionFactor = newValue / 100.0).build());
             aimAssist.addEntry(predictSub.build());
 
@@ -89,13 +89,13 @@ public class ModMenuIntegration implements ModMenuApi {
             aimAssist.addEntry(aimFilters.build());
 
             SubCategoryBuilder bowSub = entryBuilder.startSubCategory(Text.literal("Bow Utilities"));
-            bowSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Release Block"), TutorialMod.CONFIG.bowReleaseBlockEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowReleaseBlockEnabled = newValue).build());
+            bowSub.add(entryBuilder.startBooleanToggle(Text.literal("Bow Release Block"), TutorialMod.CONFIG.bowReleaseBlockEnabled).setDefaultValue(true).setTooltip(Text.literal("Prevents firing a bow until it reaches the required charge threshold.")).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowReleaseBlockEnabled = newValue).build());
             bowSub.add(entryBuilder.startLongSlider(Text.literal("Auto-Fire Threshold"), (long)(TutorialMod.CONFIG.bowAutoFireThreshold * 100), 10, 100).setDefaultValue(10).setSaveConsumer(newValue -> TutorialMod.CONFIG.bowAutoFireThreshold = newValue / 100.0).build());
             aimAssist.addEntry(bowSub.build());
 
             // 1.1 Attribute Swapping
             ConfigCategory autoStun = builder.getOrCreateCategory(Text.literal("Attribute Swapping"));
-            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Crit Enabled"), TutorialMod.CONFIG.autoCritEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCritEnabled = newValue).build());
+            autoStun.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Crit Enabled"), TutorialMod.CONFIG.autoCritEnabled).setDefaultValue(true).setTooltip(Text.literal("Forces a critical hit by breaking your sprint when attacking.")).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoCritEnabled = newValue).build());
 
             SubCategoryBuilder lungeSwapSub = entryBuilder.startSubCategory(Text.literal("Lunge Swap"));
             lungeSwapSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.lungeSwapEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.lungeSwapEnabled = newValue).build());
@@ -179,10 +179,16 @@ public class ModMenuIntegration implements ModMenuApi {
             ConfigCategory movement = builder.getOrCreateCategory(Text.literal("Movement"));
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Jump"), TutorialMod.CONFIG.autoJumpEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoJumpEnabled = newValue).build());
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Auto Elytra Fly"), TutorialMod.CONFIG.autoElytraFlyEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoElytraFlyEnabled = newValue).build());
+            SubCategoryBuilder jumpResetSub = entryBuilder.startSubCategory(Text.literal("Jump Reset"));
+            jumpResetSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.jumpResetEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetEnabled = newValue).build());
+            jumpResetSub.add(entryBuilder.startIntSlider(Text.literal("Chance (%)"), TutorialMod.CONFIG.jumpResetChance, 0, 100).setDefaultValue(100).setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetChance = newValue).build());
+            jumpResetSub.add(entryBuilder.startIntSlider(Text.literal("Delay (ms)"), TutorialMod.CONFIG.jumpResetDelay, 0, 1000).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.jumpResetDelay = newValue).build());
+            movement.addEntry(jumpResetSub.build());
+
 
             SubCategoryBuilder waterClutchSub = entryBuilder.startSubCategory(Text.literal("Clutch (Water/Wind Charge)"));
-            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Water Clutch Enabled"), TutorialMod.CONFIG.waterClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue).build());
-            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Wind Charge Clutch Enabled"), TutorialMod.CONFIG.windChargeClutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.windChargeClutchEnabled = newValue).build());
+            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Water Clutch Enabled"), TutorialMod.CONFIG.waterClutchEnabled).setDefaultValue(true).setTooltip(Text.literal("Automatically places water before hitting the ground to negate fall damage.")).setSaveConsumer(newValue -> TutorialMod.CONFIG.waterClutchEnabled = newValue).build());
+            waterClutchSub.add(entryBuilder.startBooleanToggle(Text.literal("Wind Charge Clutch Enabled"), TutorialMod.CONFIG.windChargeClutchEnabled).setDefaultValue(true).setTooltip(Text.literal("Automatically throws a wind charge before hitting the ground to negate fall damage.")).setSaveConsumer(newValue -> TutorialMod.CONFIG.windChargeClutchEnabled = newValue).build());
             waterClutchSub.add(entryBuilder.startStringDropdownMenu(Text.literal("Clutch Priority"), TutorialMod.CONFIG.clutchPriority, s -> Text.literal(s)).setSelections(Arrays.asList("Water", "Wind Charge")).setDefaultValue("Water").setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchPriority = newValue).build());
             waterClutchSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.clutchHotkey).setDefaultValue("key.keyboard.j").setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchHotkey = newValue).build());
             waterClutchSub.add(entryBuilder.startLongSlider(Text.literal("Min Fall Distance"), (long)(TutorialMod.CONFIG.clutchMinFallDistance), 0, 100).setDefaultValue(3).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchMinFallDistance = newValue.doubleValue()).build());
@@ -198,7 +204,7 @@ public class ModMenuIntegration implements ModMenuApi {
             movement.addEntry(entryBuilder.startBooleanToggle(Text.literal("Master Clutch Module Toggle"), TutorialMod.CONFIG.clutchEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.clutchEnabled = newValue).build());
 
             SubCategoryBuilder parkourSub = entryBuilder.startSubCategory(Text.literal("Parkour"));
-            parkourSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.parkourEnabled).setDefaultValue(false).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourEnabled = newValue).build());
+            parkourSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.parkourEnabled).setDefaultValue(false).setTooltip(Text.literal("Automatically times jumps at the edge of blocks to assist with parkour.")).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourEnabled = newValue).build());
             parkourSub.add(entryBuilder.startStrField(Text.literal("Hotkey"), TutorialMod.CONFIG.parkourHotkey).setDefaultValue("key.keyboard.u").setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourHotkey = newValue).build());
             parkourSub.add(entryBuilder.startLongSlider(Text.literal("Prediction"), (long)(TutorialMod.CONFIG.parkourPredict * 100), 0, 50).setDefaultValue(0).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourPredict = newValue / 100.0).build());
             parkourSub.add(entryBuilder.startLongSlider(Text.literal("Max Drop Height"), (long)(TutorialMod.CONFIG.parkourMaxDropHeight * 100), 0, 150).setDefaultValue(61).setSaveConsumer(newValue -> TutorialMod.CONFIG.parkourMaxDropHeight = newValue / 100.0).build());
@@ -322,7 +328,7 @@ public class ModMenuIntegration implements ModMenuApi {
 
 
             SubCategoryBuilder extinguishSub = entryBuilder.startSubCategory(Text.literal("Auto Extinguish"));
-            extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled).setDefaultValue(true).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue).build());
+            extinguishSub.add(entryBuilder.startBooleanToggle(Text.literal("Enabled"), TutorialMod.CONFIG.autoExtinguishEnabled).setDefaultValue(true).setTooltip(Text.literal("Automatically punches out fire blocks if you are burning and aiming at them.")).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishEnabled = newValue).build());
             extinguishSub.add(entryBuilder.startLongSlider(Text.literal("Activation Pitch"), (long)TutorialMod.CONFIG.autoExtinguishPitch, 0, 90).setDefaultValue(81).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishPitch = newValue.doubleValue()).build());
             extinguishSub.add(entryBuilder.startIntSlider(Text.literal("Fire Ticks Threshold"), TutorialMod.CONFIG.autoExtinguishFireTicksThreshold, 0, 100).setDefaultValue(20).setSaveConsumer(newValue -> TutorialMod.CONFIG.autoExtinguishFireTicksThreshold = newValue).build());
             minecartTech.addEntry(extinguishSub.build());
