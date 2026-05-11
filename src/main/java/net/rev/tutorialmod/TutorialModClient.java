@@ -656,7 +656,7 @@ public class TutorialModClient implements ClientModInitializer {
         if (player.isSprinting()) {
             triggerSprintReset();
         }
-        int originalSlot = ((PlayerInventoryMixin) player.getInventory()).getSelectedSlot();
+        int originalSlot = (this.comboRestoreSlot != -1) ? this.comboRestoreSlot : ((PlayerInventoryMixin) player.getInventory()).getSelectedSlot();
         MinecraftClient client = MinecraftClient.getInstance();
 
         int delay = 0;
