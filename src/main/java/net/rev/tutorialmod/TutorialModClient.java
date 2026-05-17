@@ -1313,17 +1313,6 @@ public class TutorialModClient implements ClientModInitializer {
                     executeLungeSwap(client.player, target, spearSlot);
                     return true;
                 }
-            } else if (isBehindCobweb) {
-                // If behind a cobweb but no reach swap is needed, we still want to attack the entity and NOT break the cobweb.
-                // We manually trigger the attackEntity flow.
-                if (onAttackEntity(client.player, target) != ActionResult.FAIL) {
-                    // If the macro didn't handle it, we do a normal vanilla attack against the entity
-                    if (client.interactionManager != null) {
-                        client.interactionManager.attackEntity(client.player, target);
-                        client.player.swingHand(Hand.MAIN_HAND);
-                    }
-                }
-                return true; // Cancel block breaking
             }
         }
         return false;
