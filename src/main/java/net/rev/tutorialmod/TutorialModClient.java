@@ -589,7 +589,20 @@ public class TutorialModClient implements ClientModInitializer {
         boolean hasArmor = isArmored(attackedPlayer);
 
         // Check if any combo should be triggered
-        boolean needsSpear = dist > TutorialMod.CONFIG.reachSwapActivationRange && TutorialMod.CONFIG.spearReachSwapEnabled && findSpearInHotbar(player, false) != -1;
+        boolean isBehindCobweb = false;
+        if (TutorialMod.CONFIG.reachSwapIgnoreCobwebs) {
+            Vec3d start = player.getCameraPosVec(1.0f);
+            Vec3d targetHitPos = attackedPlayer.getBoundingBox().expand(attackedPlayer.getTargetingMargin()).getCenter();
+            if (isLineOfSightBlocked(start, targetHitPos, false)) {
+                isBehindCobweb = true;
+            }
+        }
+
+        int spearSlot = findSpearInHotbar(player, false);
+        if (spearSlot == -1 && isBehindCobweb) {
+            spearSlot = findSpearInHotbar(player, true);
+        }
+        boolean needsSpear = dist > TutorialMod.CONFIG.reachSwapActivationRange && TutorialMod.CONFIG.spearReachSwapEnabled && spearSlot != -1;
 
         // Determine if stun is needed
         boolean isFacing = true;
@@ -638,7 +651,7 @@ public class TutorialModClient implements ClientModInitializer {
         boolean needsMace = hasArmor && player.fallDistance > TutorialMod.CONFIG.maceSwapMinFallDistance && TutorialMod.CONFIG.maceSwapEnabled && findMaceInHotbar(player) != -1;
 
         if (needsSpear || needsStun || needsMace) {
-            executeCombatCombo(player, attackedPlayer, false);
+            executeCombatCombo(player, attackedPlayer, false, spearSlot);
             return ActionResult.FAIL;
         }
 
@@ -649,7 +662,7 @@ public class TutorialModClient implements ClientModInitializer {
         return ActionResult.PASS;
     }
 
-    private void executeCombatCombo(PlayerEntity player, PlayerEntity target, boolean forceSpear) {
+    private void executeCombatCombo(PlayerEntity player, PlayerEntity target, boolean forceSpear, int specificSpearSlot) {
         if (isExecutingCombo || player == null || target == null) return;
         isExecutingCombo = true;
 
@@ -667,7 +680,7 @@ public class TutorialModClient implements ClientModInitializer {
 
             // 1. Spear Hit
             if (forceSpear || (dist > TutorialMod.CONFIG.reachSwapActivationRange && dist <= TutorialMod.CONFIG.spearReachSwapRange && TutorialMod.CONFIG.spearReachSwapEnabled)) {
-                int spearSlot = findSpearInHotbar(player, false);
+                int spearSlot = specificSpearSlot != -1 ? specificSpearSlot : findSpearInHotbar(player, false);
                 if (spearSlot != -1) {
                     syncSlot(spearSlot);
                     if (client.interactionManager != null) {
@@ -1269,19 +1282,33 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (target != null) {
             double dist = client.player.distanceTo(target);
-            boolean hasSpear = findSpearInHotbar(client.player, false) != -1;
+
+            // Determine if the target is behind a cobweb
+            boolean isBehindCobweb = false;
+            if (TutorialMod.CONFIG.reachSwapIgnoreCobwebs) {
+                Vec3d start = client.player.getCameraPosVec(1.0f);
+                Vec3d targetHitPos = target.getBoundingBox().expand(target.getTargetingMargin()).getCenter();
+                if (isLineOfSightBlocked(start, targetHitPos, false)) {
+                    isBehindCobweb = true;
+                }
+            }
+
+            int spearSlot = findSpearInHotbar(client.player, false);
+            if (spearSlot == -1 && isBehindCobweb) {
+                // If behind cobweb and no standard spear, allow Lunge spear
+                spearSlot = findSpearInHotbar(client.player, true);
+            }
+
+            boolean hasSpear = spearSlot != -1;
             boolean needsReachSwap = TutorialMod.CONFIG.spearReachSwapEnabled && dist > TutorialMod.CONFIG.reachSwapActivationRange && hasSpear;
 
             if (needsReachSwap) {
                 if (target instanceof PlayerEntity tp) {
-                    executeCombatCombo(client.player, tp, false);
+                    executeCombatCombo(client.player, tp, false, spearSlot);
                     return true;
                 } else {
-                    int spearSlot = findSpearInHotbar(client.player, false);
-                    if (spearSlot != -1) {
-                        executeLungeSwap(client.player, target, spearSlot);
-                        return true;
-                    }
+                    executeLungeSwap(client.player, target, spearSlot);
+                    return true;
                 }
             }
         }
