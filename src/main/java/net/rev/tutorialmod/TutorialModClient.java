@@ -1519,7 +1519,7 @@ public class TutorialModClient implements ClientModInitializer {
 
             BlockHitResult hit = client.world.raycast(new RaycastContext(
                     currentStart, end,
-                    RaycastContext.ShapeType.COLLIDER,
+                    RaycastContext.ShapeType.OUTLINE,
                     RaycastContext.FluidHandling.NONE,
                     client.player
             ));
