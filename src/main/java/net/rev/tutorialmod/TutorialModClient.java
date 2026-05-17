@@ -1245,7 +1245,10 @@ public class TutorialModClient implements ClientModInitializer {
 
         if (client.crosshairTarget instanceof BlockHitResult bhr && bhr.getType() == HitResult.Type.BLOCK) {
             if (client.player.getCameraPosVec(1.0f).distanceTo(bhr.getPos()) < 5.0) {
-                return false;
+                boolean isCobweb = client.world.getBlockState(bhr.getBlockPos()).isOf(net.minecraft.block.Blocks.COBWEB);
+                if (!(TutorialMod.CONFIG.reachSwapIgnoreCobwebs && isCobweb)) {
+                    return false;
+                }
             }
         }
 
