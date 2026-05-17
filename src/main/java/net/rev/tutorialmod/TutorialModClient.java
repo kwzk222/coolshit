@@ -591,10 +591,10 @@ public class TutorialModClient implements ClientModInitializer {
         // Check if any combo should be triggered
         boolean isBehindCobweb = false;
         if (TutorialMod.CONFIG.reachSwapIgnoreCobwebs) {
-            Vec3d start = player.getCameraPosVec(1.0f);
-            Vec3d targetHitPos = attackedPlayer.getBoundingBox().expand(attackedPlayer.getTargetingMargin()).getCenter();
-            if (isLineOfSightBlocked(start, targetHitPos, false)) {
-                isBehindCobweb = true;
+            if (mc.crosshairTarget instanceof net.minecraft.util.hit.BlockHitResult bhr && bhr.getType() == net.minecraft.util.hit.HitResult.Type.BLOCK) {
+                if (mc.world != null && mc.world.getBlockState(bhr.getBlockPos()).isOf(net.minecraft.block.Blocks.COBWEB)) {
+                    isBehindCobweb = true;
+                }
             }
         }
 
@@ -1289,10 +1289,10 @@ public class TutorialModClient implements ClientModInitializer {
             // Determine if the target is behind a cobweb
             boolean isBehindCobweb = false;
             if (TutorialMod.CONFIG.reachSwapIgnoreCobwebs) {
-                Vec3d start = client.player.getCameraPosVec(1.0f);
-                Vec3d targetHitPos = target.getBoundingBox().expand(target.getTargetingMargin()).getCenter();
-                if (isLineOfSightBlocked(start, targetHitPos, false)) {
-                    isBehindCobweb = true;
+                if (client.crosshairTarget instanceof net.minecraft.util.hit.BlockHitResult bhr && bhr.getType() == net.minecraft.util.hit.HitResult.Type.BLOCK) {
+                    if (client.world != null && client.world.getBlockState(bhr.getBlockPos()).isOf(net.minecraft.block.Blocks.COBWEB)) {
+                        isBehindCobweb = true;
+                    }
                 }
             }
 
